@@ -3,12 +3,9 @@ namespace Crossmedia\Fourallportal\Command;
 
 use Crossmedia\Fourallportal\Domain\Model\Event;
 use Crossmedia\Fourallportal\Domain\Model\Module;
-use Crossmedia\Fourallportal\Domain\Model\Server;
-use Crossmedia\Fourallportal\Error\ApiException;
 use Crossmedia\Fourallportal\Service\ApiClient;
 use \TYPO3\CMS\Extbase\Mvc\Controller\CommandController;
 use TYPO3\CMS\Extbase\Persistence\PersistenceManagerInterface;
-use TYPO3\CMS\Form\Domain\Runtime\Exception\PropertyMappingException;
 
 class FourallportalCommandController extends CommandController
 {
@@ -44,36 +41,28 @@ class FourallportalCommandController extends CommandController
     }
 
     /**
-     * @param boolean $sync
+     * @param int $eventCount
      */
-    public function syncCommand($sync = false)
+    public function syncCommand($eventCount = 10)
     {
         foreach ($this->serverRepository->findByActive(true) as $server) {
-            $client = $this->getClientByServer($server);
+            $client = $this->objectManager->get(ApiClient::class, $server);
+            $client->login();
             foreach ($server->getModules() as $module) {
                 /** @var Module $module */
-                if (!$sync && $module->getLastEventId() > 0) {
-                    $results = $client->getEvents($module->getConnectorName(), $module->getLastEventId());
-                } else {
-                    $this->eventRepository->removeAll();
+//                $config = $client->getConnectorConfig($module->getConnectorName());
+                if ($module->getLastEventId() === 0) {
                     $results = $client->synchronize($module->getConnectorName());
-                }
-                foreach ($results as $result) {
-                    $this->queueEvent($module, $result);
+                    foreach ($results as $result) {
+                        $this->queueEvent($module, $result);
+                    }
                 }
                 $this->moduleRepository->update($module);
             }
         }
-
         $this->objectManager->get(PersistenceManagerInterface::class)->persistAll();
 
-        // Handle new, pending events first, which may cause some to be deferred:
-        foreach ($this->eventRepository->findByStatus('pending') as $event) {
-            $this->processEvent($event);
-        }
-
-        // Then handle any events that were deferred - which may cause some to be deferred again:
-        foreach ($this->eventRepository->findByStatus('deferred') as $event) {
+        foreach ($this->eventRepository->findAll() as $event) {
             $this->processEvent($event);
         }
     }
@@ -83,31 +72,8 @@ class FourallportalCommandController extends CommandController
      */
     public function processEvent($event)
     {
-        try {
-            $mapper = $event->getModule()->getMapper();
-            $mapper->import(
-                $this->getClientByServer(
-                    $event->getModule()->getServer()
-                )->getBeans(
-                    [
-                        $event->getObjectId()
-                    ],
-                    $event->getModule()->getConnectorName()
-                ),
-                $event
-            );
-            $event->setStatus('claimed');
-            // Update the Module's last recorded event ID, but only if the event ID was higher. This allows
-            // deferred events to execute without lowering the last recorded event ID which would cause
-            // duplicate event processing on the next run.
-            $event->getModule()->setLastEventId(max($event->getEventId(), $event->getModule()->getLastEventId()));
-        } catch (PropertyMappingException $error) {
-            // The system was unable to map properties, most likely because of an unresolvable relation.
-            // Skip the event for now; process it later.
-            $event->setStatus('deferred');
-        } catch(\Exception $exception) {
-            $event->setStatus('failed');
-        }
+//        echo $event->getObjectId() . chr(10);
+        $event->setStatus('claimed');
         $this->eventRepository->update($event);
         $this->objectManager->get(PersistenceManagerInterface::class)->persistAll();
     }
@@ -127,22 +93,5 @@ class FourallportalCommandController extends CommandController
         $this->eventRepository->add($event);
 
         return $event;
-    }
-
-    /**
-     * @param Server $server
-     * @return ApiClient
-     */
-    protected function getClientByServer(Server $server)
-    {
-        static $clients = [];
-        $serverId = $server->getUid();
-        if (isset($clients[$serverId])) {
-            return $clients[$serverId];
-        }
-        $client = $this->objectManager->get(ApiClient::class, $server);
-        $client->login();
-        $clients[$serverId] = $client;
-        return $client;
     }
 }

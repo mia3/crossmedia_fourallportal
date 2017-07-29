@@ -40,7 +40,7 @@ CREATE TABLE tx_fourallportal_domain_model_module (
 	last_event_id int(11) DEFAULT '0' NOT NULL,
 	shell_path varchar(255) DEFAULT '' NOT NULL,
 	storage_pid int(11) DEFAULT '0' NOT NULL,
-	fal_storage int(11) DEFAULT '0' NOT NULL,
+	server int(11) unsigned DEFAULT '0',
 
 	tstamp int(11) unsigned DEFAULT '0' NOT NULL,
 	crdate int(11) unsigned DEFAULT '0' NOT NULL,
@@ -83,13 +83,4 @@ CREATE TABLE tx_fourallportal_domain_model_module (
 
 	server int(11) unsigned DEFAULT '0' NOT NULL,
 
-);
-
-
-#
-# Table structure for table 'sys_file'
-#
-CREATE TABLE sys_file (
-    remote_id varchar(255) DEFAULT '' NOT NULL,
-    KEY remote_id (remote_id)
 );

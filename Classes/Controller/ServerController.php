@@ -3,7 +3,6 @@ namespace Crossmedia\Fourallportal\Controller;
 
 use Crossmedia\Fourallportal\Error\ApiException;
 use Crossmedia\Fourallportal\Service\ApiClient;
-
 /***
  *
  * This file is part of the "4AllPortal Connector" Extension for TYPO3 CMS.
@@ -54,57 +53,34 @@ class ServerController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
     {
         $status = [];
         $client = $this->objectManager->get(ApiClient::class, $server);
-        try {
-            $loginSuccessfull = $client->login();
-            $status[] = [
-                'title' => 'login',
-                'class' => $loginSuccessfull ? 'success' : 'danger',
-                'description' => $loginSuccessfull ? 'Login Successfull' : 'Login failed',
-            ];
-            foreach ($server->getModules() as $module) {
-                /** @var Module $module */
-                try {
-                    $config = $client->getConnectorConfig($module->getConnectorName());
-                    $description = '
-                        <strong>Module Name:</strong> ' . $config['moduleConfig']['module_name'] . '<br />
-                        <strong>Config Hash:</strong> ' . $config['config_hash'] . '<br />
-                        <h4>Fields</h4>
-                    ';
-                    $description .= '<table>';
-                    foreach ($config['fieldsToLoad'] as $field) {
-                        $description .= '
-                            <tr>
-                                <th>' . (isset($field['name']) ? $field['name'] : $field['fieldName']) . ': </th>
-                                <td>' . (isset($field['type']) ? $field['type'] : $field['fieldType']) . '</td>
-                            </tr>
-                        ';
-                    }
-                    $description .= '</table>';
-
-                    $moduleStatus = [
-                        'title' => 'connector: ' . $module->getConnectorName(),
-                        'class' => 'success',
-                        'description' => $description,
-                    ];
-
-                    $mappingClass = $module->getMappingClass();
-                    $mapping = new $mappingClass();
-                    $moduleStatus = $mapping->check($client, $module, $moduleStatus);
-                    $status[] = $moduleStatus;
-                } catch (ApiException $exception) {
-                    $status[] = [
-                        'title' => 'connector: ' . $module->getConnectorName(),
-                        'class' => 'danger',
-                        'description' => $exception->getMessage(),
-                    ];
+        $loginSuccessfull = $client->login();
+        $status[] = [
+            'title' => 'login',
+            'class' => $loginSuccessfull ? 'success' : 'danger',
+            'description' => $loginSuccessfull ? 'Login Successfull' : 'Login failed'
+        ];
+        foreach ($server->getModules() as $module) {
+            /** @var Module $module */
+            try {    $config = $client->getConnectorConfig($module->getConnectorName());
+                $description = '
+                <strong>Module Name:</strong> ' . $config['moduleConfig']['module_name'] . '<br />
+                <strong>Config Hash:</strong> ' . $config['config_hash'] . '<br />
+                <h4>Fields</h4>
+                ';
+                foreach ($config['fieldsToLoad'] as $field) {
+                    $description .= '<strong>' . (isset($field['name']) ? $field['name'] : $field['fieldName']) . ': </strong>' . (isset($field['type']) ? $field['type'] : $field['fieldType']) . '<br />';
                 }
+                $status[] = [
+                    'title' => 'connector: ' . $module->getConnectorName(),
+                    'class' => 'success',
+                    'description' => $description
+                ];
+            } catch (ApiException $exception) {    $status[] = [
+                    'title' => 'connector: ' . $module->getConnectorName(),
+                    'class' => 'danger',
+                    'description' => $exception->getMessage()
+                ];
             }
-        } catch (ApiException $exception) {
-            $status[] = [
-                'title' => 'login',
-                'class' => 'danger',
-                'description' => 'Login failed (' . $exception->getMessage() . ')',
-            ];
         }
         $this->view->assign('status', $status);
         $this->view->assign('server', $server);
