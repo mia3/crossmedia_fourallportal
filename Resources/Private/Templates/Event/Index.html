@@ -1,0 +1,68 @@
+<f:layout name="Backend"/>
+
+<f:section name="docheader-buttons">
+</f:section>
+
+<f:section name="module-headline">
+    <h3>Dashboard</h3>
+</f:section>
+
+<f:section name="Content">
+    <strong>Events pending: </strong> {totalPending}
+
+    <f:flashMessages/>
+
+    <div class="headerRow ui-helper-clearfix">
+        <div class="typo3-extensionmanager-headerRowLeft">
+        </div>
+        <div class="typo3-extensionmanager-headerRowRight">
+        </div>
+    </div>
+    <f:form action="index" addQueryString="1">
+        <f:if condition="{showAll}">
+            <div class="filter">
+                <f:form.textfield type="search" class="filter-search" placeholder="Search" value="{search}"/>
+            </div>
+        </f:if>
+        <table id="typo3-extension-list" class="t3-table typo3-extension-list table table-striped table-hover">
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>Date</th>
+                <th>Module</th>
+                <th>Status</th>
+                <th>Event Type</th>
+                <th>Object ID</th>
+                <th>&nbsp;</th>
+            </tr>
+            </thead>
+            <tbody>
+            <f:for each="{events}" as="event">
+                <tr>
+                    <td>{event.eventId}</td>
+                    <td>
+                        <f:format.date format="H:i:s d.m.Y">{event.crdate}</f:format.date>
+                    </td>
+                    <td>{event.module.connectorName}</td>
+                    <td>{event.status}</td>
+                    <td>{event.eventType}</td>
+                    <td>{event.objectId}</td>
+                    <td nowrap="nowrap" class="col-control">
+
+                        <div class="btn-group" role="group">
+                            <f:link.action
+                                action="check"
+                                arguments="{event: event}"
+                                class="btn btn-default" title="Check Server Configuration">
+                                <core:icon identifier="actions-document-info"
+                                           alternativeMarkupIdentifier="inline"/>
+                            </f:link.action>
+                        </div>
+
+                    </td>
+                </tr>
+            </f:for>
+            </tbody>
+        </table>
+    </f:form>
+</f:section>

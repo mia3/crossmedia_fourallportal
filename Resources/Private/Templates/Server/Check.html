@@ -1,0 +1,25 @@
+<html xmlns:core="http://typo3.org/ns/TYPO3/CMS/Core/ViewHelpers"
+      xmlns:fourallportal="http://typo3.org/ns/Crossmedia/Fourallportal/ViewHelpers">
+<f:layout name="Backend"/>
+
+<f:section name="docheader-buttons">
+</f:section>
+
+<f:section name="module-headline">
+    <h2>Server Status: {server.domain}</h2>
+</f:section>
+
+<f:section name="Content">
+    <f:flashMessages/>
+    <table class="table table-striped table-hover">
+        <tbody>
+        <f:for each="{status}" as="statusRow">
+            <tr>
+                <td class="{statusRow.class} col-xs-6">{statusRow.title}</td>
+                <td class="{statusRow.class} col-xs-6">{statusRow.description -> f:format.raw()}</td>
+            </tr>
+        </f:for>
+        </tbody>
+    </table>
+</f:section>
+</html>
