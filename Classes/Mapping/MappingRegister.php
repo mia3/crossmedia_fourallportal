@@ -25,7 +25,6 @@ class MappingRegister
     }
 
     public function getTcaSelectItems($config) {
-        var_dump('woot');
         $items = [];
         foreach (MappingRegister::getMappings() as $className => $name) {
             $items[] = array(0 => $name, 1 => $className);
