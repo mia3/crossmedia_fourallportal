@@ -7,6 +7,7 @@ return [
         'crdate' => 'crdate',
         'cruser_id' => 'cruser_id',
         'delete' => 'deleted',
+        'rootLevel' => 1,
         'enablecolumns' => [
         ],
         'searchFields' => 'event_id,event_type,status,skip_until,object_id,module',
@@ -76,6 +77,6 @@ return [
                 'maxitems' => 1,
             ],
         ],
-    
+
     ],
 ];
