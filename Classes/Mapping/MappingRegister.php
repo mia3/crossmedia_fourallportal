@@ -9,21 +9,39 @@ class MappingRegister
     static protected $mappings = [];
 
     /**
-     * @test
+     * @var array
      */
-    public static function registerMapping($className)
+    static protected $propertyMaps = [];
+
+    /**
+     * @return void
+     */
+    public static function registerMapping($className, array $propertyMap = array())
     {
         self::$mappings[$className] = $className;
+        self::$propertyMaps[$className] = $propertyMap;
     }
 
     /**
-     * @test
+     * @return array
      */
     public static function getMappings()
     {
         return self::$mappings;
     }
 
+    /**
+     * @return array
+     */
+    public static function resolvePropertyMapForMapper($className)
+    {
+        return self::$propertyMaps[$className];
+    }
+
+    /**
+     * @param array $config
+     * @return array
+     */
     public function getTcaSelectItems($config) {
         $items = [];
         foreach (MappingRegister::getMappings() as $className => $name) {

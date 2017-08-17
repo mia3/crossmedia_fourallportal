@@ -186,12 +186,13 @@ class Event extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
     }
 
     /**
-     * @param $eventTypeId
+     * @param integer $eventTypeId
+     * @return string
      */
     public static function resolveEventType($eventTypeId)
     {
         $map = [
-            0 => 'delte',
+            0 => 'delete',
             1 => 'update',
             2 => 'create'
         ];

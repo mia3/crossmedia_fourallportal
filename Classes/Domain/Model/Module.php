@@ -11,6 +11,9 @@ namespace Crossmedia\Fourallportal\Domain\Model;
  *  (c) 2017 Marc Neuhaus <marc@mia3.com>, MIA3 GmbH & Co. KG
  *
  ***/
+use Crossmedia\Fourallportal\Mapping\MappingInterface;
+use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Extbase\Object\ObjectManager;
 
 /**
  * Module
@@ -190,6 +193,14 @@ class Module extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
     public function setStoragePid($storagePid)
     {
         $this->storagePid = $storagePid;
+    }
+
+    /**
+     * @return MappingInterface
+     */
+    public function getMapper()
+    {
+        return GeneralUtility::makeInstance(ObjectManager::class)->get($this->getMappingClass());
     }
 
     /**

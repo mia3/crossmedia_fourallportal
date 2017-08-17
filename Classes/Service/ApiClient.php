@@ -170,17 +170,18 @@ class ApiClient
      * @apiparam offset - offset der IDs
      *
      * @param string $connectorName
+     * @param integer $lastEventId
      * @return array $events
      * @throws ApiException
      */
-    public function synchronize($connectorName = null)
+    public function synchronize($connectorName = null, $lastEventId = null)
     {
         $response = $this->doPostRequest(
             $uri = $this->server->getRestUrl() . 'PAPRemoteService/synchronize',
             [
                 $this->sessionId,
                 $connectorName,
-                0,
+                $lastEventId,
                 0,
             ]
         );
@@ -215,14 +216,18 @@ class ApiClient
             $objectIds = array($objectIds);
         }
 
-        $beans = $this->getRequest('getBeans', array(
-            $this->sessionId,
-            $connectorName ? $connectorName : $this->connectorName,
-            $objectIds,
-        ));
+        $beans = $this->doPostRequest(
+            $this->server->getRestUrl() . 'PAPRemoteService/getBeans',
+            array(
+                $this->sessionId,
+                $connectorName ? $connectorName : $this->connectorName,
+                $objectIds,
+            )
+        );
+
         $beans = $this->normalizeArray($beans);
         foreach ($beans as $key => $bean) {
-            $beans[$key]['properties']['data_shellpath'] = $this->normalizePath($beans[$key]['properties']['data_shellpath']);
+            #$beans[$key]['properties']['data_shellpath'] = $this->normalizePath($beans[$key]['properties']['data_shellpath']);
         }
 
         return $beans;
@@ -239,13 +244,12 @@ class ApiClient
      */
     public function getRequest($method, $parameter)
     {
-        $uri = $this->server->getRestUrl() . '/' . $method . '?parameter=' . json_encode($parameter);
+        $uri = $this->server->getRestUrl() . $method . '?' . http_build_query(['parameter' => json_encode($parameter)]);
         $response = $this->doGetRequest($uri);
         $result = json_decode($response, true);
         if (!isset($result['code']) || $result['code'] !== 0) {
-            // var_dump($result, $uri, $this->sessionId);
             $message = isset($result['message']) ? $result['message'] : 'MamClient: could not communicate with mam api. please try again later';
-            throw new ApiException($message);
+            throw new ApiException($message . ' - ' . $response);
         }
 
         return $result['result'];
@@ -261,15 +265,21 @@ class ApiClient
         $ch = curl_init($uri);
         curl_setopt($ch, CURLOPT_POST, 0);
         curl_setopt($ch, CURLOPT_TIMEOUT, 0);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 60);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
             'Content-Type: application/json',
         ]);
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-        $result = curl_exec($ch);
+        $response = curl_exec($ch);
+        $result = json_decode($response, true);
 
-        return json_decode($result, true);
+        if (!isset($result['code']) || $result['code'] !== 0) {
+            $message = isset($result['message']) ? $result['message'] : 'MamClient: could not communicate with mam api. please try again later';
+            throw new ApiException($message . ' - ' . $response);
+        }
+
+        return $result;
     }
 
     /**
@@ -282,11 +292,66 @@ class ApiClient
     {
         $ch = curl_init($uri);
         curl_setopt($ch, CURLOPT_TIMEOUT, 0);
+        curl_setopt($ch, CURLOPT_VERBOSE, true);
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 60);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         $result = curl_exec($ch);
 
         return $result;
+    }
+
+    /**
+     * normalizes an MAM result array into a flatter php array
+     *
+     * example:
+     *
+     * input:                 =>     output:
+     * array (                       array (
+     *   'foo' => array(               'foo' => 'bar'
+     *     'value' => 'bar'          )
+     *   )
+     * )
+     *
+     * @param array $input
+     * @return array
+     */
+    public function normalizeArray($input)
+    {
+        if (is_array($input)) {
+            foreach ($input as $key => $value) {
+                $input[$key] = $this->normalizeArray($value);
+            }
+            if (count($input) == 1 && array_key_exists('value', $input)) {
+                $input = $input['value'];
+            }
+            if (is_array($input) && count($input) == 0) {
+                $input = null;
+            }
+        }
+
+        return $input;
+    }
+
+    /**
+     * normalizes a shell_path by removing the remote base shell_path to receive
+     * a "relative" shell_path
+     *
+     * Example (configuration['mam_shell_path'] = '/usr/local/mam/wanzl/'):
+     *
+     * /usr/local/mam/wanzl/data/foo.png   => data/foo.png
+     *
+     * @param string $path
+     * @return string
+     */
+    public function normalizePath($path)
+    {
+        if (strlen($this->configuration['mam_shell_path']) > 0) {
+            $path = rtrim($this->configuration['base_path'],
+                    '/') . '/' . ltrim(str_replace($this->configuration['mam_shell_path'], '', $path), '/');
+        }
+        $path = ltrim($path, '/\\');
+
+        return $path;
     }
 
     protected function initializeCreateMasks()

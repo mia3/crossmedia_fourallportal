@@ -6,7 +6,7 @@ use Crossmedia\Fourallportal\Error\ApiException;
 use Crossmedia\Fourallportal\Error\MamApiException;
 
 
-class ApiClient
+class ApiClientPool
 {
 
     /**
