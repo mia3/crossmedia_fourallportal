@@ -174,14 +174,14 @@ class ApiClient
      * @return array $events
      * @throws ApiException
      */
-    public function synchronize($connectorName = null, $lastEventId = null)
+    public function synchronize($connectorName = null)
     {
         $response = $this->doPostRequest(
             $uri = $this->server->getRestUrl() . 'PAPRemoteService/synchronize',
             [
                 $this->sessionId,
                 $connectorName,
-                $lastEventId,
+                0,
                 0,
             ]
         );

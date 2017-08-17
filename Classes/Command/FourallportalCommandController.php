@@ -50,19 +50,12 @@ class FourallportalCommandController extends CommandController
             $client = $this->getClientByServer($server);
             foreach ($server->getModules() as $module) {
                 /** @var Module $module */
-                $results = $client->synchronize($module->getConnectorName(), $module->getLastEventId());
+                $results = $client->synchronize($module->getConnectorName());
                 foreach ($results as $result) {
-                    if ($result['event_id'] > $module->getLastEventId()) {
-                        $this->queueEvent($module, $result);
-                    } else {
-                        throw new \RuntimeException(
-                            'FATAL ERROR! Remote API returned an event which was supposed to be excluded based on API ' .
-                            'parameters. The event ID was "' . $result['event_id'] . '" but the last recorded event ID ' .
-                            'and "starting event ID" sent to the API was ' . $module->getLastEventId() . '. If this was ' .
-                            'possibly caused by local database desync then please reset the last event ID of module ' . $module->getConnectorName()
-                        );
-                    }
+                    $this->queueEvent($module, $result);
                 }
+                $module->setLastEventId(0);
+                $this->moduleRepository->update($module);
             }
         }
 
