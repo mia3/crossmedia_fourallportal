@@ -3,6 +3,7 @@ namespace Crossmedia\Fourallportal\Command;
 
 use Crossmedia\Fourallportal\Domain\Model\Event;
 use Crossmedia\Fourallportal\Domain\Model\Module;
+use Crossmedia\Fourallportal\Domain\Model\Server;
 use Crossmedia\Fourallportal\Service\ApiClient;
 use \TYPO3\CMS\Extbase\Mvc\Controller\CommandController;
 use TYPO3\CMS\Extbase\Persistence\PersistenceManagerInterface;
@@ -46,23 +47,28 @@ class FourallportalCommandController extends CommandController
     public function syncCommand($eventCount = 10)
     {
         foreach ($this->serverRepository->findByActive(true) as $server) {
-            $client = $this->objectManager->get(ApiClient::class, $server);
-            $client->login();
+            $client = $this->getClientByServer($server);
             foreach ($server->getModules() as $module) {
                 /** @var Module $module */
-//                $config = $client->getConnectorConfig($module->getConnectorName());
-                if ($module->getLastEventId() === 0) {
-                    $results = $client->synchronize($module->getConnectorName());
-                    foreach ($results as $result) {
+                $results = $client->synchronize($module->getConnectorName(), $module->getLastEventId());
+                foreach ($results as $result) {
+                    if ($result['event_id'] > $module->getLastEventId()) {
                         $this->queueEvent($module, $result);
+                    } else {
+                        throw new \RuntimeException(
+                            'FATAL ERROR! Remote API returned an event which was supposed to be excluded based on API ' .
+                            'parameters. The event ID was "' . $result['event_id'] . '" but the last recorded event ID ' .
+                            'and "starting event ID" sent to the API was ' . $module->getLastEventId() . '. If this was ' .
+                            'possibly caused by local database desync then please reset the last event ID of module ' . $module->getConnectorName()
+                        );
                     }
                 }
-                $this->moduleRepository->update($module);
             }
         }
+
         $this->objectManager->get(PersistenceManagerInterface::class)->persistAll();
 
-        foreach ($this->eventRepository->findAll() as $event) {
+        foreach ($this->eventRepository->findByStatus('pending') as $event) {
             $this->processEvent($event);
         }
     }
@@ -72,8 +78,20 @@ class FourallportalCommandController extends CommandController
      */
     public function processEvent($event)
     {
-//        echo $event->getObjectId() . chr(10);
+        $mapper = $event->getModule()->getMapper();
+        $mapper->import(
+            $this->getClientByServer(
+                $event->getModule()->getServer()
+            )->getBeans(
+                [
+                    $event->getObjectId()
+                ],
+                $event->getModule()->getConnectorName()
+            ),
+            $event
+        );
         $event->setStatus('claimed');
+        $event->getModule()->setLastEventId(max($event->getEventId(), $event->getModule()->getLastEventId()));
         $this->eventRepository->update($event);
         $this->objectManager->get(PersistenceManagerInterface::class)->persistAll();
     }
@@ -93,5 +111,22 @@ class FourallportalCommandController extends CommandController
         $this->eventRepository->add($event);
 
         return $event;
+    }
+
+    /**
+     * @param Server $server
+     * @return ApiClient
+     */
+    protected function getClientByServer(Server $server)
+    {
+        static $clients = [];
+        $serverId = $server->getUid();
+        if (isset($clients[$serverId])) {
+            return $clients[$serverId];
+        }
+        $client = $this->objectManager->get(ApiClient::class, $server);
+        $client->login();
+        $clients[$serverId] = $client;
+        return $client;
     }
 }
