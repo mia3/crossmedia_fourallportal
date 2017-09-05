@@ -2,6 +2,8 @@
 namespace Crossmedia\Fourallportal\Mapping;
 
 use Crossmedia\Fourallportal\Domain\Model\Event;
+use Crossmedia\Fourallportal\Domain\Model\Module;
+use Crossmedia\Fourallportal\Service\ApiClient;
 use Crossmedia\Products\Domain\Repository\ProductRepository;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\DomainObject\AbstractEntity;
@@ -200,5 +202,16 @@ abstract class AbstractMapping implements MappingInterface
     protected function getObjectRepository()
     {
         return GeneralUtility::makeInstance(ObjectManager::class)->get($this->repositoryClassName);
+    }
+
+    /**
+     * @param ApiClient $client
+     * @param Module $module
+     * @param array $status
+     * @return array
+     */
+    public function check(ApiClient $client, Module $module, array $status)
+    {
+        return $status;
     }
 }
