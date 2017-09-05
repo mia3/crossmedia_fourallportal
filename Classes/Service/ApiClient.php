@@ -3,8 +3,6 @@ namespace Crossmedia\Fourallportal\Service;
 
 use Crossmedia\Fourallportal\Domain\Model\Server;
 use Crossmedia\Fourallportal\Error\ApiException;
-use Crossmedia\Fourallportal\Error\MamApiException;
-
 
 class ApiClient
 {
@@ -136,6 +134,7 @@ class ApiClient
      * @apiparam event_id - Die Id des ersten Events
      * @apiparam config_hash - MD5. Hash der Konfiguration, um Änderungen an der Konfiguration zu erkennen.
      *
+     * @param string $connectorName
      * @param  integer $eventId
      * @return array $events
      *
@@ -145,17 +144,29 @@ class ApiClient
      * object_type - type of the relevant object (0 = bean, 1 = derivate, 2 = both)
      * field_name - derivate type
      * event_type - type of event (0 = delete, 1 = update, 2 = create)
+     * @throws ApiException
      */
-    public function getEvents($eventId)
+    public function getEvents($connectorName, $eventId)
     {
-        $events = $this->getRequest('getEvents', array(
-            $this->sessionId,
-            $this->connectorName,
-            $eventId,
-            $this->configHash,
-        ));
+        $connectorConfig = $this->getConnectorConfig($connectorName);
 
-        return $events;
+        $response = $this->doPostRequest(
+            $uri = $this->server->getRestUrl() . 'PAPRemoteService/getEvents',
+            [
+                $this->sessionId,
+                $connectorName,
+                $eventId,
+                $connectorConfig['config_hash']
+            ]
+        );
+        switch ($response['code']) {
+            case 0:
+                return $response['result'];
+                break;
+
+            default:
+                throw new ApiException($response['code'] . ': ' . $response['message']);
+        }
     }
 
     /**
@@ -248,7 +259,7 @@ class ApiClient
         $response = $this->doGetRequest($uri);
         $result = json_decode($response, true);
         if (!isset($result['code']) || $result['code'] !== 0) {
-            $message = isset($result['message']) ? $result['message'] : 'MamClient: could not communicate with mam api. please try again later';
+            $message = isset($result['message']) ? $result['message'] : $method . ': could not communicate with fourallportal api. please try again later';
             throw new ApiException($message . ' - ' . $response);
         }
 
@@ -275,7 +286,7 @@ class ApiClient
         $result = json_decode($response, true);
 
         if (!isset($result['code']) || $result['code'] !== 0) {
-            $message = isset($result['message']) ? $result['message'] : 'MamClient: could not communicate with mam api. please try again later';
+            $message = isset($result['message']) ? $result['message'] : 'could not communicate with fourallportal api. please try again later. (' . $uri . ' ' . json_encode($data) . ')';
             throw new ApiException($message . ' - ' . $response);
         }
 

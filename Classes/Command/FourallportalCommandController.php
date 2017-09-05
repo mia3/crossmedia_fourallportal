@@ -4,6 +4,7 @@ namespace Crossmedia\Fourallportal\Command;
 use Crossmedia\Fourallportal\Domain\Model\Event;
 use Crossmedia\Fourallportal\Domain\Model\Module;
 use Crossmedia\Fourallportal\Domain\Model\Server;
+use Crossmedia\Fourallportal\Error\ApiException;
 use Crossmedia\Fourallportal\Service\ApiClient;
 use \TYPO3\CMS\Extbase\Mvc\Controller\CommandController;
 use TYPO3\CMS\Extbase\Persistence\PersistenceManagerInterface;
@@ -50,11 +51,14 @@ class FourallportalCommandController extends CommandController
             $client = $this->getClientByServer($server);
             foreach ($server->getModules() as $module) {
                 /** @var Module $module */
-                $results = $client->synchronize($module->getConnectorName());
+                if ($module->getLastEventId() > 0) {
+                    $results = $client->getEvents($module->getConnectorName(), $module->getLastEventId());
+                } else {
+                    $results = $client->synchronize($module->getConnectorName());
+                }
                 foreach ($results as $result) {
                     $this->queueEvent($module, $result);
                 }
-                $module->setLastEventId(0);
                 $this->moduleRepository->update($module);
             }
         }
@@ -71,20 +75,24 @@ class FourallportalCommandController extends CommandController
      */
     public function processEvent($event)
     {
-        $mapper = $event->getModule()->getMapper();
-        $mapper->import(
-            $this->getClientByServer(
-                $event->getModule()->getServer()
-            )->getBeans(
-                [
-                    $event->getObjectId()
-                ],
-                $event->getModule()->getConnectorName()
-            ),
-            $event
-        );
-        $event->setStatus('claimed');
-        $event->getModule()->setLastEventId(max($event->getEventId(), $event->getModule()->getLastEventId()));
+        try {
+            $mapper = $event->getModule()->getMapper();
+            $mapper->import(
+                $this->getClientByServer(
+                    $event->getModule()->getServer()
+                )->getBeans(
+                    [
+                        $event->getObjectId()
+                    ],
+                    $event->getModule()->getConnectorName()
+                ),
+                $event
+            );
+            $event->setStatus('claimed');
+            $event->getModule()->setLastEventId(max($event->getEventId(), $event->getModule()->getLastEventId()));
+        } catch(Exception $exception) {
+            $event->setStatus('failed');
+        }
         $this->eventRepository->update($event);
         $this->objectManager->get(PersistenceManagerInterface::class)->persistAll();
     }
