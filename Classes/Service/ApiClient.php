@@ -124,6 +124,118 @@ class ApiClient
     }
 
     /**
+     * Fetches a specific derivate from MAM
+     *
+     * @apiparam connector_name - Name des Connectors
+     * @apiparam id - Id des Datensatzes für das jeweilige Derivat
+     * @apiparam derivate - web, print etc.
+     *
+     * @param string $objectId id of the object to get a derivate for
+     * @return ???
+     */
+    public function getDerivate($objectId, $usage = null)
+    {
+        if ($usage === null) {
+            $usage = $this->defaultDerivate;
+        }
+        $query = array(
+            'session' => $this->sessionId,
+            'apptype' => 'MAM',
+            'clientType' => 'Web',
+            'usage' => $usage,
+            'id' => $objectId,
+        );
+        $uri = $this->server->getDataUrl() . '?' . http_build_query($query);
+
+        return $this->doGetRequest($uri);
+    }
+
+    /**
+     * @param string $filename
+     * @param string $objectId
+     * @return bool|string
+     */
+    public function saveDerivate($filename, $objectId)
+    {
+        $query = array(
+            'session' => $this->sessionId,
+            'apptype' => 'MAM',
+            'clientType' => 'Web',
+            //'usage' => null,
+            'id' => $objectId,
+        );
+        $uri = $this->server->getDataUrl() . '?' . http_build_query($query);
+
+        $temporaryFilename = tempnam(sys_get_temp_dir(), 'fal_mam-' . $objectId);
+
+        ob_start();
+        if (!file_exists(dirname($temporaryFilename))) {
+            $oldUmask = umask(0);
+            mkdir(dirname($temporaryFilename), $this - $this->folderCreateMask, true);
+            umask($oldUmask);
+        }
+
+        $fp = fopen($temporaryFilename, 'w+');
+        $ch = curl_init($uri);
+        $temporaryHeaderbufferName = tempnam(sys_get_temp_dir(), 'header-buff' . $objectId);
+        $headerBuff = fopen($temporaryHeaderbufferName, 'w+');
+
+        curl_setopt($ch, CURLOPT_TIMEOUT, 0);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 60);
+        curl_setopt($ch, CURLOPT_FILE, $fp);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_WRITEHEADER, $headerBuff);
+        curl_exec($ch);
+
+        rewind($headerBuff);
+        $headers = stream_get_contents($headerBuff);
+        fclose($headerBuff);
+        unlink($temporaryHeaderbufferName);
+
+        if (preg_match('/Content-Length:[^0-9]*([0-9]+)/', $headers, $matches)) {
+            $expectedFileSize = $matches[1];
+        }
+
+        if (!empty($curlError = curl_error($ch))) {
+            $this->logger->warning('CURL Failed with the Error: ' . $curlError, array(
+                'uri' => $uri,
+                'filename' => $filename,
+                'object_id' => $objectId,
+                'expected size: ' => $expectedFileSize,
+                'downloaded size: ' => filesize($temporaryFilename),
+            ));
+        }
+
+        curl_close($ch);
+        fclose($fp);
+        $output = ob_end_clean();
+        ob_end_flush();
+
+        if ($expectedFileSize > 0 && $expectedFileSize != filesize($temporaryFilename)) {
+            $this->logger->warning('The downloaded file does not match the expected filesize',
+                array(
+                    'uri' => $uri,
+                    'filename' => $filename,
+                    'object_id' => $objectId,
+                    'expected size: ' => $expectedFileSize,
+                    'downloaded size: ' => filesize($temporaryFilename),
+                )
+            );
+            unlink($temporaryFilename);
+
+            return false;
+        }
+
+        if (!file_exists(dirname($filename))) {
+            $oldUmask = umask(0);
+            mkdir(dirname($filename), $this->folderCreateMask, true);
+            umask($oldUmask);
+        }
+        rename($temporaryFilename, $filename);
+        chmod($filename, $this->fileCreateMask);
+    }
+
+    /**
      * Get events from MAM starting from a specific event id
      *
      * Dieser Service liefert nicht alle IDs aus maximal 1000.
@@ -238,6 +350,7 @@ class ApiClient
 
         $beans = $this->normalizeArray($beans);
         foreach ($beans as $key => $bean) {
+            #var_dump($bean);
             #$beans[$key]['properties']['data_shellpath'] = $this->normalizePath($beans[$key]['properties']['data_shellpath']);
         }
 
@@ -258,10 +371,8 @@ class ApiClient
         $uri = $this->server->getRestUrl() . $method . '?' . http_build_query(['parameter' => json_encode($parameter)]);
         $response = $this->doGetRequest($uri);
         $result = json_decode($response, true);
-        if (!isset($result['code']) || $result['code'] !== 0) {
-            $message = isset($result['message']) ? $result['message'] : $method . ': could not communicate with fourallportal api. please try again later';
-            throw new ApiException($message . ' - ' . $response);
-        }
+
+        $this->validateResponseCode($result);
 
         return $result['result'];
     }
@@ -285,12 +396,38 @@ class ApiClient
         $response = curl_exec($ch);
         $result = json_decode($response, true);
 
-        if (!isset($result['code']) || $result['code'] !== 0) {
-            $message = isset($result['message']) ? $result['message'] : 'could not communicate with fourallportal api. please try again later. (' . $uri . ' ' . json_encode($data) . ')';
-            throw new ApiException($message . ' - ' . $response);
-        }
+        $this->validateResponseCode($result);
 
         return $result;
+    }
+
+    /**
+     * @param mixed $result
+     * @throws ApiException
+     */
+    protected function validateResponseCode($result)
+    {
+        if (!isset($result['code']) || $result['code'] != 0) {
+            $message = isset($result['message']) ? $result['message'] : 'MamClient: could not communicate with mam api. please try again later';
+            throw new ApiException($message . ' - Response code ' . $result['code'] . ': ' . $this->translateResponseCode($result['code']));
+        }
+        if (!is_array($result)) {
+            throw new ApiException('The MAM API returned garbage data (not JSON array)');
+        }
+    }
+
+    /**
+     * @param integer $code
+     * @return string
+     */
+    protected function translateResponseCode($code)
+    {
+        switch ($code) {
+            case -1: return 'UNDEFINED_ERROR';
+            case 1: return 'PARAMETER_NOT_SET';
+            case 2: return 'FUNCTION_NOT_IMPLEMENTED';
+            default: return 'Error code given but not known by the client, see REST API documentation';
+        }
     }
 
     /**

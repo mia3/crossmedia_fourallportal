@@ -209,6 +209,22 @@ class Server extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
         $this->modules = $modules;
     }
 
+    /**
+     * @return string
+     */
+    public function getDataUrl()
+    {
+        // http://[DOMAIN]/[CUSTOMER_NAME]/dataservice
+        return sprintf(
+            '%s/%s/dataservice',
+            rtrim($this->getDomain(), '/'),
+            ltrim($this->getCustomerName(), '/')
+        );
+    }
+
+    /**
+     * @return string
+     */
     public function getRestUrl()
     {
         // http://[DOMAIN]/[CUSTOMER_NAME]/rest/PAPRemoteService
