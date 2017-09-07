@@ -15,8 +15,8 @@
         <tbody>
         <f:for each="{status}" as="statusRow">
             <tr>
-                <td class="{statusRow.class} col-xs-6">{statusRow.title}</td>
-                <td class="{statusRow.class} col-xs-6">{statusRow.description -> f:format.raw()}</td>
+                <td class="{statusRow.class} col-xs-3">{statusRow.title}</td>
+                <td class="{statusRow.class} col-xs-9">{statusRow.description -> f:format.raw()}</td>
             </tr>
         </f:for>
         </tbody>
