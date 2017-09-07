@@ -8,6 +8,7 @@ use Crossmedia\Fourallportal\Error\ApiException;
 use Crossmedia\Fourallportal\Service\ApiClient;
 use \TYPO3\CMS\Extbase\Mvc\Controller\CommandController;
 use TYPO3\CMS\Extbase\Persistence\PersistenceManagerInterface;
+use TYPO3\CMS\Form\Domain\Runtime\Exception\PropertyMappingException;
 
 class FourallportalCommandController extends CommandController
 {
@@ -89,11 +90,15 @@ class FourallportalCommandController extends CommandController
                 $event
             );
             $event->setStatus('claimed');
-            $event->getModule()->setLastEventId(max($event->getEventId(), $event->getModule()->getLastEventId()));
-        } catch(Exception $exception) {
+        } catch (PropertyMappingException $error) {
+            // The system was unable to map properties, most likely because of an unresolvable relation.
+            // Skip the event for now; process it later.
+            return;
+        } catch(\Exception $exception) {
             $event->setStatus('failed');
         }
         $this->eventRepository->update($event);
+        $event->getModule()->setLastEventId(max($event->getEventId(), $event->getModule()->getLastEventId()));
         $this->objectManager->get(PersistenceManagerInterface::class)->persistAll();
     }
 
