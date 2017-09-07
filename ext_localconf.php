@@ -3,6 +3,8 @@ if (!defined('TYPO3_MODE')) {
     die ('Access denied.');
 }
 
+\TYPO3\CMS\Extbase\Utility\ExtensionUtility::registerTypeConverter(\Crossmedia\Fourallportal\TypeConverter\FileReferenceTypeConverter::class);
+
 $registerDriver = \TYPO3\CMS\Core\Utility\GeneralUtility::makeInstance(\TYPO3\CMS\Core\Resource\Driver\DriverRegistry::class);
 $registerDriver->registerDriverClass(
     \Crossmedia\Fourallportal\Driver\MamDriver::class,
