@@ -161,43 +161,74 @@ class FalMapping extends AbstractMapping
      */
     public function check(ApiClient $client, Module $module, array $status)
     {
+        $events = $client->getEvents($module->getConnectorName(), 0);
+        $ids = [];
+        foreach($events as $event) {
+            $ids[] = $event['object_id'];
+            if (count($ids) == 3) {
+                break;
+            }
+        }
+        $messages = [];
+        $beans = $client->getBeans($ids, $module->getConnectorName());
+        $paths = [];
+        $status['description'] .= '
+            <h3>FalMapping</h3>
+        ';
+        foreach($beans['result'] as $result) {
+            if (!isset($result['properties']['data_name'])) {
+                $status['class'] = 'danger';
+                $messages['data_name'] = '<p><strong class="text-danger">Connector does not provide required "data_name" property</strong></p>';
+            }
+            if (!isset($result['properties']['data_shellpath'])) {
+                $messages['data_shellpath'] = '<p><strong class="text-danger">Connector does not provide required "data_shellpath" property</strong></p>';
+                $status['class'] = 'danger';
+            }
+            $paths[] = $result['properties']['data_shellpath'] . $result['properties']['data_name'];
+       }
         if (empty($module->getShellPath())) {
             $status['class'] = 'danger';
-            $status['description'] .= '
-                <h3>FalMapping</h3>
-            ';
-            $events = $client->getEvents($module->getConnectorName(), 0);
-            $ids = [];
-            foreach($events as $event) {
-                $ids[] = $event['object_id'];
-                if (count($ids) == 3) {
-                    break;
-                }
-            }
-            $messages = [];
-            $beans = $client->getBeans($ids, $module->getConnectorName());
-            $paths = [];
-            foreach($beans['result'] as $result) {
-                if (!isset($result['properties']['data_name'])) {
-                    $messages['data_name'] = '<p><strong class="text-danger">Connector does not provide required "data_name" property</strong></p>';
-                }
-                if (!isset($result['properties']['data_shellpath'])) {
-                    $messages['data_shellpath'] = '<p><strong class="text-danger">Connector does not provide required "data_shellpath" property</strong></p>';
-                }
-                $paths[] = $result['properties']['data_shellpath'] . $result['properties']['data_name'];
-            }
             $messages['shellpath_missing'] = '
                 <p>
                     <strong class="text-danger">Missing ShellPath in ModuleConfig</strong><br />
                 </p>
+            ';
+        } elseif (strpos($paths[0], $module->getShellPath()) !== 0) {
+            $status['class'] = 'danger';
+            $messages['shellpath_mismatch'] = sprintf('
                 <p>
-                    <strong>Paths of the 3 first Files:</strong><br />
-                    ' . implode('<br />', $paths) . '
+                    <strong class="text-danger">Shell path of module does not match base path of returned file. Expected base path "%s" but path of returned file was "%s"</strong><br />
+                </p>
+            ', $module->getShellPath(), $paths[0]);
+        } else {
+            $messages['shellpath_good'] = '
+                <p>
+                    <strong class="text-success">Shell path checks successful: path is configured and matches base path of probed File result.</strong><br />
                 </p>
             ';
-
-            $status['description'] .= implode(chr(10), $messages);
         }
+        $temporaryFile = GeneralUtility::tempnam('derivative_');
+        $client->saveDerivate($temporaryFile, $ids[0]);
+        if (!file_exists($temporaryFile)) {
+            $status['class'] = 'danger';
+            $messages['derivative_download_failed'] = sprintf('
+                <p>
+                    <strong class="text-danger">ApiClient was unable to download derivative with ID %s. Errors have been logged or are displayed above.</strong><br />
+                </p>
+            ', $ids[0]);
+        } else {
+            $receivedBytes = filesize($temporaryFile);
+            $messages['derivative_download_success'] = sprintf('
+                <p>
+                    <strong class="text-success">Derivative was downloaded from API. Received %d bytes.</strong><br />
+                </p>
+            ', $receivedBytes);
+        }
+        $messages[] = '<p>
+                <strong>Paths of the 3 first Files:</strong><br />
+                ' . implode('<br />', $paths) . '
+            </p>';
+        $status['description'] .= implode(chr(10), $messages);
         return $status;
     }
 
