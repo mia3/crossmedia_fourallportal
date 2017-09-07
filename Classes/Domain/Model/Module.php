@@ -63,6 +63,11 @@ class Module extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
     protected $storagePid = 0;
 
     /**
+     * @var int
+     */
+    protected $falStorage = 0;
+
+    /**
      * server
      *
      * @var \Crossmedia\Fourallportal\Domain\Model\Server
@@ -193,6 +198,22 @@ class Module extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
     public function setStoragePid($storagePid)
     {
         $this->storagePid = $storagePid;
+    }
+
+    /**
+     * @return int
+     */
+    public function getFalStorage()
+    {
+        return $this->falStorage;
+    }
+
+    /**
+     * @param int $falStorage
+     */
+    public function setFalStorage($falStorage)
+    {
+        $this->falStorage = $falStorage;
     }
 
     /**
