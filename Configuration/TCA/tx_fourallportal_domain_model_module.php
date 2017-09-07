@@ -17,10 +17,10 @@ return [
         'iconfile' => 'EXT:fourallportal/Resources/Public/Icons/tx_fourallportal_domain_model_module.gif'
     ],
     'interface' => [
-        'showRecordFieldList' => 'connector_name, mapping_class, config_hash, last_event_id, shell_path, storage_pid, server',
+        'showRecordFieldList' => 'connector_name, mapping_class, config_hash, last_event_id, shell_path, storage_pid, fal_storage, server',
     ],
     'types' => [
-        '1' => ['showitem' => 'connector_name, mapping_class, config_hash, last_event_id, shell_path, storage_pid, server'],
+        '1' => ['showitem' => 'connector_name, mapping_class, config_hash, last_event_id, shell_path, storage_pid, fal_storage, server'],
     ],
     'columns' => [
         'connector_name' => [
@@ -71,6 +71,7 @@ return [
         'storage_pid' => [
             'exclude' => true,
             'label' => 'LLL:EXT:fourallportal/Resources/Private/Language/locallang_db.xlf:tx_fourallportal_domain_model_module.storage_pid',
+            'displayCond' => 'FIELD:mapping_class:!=:' . \Crossmedia\Fourallportal\Mapping\FalMapping::class,
             'config' => [
                 'type' => 'group',
                 'internal_type' => 'db',
@@ -79,14 +80,15 @@ return [
                 'hideSuggest' => 1
             ]
         ],
-        'server' => [
+        'fal_storage' => [
             'exclude' => true,
-            'label' => 'LLL:EXT:fourallportal/Resources/Private/Language/locallang_db.xlf:tx_fourallportal_domain_model_module.server',
+            'displayCond' => 'FIELD:mapping_class:=:' . \Crossmedia\Fourallportal\Mapping\FalMapping::class,
+            'label' => 'LLL:EXT:fourallportal/Resources/Private/Language/locallang_db.xlf:tx_fourallportal_domain_model_module.storage_pid',
             'config' => [
                 'type' => 'select',
                 'renderType' => 'selectSingle',
-                'foreign_table' => 'tx_fourallportal_domain_model_server',
-                'minitems' => 0,
+                'foreign_table' => 'sys_file_storage',
+                'minitems' => 1,
                 'maxitems' => 1,
             ],
         ],
