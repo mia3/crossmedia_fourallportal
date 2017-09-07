@@ -218,6 +218,57 @@ abstract class AbstractMapping implements MappingInterface
      */
     public function check(ApiClient $client, Module $module, array $status)
     {
+        $messages = [];
+        // Verify the local mapping configuration exists and points to correct properties
+        $entityClass = $this->getEntityClassName();
+        $map = MappingRegister::resolvePropertyMapForMapper(static::class);
+        $messages['property_checks'] = '<h4>
+                Property mapping checks
+            </h4>';
+        if (empty($map)) {
+            $messages[] = sprintf(
+                '<p class="text-warning">This connector has no mapping information - fields will be mapped 1:1 to properties on %s</p>',
+                $entityClass
+            );
+        } else {
+            $messages[] = '<ol>';
+            foreach ($map as $sourcePropertyName => $destinationPropertyName) {
+                $propertyExists = property_exists($entityClass, $destinationPropertyName);
+                if ($propertyExists) {
+                    $messages[] = '<li class="text-success">';
+                } else {
+                    $messages[] = '<li class="text-danger">';
+                }
+                $messages[] = $sourcePropertyName;
+                $messages[] = ' maps to ' . $entityClass . '->' . $destinationPropertyName;
+                if ($propertyExists) {
+                    $messages[] = '. Okay!';
+                } else {
+                    $status['class'] = 'warning';
+                    $messages[] = sprintf('. Property does not exist, will cause errors if <strong>%s</strong> is included in data!', $sourcePropertyName);
+                }
+                $messages[] = '</li>';
+            }
+            $messages[] = '</ol>';
+        }
+
+
+        $messages[] = '<ol>';
+        foreach ((new \ReflectionClass($entityClass))->getProperties() as $reflectionProperty) {
+            $name = $reflectionProperty->getName();
+            $setterMethod = 'set' . ucfirst($name);
+            if (method_exists($entityClass, $setterMethod)) {
+                $messages[] = sprintf(
+                    '<li><strong>%s</strong> would map to <strong>%s->%s</strong></li>',
+                    GeneralUtility::camelCaseToLowerCaseUnderscored($name),
+                    $reflectionProperty->getDeclaringClass()->getNamespaceName(),
+                    $name
+                );
+            }
+        }
+        $messages[] = '</ol>';
+
+        $status['description'] .= implode(chr(10), $messages);
         return $status;
     }
 }
