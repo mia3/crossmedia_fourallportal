@@ -4,12 +4,12 @@ namespace Crossmedia\Fourallportal\Mapping;
 use Crossmedia\Fourallportal\Domain\Model\Event;
 use Crossmedia\Fourallportal\Domain\Model\Module;
 use Crossmedia\Fourallportal\Service\ApiClient;
+use Crossmedia\Fourallportal\TypeConverter\PimBasedTypeConverterInterface;
 use Crossmedia\Products\Domain\Repository\ProductRepository;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\DomainObject\AbstractEntity;
 use TYPO3\CMS\Extbase\Object\ObjectManager;
 use TYPO3\CMS\Extbase\Persistence\Generic\PersistenceManager;
-use TYPO3\CMS\Extbase\Persistence\ObjectStorage;
 use TYPO3\CMS\Extbase\Property\PropertyMappingConfiguration;
 use TYPO3\CMS\Extbase\Reflection\MethodReflection;
 use TYPO3\CMS\Extbase\Reflection\ObjectAccess;
@@ -77,6 +77,9 @@ abstract class AbstractMapping implements MappingInterface
      */
     protected function mapPropertiesFromDataToObject(array $data, $object)
     {
+        if (!$data['result']) {
+            return;
+        }
         $map = MappingRegister::resolvePropertyMapForMapper(static::class);
         $properties = $data['result'][0]['properties'];
         foreach ($properties as $importedName => $propertyValue) {
@@ -105,8 +108,7 @@ abstract class AbstractMapping implements MappingInterface
             $targetType = $this->determineDataTypeForProperty($propertyName, $object);
             if (strpos($targetType, '<')) {
                 $childType = substr($targetType, strpos($targetType, '<') + 1, -1);
-                // Forcibly convert any array to an ObjectStorage
-                $objectStorage = new ObjectStorage();
+                $objectStorage = ObjectAccess::getProperty($object, $propertyName);
                 foreach ((array) $propertyValue as $identifier) {
                     if (!$identifier) {
                         continue;
@@ -120,7 +122,11 @@ abstract class AbstractMapping implements MappingInterface
                 $propertyValue = $objectStorage;
             } else {
                 if ($targetType !== $propertyMapper->determineSourceType($propertyValue)) {
-                    $propertyValue = $propertyMapper->findTypeConverter($propertyValue, $targetType, $configuration)->convertFrom($propertyValue, $targetType);
+                    $typeConverter = $propertyMapper->findTypeConverter($propertyValue, $targetType, $configuration);
+                    if ($typeConverter instanceof PimBasedTypeConverterInterface) {
+                        $typeConverter->setParentObjectAndProperty($object, $propertyName);
+                    }
+                    $propertyValue = $typeConverter->convertFrom($propertyValue, $targetType);
 
                     // Sanity filter: do not attempt to set Entity with setter if an instance is required but the value is null.
                     if ((new \ReflectionMethod(get_class($object), 'set' . ucfirst($propertyName)))->getNumberOfRequiredParameters() === 1) {
