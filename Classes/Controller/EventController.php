@@ -28,11 +28,42 @@ class EventController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionController
     /**
      * action index
      *
+     * @param string $status
+     * @param string $search
      * @return void
      */
-    public function indexAction()
+    public function indexAction($status = 'deferred', $search = null)
     {
-        $this->view->assign('events', $this->eventRepository->findAll());
+        $query = $this->eventRepository->createQuery();
+        $constraints = [];
+        if ($status) {
+            $constraints[] = $query->equals('status', $status);
+        }
+
+        if ($search) {
+            $constraints[] = $query->logicalOr([
+                $query->equals('eventId', (integer) $search),
+                $query->equals('module.connectorName', $search),
+                $query->like('objectId', $search),
+                $query->like('eventType', $search),
+            ]);
+        }
+
+        if (count($constraints)) {
+            $query->matching($query->logicalAnd($constraints));
+        }
+
+        $events = $query->execute();
+
+        $this->view->assign('status', $status);
+        $this->view->assign('events', $events);
+        $this->view->assign('search', $search);
+        $this->view->assign('eventStatusOptions', [
+            'deferred' => 'deferred',
+            'pending' => 'pending',
+            'claimed' => 'claimed',
+            '' => 'all'
+        ]);
     }
 
     /**

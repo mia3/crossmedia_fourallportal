@@ -55,6 +55,7 @@ class FourallportalCommandController extends CommandController
                 if (!$sync && $module->getLastEventId() > 0) {
                     $results = $client->getEvents($module->getConnectorName(), $module->getLastEventId());
                 } else {
+                    $this->eventRepository->removeAll();
                     $results = $client->synchronize($module->getConnectorName());
                 }
                 foreach ($results as $result) {
