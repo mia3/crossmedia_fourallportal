@@ -44,15 +44,15 @@ class FourallportalCommandController extends CommandController
     }
 
     /**
-     * @param int $eventCount
+     * @param boolean $sync
      */
-    public function syncCommand($eventCount = 10)
+    public function syncCommand($sync = false)
     {
         foreach ($this->serverRepository->findByActive(true) as $server) {
             $client = $this->getClientByServer($server);
             foreach ($server->getModules() as $module) {
                 /** @var Module $module */
-                if ($module->getLastEventId() > 0) {
+                if (!$sync && $module->getLastEventId() > 0) {
                     $results = $client->getEvents($module->getConnectorName(), $module->getLastEventId());
                 } else {
                     $results = $client->synchronize($module->getConnectorName());
@@ -66,7 +66,13 @@ class FourallportalCommandController extends CommandController
 
         $this->objectManager->get(PersistenceManagerInterface::class)->persistAll();
 
+        // Handle new, pending events first, which may cause some to be deferred:
         foreach ($this->eventRepository->findByStatus('pending') as $event) {
+            $this->processEvent($event);
+        }
+
+        // Then handle any events that were deferred - which may cause some to be deferred again:
+        foreach ($this->eventRepository->findByStatus('deferred') as $event) {
             $this->processEvent($event);
         }
     }
@@ -90,15 +96,18 @@ class FourallportalCommandController extends CommandController
                 $event
             );
             $event->setStatus('claimed');
+            // Update the Module's last recorded event ID, but only if the event ID was higher. This allows
+            // deferred events to execute without lowering the last recorded event ID which would cause
+            // duplicate event processing on the next run.
+            $event->getModule()->setLastEventId(max($event->getEventId(), $event->getModule()->getLastEventId()));
         } catch (PropertyMappingException $error) {
             // The system was unable to map properties, most likely because of an unresolvable relation.
             // Skip the event for now; process it later.
-            return;
+            $event->setStatus('deferred');
         } catch(\Exception $exception) {
             $event->setStatus('failed');
         }
         $this->eventRepository->update($event);
-        $event->getModule()->setLastEventId(max($event->getEventId(), $event->getModule()->getLastEventId()));
         $this->objectManager->get(PersistenceManagerInterface::class)->persistAll();
     }
 

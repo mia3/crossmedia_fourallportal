@@ -104,45 +104,39 @@ abstract class AbstractMapping implements MappingInterface
         }
         $configuration = new PropertyMappingConfiguration();
         $propertyMapper = $this->getAccessiblePropertyMapper();
-        try {
-            $targetType = $this->determineDataTypeForProperty($propertyName, $object);
-            if (strpos($targetType, '<')) {
-                $childType = substr($targetType, strpos($targetType, '<') + 1, -1);
-                $objectStorage = ObjectAccess::getProperty($object, $propertyName);
-                foreach ((array) $propertyValue as $identifier) {
-                    if (!$identifier) {
-                        continue;
-                    }
-                    $child = $propertyMapper->findTypeConverter($identifier, $childType, $configuration)->convertFrom($identifier, $childType);
-                    if (!$child) {
-                        throw new \RuntimeException('Child of type ' . $childType . ' identified by ' . $identifier . ' could not be found');
-                    }
-                    $objectStorage->attach($child);
+        $targetType = $this->determineDataTypeForProperty($propertyName, $object);
+        if (strpos($targetType, '<')) {
+            $childType = substr($targetType, strpos($targetType, '<') + 1, -1);
+            $objectStorage = ObjectAccess::getProperty($object, $propertyName);
+            foreach ((array) $propertyValue as $identifier) {
+                if (!$identifier) {
+                    continue;
                 }
-                $propertyValue = $objectStorage;
-            } else {
-                if ($targetType !== $propertyMapper->determineSourceType($propertyValue)) {
-                    $typeConverter = $propertyMapper->findTypeConverter($propertyValue, $targetType, $configuration);
-                    if ($typeConverter instanceof PimBasedTypeConverterInterface) {
-                        $typeConverter->setParentObjectAndProperty($object, $propertyName);
-                    }
-                    $propertyValue = $typeConverter->convertFrom($propertyValue, $targetType);
+                $child = $propertyMapper->findTypeConverter($identifier, $childType, $configuration)->convertFrom($identifier, $childType);
+                if (!$child) {
+                    throw new \RuntimeException('Child of type ' . $childType . ' identified by ' . $identifier . ' could not be found');
+                }
+                $objectStorage->attach($child);
+            }
+            $propertyValue = $objectStorage;
+        } else {
+            if ($targetType !== $propertyMapper->determineSourceType($propertyValue)) {
+                $typeConverter = $propertyMapper->findTypeConverter($propertyValue, $targetType, $configuration);
+                if ($typeConverter instanceof PimBasedTypeConverterInterface) {
+                    $typeConverter->setParentObjectAndProperty($object, $propertyName);
+                }
+                $propertyValue = $typeConverter->convertFrom($propertyValue, $targetType);
 
-                    // Sanity filter: do not attempt to set Entity with setter if an instance is required but the value is null.
-                    if ((new \ReflectionMethod(get_class($object), 'set' . ucfirst($propertyName)))->getNumberOfRequiredParameters() === 1) {
-                        if (is_null($propertyValue) && is_a($targetType, AbstractEntity::class, true)) {
-                            return;
-                        }
+                // Sanity filter: do not attempt to set Entity with setter if an instance is required but the value is null.
+                if ((new \ReflectionMethod(get_class($object), 'set' . ucfirst($propertyName)))->getNumberOfRequiredParameters() === 1) {
+                    if (is_null($propertyValue) && is_a($targetType, AbstractEntity::class, true)) {
+                        return;
                     }
                 }
             }
-
-            ObjectAccess::setProperty($object, $propertyName, $propertyValue);
-        } catch (\Exception $error) {
-            $class = get_class($object);
-            echo "Cannot map property $class::$propertyName, type $targetType with a value of " . var_export($propertyValue, true) . PHP_EOL;
-            echo $error->getMessage() . PHP_EOL;
         }
+
+        ObjectAccess::setProperty($object, $propertyName, $propertyValue);
     }
 
     /**
