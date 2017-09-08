@@ -52,6 +52,8 @@ possible values are not documented here and depend entirely on the PIM service.
 
 The remaining fields are used to configure how TYPO3 handles the connector.
 
+Additional fields may be shown based on the selected mapping class.
+
 #### The mapping class
 
 In order to perform imports from a given connector, a mapping class is needed. This class
@@ -117,6 +119,59 @@ and the value is the target property name on the Entity.
 Conversion of input data to proper TYPO3 data types is then done based on 1) the type of
 the PIM input value and 2) the expected type of the property on the Entity.
 
+
+#### Mapping class check() method
+
+A special method exists on the MappingInterface which can be implemented to perform checks
+on the mapping routines or objects specific to the mapping, in the backend module's server
+inspection view.
+
+A mapping class with a check method could be as simple as the following:
+
+```php
+<?php
+namespace Crossmedia\Products\Fourallportal;
+
+use Crossmedia\Products\Domain\Repository\ProductRepository;
+use Crossmedia\Fourallportal\Mapping\AbstractMapping;
+use Crossmedia\Fourallportal\Service\ApiClient;
+use Crossmedia\Fourallportal\Domain\Model\Module;
+
+class ProductMapping extends AbstractMapping
+{
+    /**
+     * @var string
+     */
+    protected $repositoryClassName = ProductRepository::class;
+    
+    public function check(ApiClient $client, Module $module, array $status)
+    {
+        // Perform a check that the Module is configured correctly to map this type.
+        // The called method is an example, not an API method. You can do these checks
+        // any way you prefer, as long as 
+        if (!$this->myMethodToCheckModuleConfiguration($module)) {
+            $status['class'] = 'danger'; // Overrides the CSS class for the Module info.
+            $status['message'] .= '<p class="text-danger">The module was misconfigured!</p>';
+            // Normally you'd provide more feedback - this is just an example. String
+            // is simply appended to previous message(s), as HTML.
+        }
+        
+        // Also, perform standard checks that the mapping configuration array is
+        // consistent and targets existing properties which have setter methods.
+        return parent::check($client, $module, $status);
+        // Note: if you do not return parent::check() output, instead return $status
+    }
+}
+```
+
+Implement this method if your mapping class needs to do additional verification of things
+like comparing the Module's configuration with API responses to detect misconfiguration.
+
+For example, the FalMapping mapper checks if the shell path trimming and asset downloads
+function correctly - and skips the check for mapping configuration because there is no true
+model instance that can be analysed (FAL mapping happens through FAL, not Extbase models).
+
+
 #### Data type conversion
 
 All conversion of data types happens through the `TypeConverter` pattern in TYPO3. To know
@@ -152,7 +207,7 @@ namespace Crossmedia\Products\TypeConverter;
 
 use Crossmedia\Products\Domain\Model\Product;
 
-class ProductTypeConverter extends AbstractUuidAwareObjectTypeConverter
+class ProductTypeConverter extends AbstractUuidAwareObjectTypeConverter implements PimBasedTypeConverterInterface
 {
     /**
      * @var string
