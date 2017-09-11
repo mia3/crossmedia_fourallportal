@@ -54,6 +54,7 @@ abstract class AbstractMapping implements MappingInterface
                     ObjectAccess::setProperty($object, 'remoteId', $objectId);
                 }
                 $this->mapPropertiesFromDataToObject($data, $object);
+                $object->setPid($event->getModule()->getStoragePid());
                 if ($object->getUid()) {
                     $repository->update($object);
                 } else {
