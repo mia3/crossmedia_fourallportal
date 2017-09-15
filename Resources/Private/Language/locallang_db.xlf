@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<xliff version="1.0">
+	<file source-language="en" datatype="plaintext" original="messages" date="2017-08-03T23:42:08Z" product-name="fourallportal">
+		<header/>
+		<body>
+			<trans-unit id="tx_fourallportal_domain_model_server">
+				<source>Server</source>
+			</trans-unit>
+			<trans-unit id="tx_fourallportal_domain_model_server.domain">
+				<source>Domain</source>
+			</trans-unit>
+			<trans-unit id="tx_fourallportal_domain_model_server.customer_name">
+				<source>Customer Name</source>
+			</trans-unit>
+			<trans-unit id="tx_fourallportal_domain_model_server.username">
+				<source>Username</source>
+			</trans-unit>
+			<trans-unit id="tx_fourallportal_domain_model_server.password">
+				<source>Password</source>
+			</trans-unit>
+			<trans-unit id="tx_fourallportal_domain_model_server.active">
+				<source>Active</source>
+			</trans-unit>
+			<trans-unit id="tx_fourallportal_domain_model_server.modules">
+				<source>Modules</source>
+			</trans-unit>
+			<trans-unit id="tx_fourallportal_domain_model_module">
+				<source>Module</source>
+			</trans-unit>
+			<trans-unit id="tx_fourallportal_domain_model_module.connector_name">
+				<source>Connector Name</source>
+			</trans-unit>
+			<trans-unit id="tx_fourallportal_domain_model_module.mapping_class">
+				<source>Mapping Class</source>
+			</trans-unit>
+			<trans-unit id="tx_fourallportal_domain_model_module.config_hash">
+				<source>Config Hash</source>
+			</trans-unit>
+			<trans-unit id="tx_fourallportal_domain_model_module.last_event_id">
+				<source>Last Event Id</source>
+			</trans-unit>
+			<trans-unit id="tx_fourallportal_domain_model_module.shell_path">
+				<source>Shell Path</source>
+			</trans-unit>
+			<trans-unit id="tx_fourallportal_domain_model_module.storage_pid">
+				<source>Storage Pid</source>
+			</trans-unit>
+			<trans-unit id="tx_fourallportal_domain_model_module.server">
+				<source>Server</source>
+			</trans-unit>
+			<trans-unit id="tx_fourallportal_domain_model_event">
+				<source>Event</source>
+			</trans-unit>
+			<trans-unit id="tx_fourallportal_domain_model_event.event_id">
+				<source>Event Id</source>
+			</trans-unit>
+			<trans-unit id="tx_fourallportal_domain_model_event.event_type">
+				<source>Event Type</source>
+			</trans-unit>
+			<trans-unit id="tx_fourallportal_domain_model_event.status">
+				<source>Status</source>
+			</trans-unit>
+			<trans-unit id="tx_fourallportal_domain_model_event.skip_until">
+				<source>Skip Until</source>
+			</trans-unit>
+			<trans-unit id="tx_fourallportal_domain_model_event.object_id">
+				<source>Object Id</source>
+			</trans-unit>
+			<trans-unit id="tx_fourallportal_domain_model_event.module">
+				<source>Module</source>
+			</trans-unit>
+		</body>
+	</file>
+</xliff>

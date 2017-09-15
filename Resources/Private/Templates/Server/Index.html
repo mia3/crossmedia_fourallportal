@@ -1,0 +1,111 @@
+<html xmlns:core="http://typo3.org/ns/TYPO3/CMS/Core/ViewHelpers"
+      xmlns:fourallportal="http://typo3.org/ns/Crossmedia/Fourallportal/ViewHelpers">
+<f:layout name="Backend"/>
+
+<f:section name="docheader-buttons">
+</f:section>
+
+<f:section name="module-headline">
+    <h3>Servers</h3>
+</f:section>
+
+<f:section name="Content">
+    <f:flashMessages/>
+    <table class="table table-striped table-hover">
+        <thead>
+        <!-- Element, begin: -->
+        <tr data-uid="0" data-l10nparent="0">
+            <th nowrap="nowrap" class="col-icon">
+                <fourallportal:newRecordLink
+                    table="tx_fourallportal_domain_model_server"
+                    class="btn btn-default" title="Edit this Server">
+                    <core:icon identifier="actions-add" alternativeMarkupIdentifier="inline"/>
+                </fourallportal:newRecordLink>
+            </th>
+
+            <th nowrap="nowrap" class="col-title col-responsive">
+                Domain
+            </th>
+            <th>Customer Name</th>
+            <th>Username</th>
+            <th nowrap="nowrap" class="col-control">&nbsp;</th>
+        </tr>
+        </thead>
+        <!-- Element, begin: -->
+        <tbody>
+        <f:for each="{servers}" as="server">
+            <tr class=" firstcol lastcol" data-uid="1" data-l10nparent="0">
+                <td nowrap="nowrap" class="col-icon">
+                    <core:icon identifier="actions-database" alternativeMarkupIdentifier="inline"/>
+                </td>
+                <td nowrap="nowrap" class="col-title col-responsive">
+                    {server.domain}
+                </td>
+                <td>
+                    {server.customerName}
+                </td>
+                <td>
+                    {server.username}
+                </td>
+                <td nowrap="nowrap" class="col-control">
+                    <div class="btn-group" role="group">
+                        <fourallportal:editRecordLink
+                            table="tx_fourallportal_domain_model_server"
+                            uid="{server.uid}"
+                            class="btn btn-default" title="Edit this Server">
+                            <core:icon identifier="actions-open" alternativeMarkupIdentifier="inline"/>
+                        </fourallportal:editRecordLink>
+
+                        <f:link.action
+                            action="delete"
+                            arguments="{server: server}"
+                            class="btn btn-default" title="Delete Server">
+                            <core:icon identifier="actions-delete" alternativeMarkupIdentifier="inline"/>
+                        </f:link.action>
+
+                        <f:if condition="{server.active}">
+                            <f:then>
+                                <f:link.action
+                                    action="disable"
+                                    arguments="{server: server}"
+                                    class="btn btn-default" title="enable Server">
+                                    <core:icon identifier="actions-edit-hide" alternativeMarkupIdentifier="inline"/>
+                                </f:link.action>
+                            </f:then>
+                            <f:else>
+                                <f:link.action
+                                    action="enable"
+                                    arguments="{server: server}"
+                                    class="btn btn-default" title="disable Server">
+                                    <core:icon identifier="actions-edit-unhide" alternativeMarkupIdentifier="inline"/>
+                                </f:link.action>
+                            </f:else>
+                        </f:if>
+                        <!--<button class="btn btn-default" title="Edit this Server">-->
+                        <!--<core:icon identifier="actions-edit-hide" alternativeMarkupIdentifier="inline"/>-->
+                        <!--</button>-->
+                        <!--<button class="btn btn-default" title="Edit this Server">-->
+                        <!--<core:icon identifier="actions-edit-unhide" alternativeMarkupIdentifier="inline"/>-->
+                        <!--</button>-->
+                    </div>
+                    <div class="btn-group" role="group">
+                        <f:link.action
+                            action="check"
+                            arguments="{server: server}"
+                            class="btn btn-default" title="Check Server Configuration">
+                            <core:icon identifier="actions-system-pagemodule-open" alternativeMarkupIdentifier="inline"/>
+                        </f:link.action>
+                        <f:link.action
+                            action="restartSynchronisation"
+                            arguments="{server: server}"
+                            class="btn btn-default" title="Trigger a full Synchronisation">
+                            <core:icon identifier="actions-synchronize" alternativeMarkupIdentifier="inline"/>
+                        </f:link.action>
+                    </div>
+                </td>
+            </tr>
+        </f:for>
+        </tbody>
+    </table>
+</f:section>
+</html>

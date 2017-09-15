@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<xliff version="1.0">
+	<file source-language="en" datatype="plaintext" original="messages" date="2017-08-03T23:42:08Z" product-name="fourallportal">
+		<header/>
+		<body>
+			<trans-unit id="domain.description">
+				<source>domain</source>
+			</trans-unit>
+			<trans-unit id="customer_name.description">
+				<source>customerName</source>
+			</trans-unit>
+			<trans-unit id="username.description">
+				<source>username</source>
+			</trans-unit>
+			<trans-unit id="password.description">
+				<source>password</source>
+			</trans-unit>
+			<trans-unit id="active.description">
+				<source>active</source>
+			</trans-unit>
+			<trans-unit id="modules.description">
+				<source>modules</source>
+			</trans-unit>
+		</body>
+	</file>
+</xliff>

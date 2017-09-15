@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<xliff version="1.0">
+	<file source-language="en" datatype="plaintext" original="messages" date="2017-08-03T23:42:08Z" product-name="fourallportal">
+		<header/>
+		<body>
+			<trans-unit id="connector_name.description">
+				<source>connectorName</source>
+			</trans-unit>
+			<trans-unit id="mapping_class.description">
+				<source>mappingClass</source>
+			</trans-unit>
+			<trans-unit id="config_hash.description">
+				<source>configHash</source>
+			</trans-unit>
+			<trans-unit id="last_event_id.description">
+				<source>lastEventId</source>
+			</trans-unit>
+			<trans-unit id="shell_path.description">
+				<source>shellPath</source>
+			</trans-unit>
+			<trans-unit id="storage_pid.description">
+				<source>storagePid</source>
+			</trans-unit>
+			<trans-unit id="server.description">
+				<source>server</source>
+			</trans-unit>
+		</body>
+	</file>
+</xliff>
