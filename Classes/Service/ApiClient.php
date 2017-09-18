@@ -44,6 +44,11 @@ class ApiClient
     protected $fileCreateMask;
 
     /**
+     * @var array
+     */
+    protected static $lastResponse = [];
+
+    /**
      * @param Server $server
      */
     public function __construct($server)
@@ -293,7 +298,6 @@ class ApiClient
      * @apiparam offset - offset der IDs
      *
      * @param string $connectorName
-     * @param integer $lastEventId
      * @return array $events
      * @throws ApiException
      */
@@ -393,12 +397,27 @@ class ApiClient
             'Content-Type: application/json',
         ]);
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-        $response = curl_exec($ch);
+        curl_setopt($ch, CURLOPT_HEADERFUNCTION, array(&$this, 'catchResponseHeaderCallback'));
+        static::$lastResponse['headers'] = [];
+        static::$lastResponse['response'] = $response = curl_exec($ch);
+        static::$lastResponse['url'] = $uri;
+        static::$lastResponse['payload'] = json_encode($data, JSON_PRETTY_PRINT);
         $result = json_decode($response, true);
 
         $this->validateResponseCode($result);
 
         return $result;
+    }
+
+    /**
+     * @param object $curl
+     * @param string $line
+     * @return integer
+     */
+    public function catchResponseHeaderCallback($curl, $line)
+    {
+        static::$lastResponse['headers'][] = $line;
+        return mb_strlen($line);
     }
 
     /**
@@ -443,8 +462,10 @@ class ApiClient
         curl_setopt($ch, CURLOPT_VERBOSE, true);
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 60);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        $result = curl_exec($ch);
-
+        static::$lastResponse['headers'] = [];
+        static::$lastResponse['response'] = $result = curl_exec($ch);
+        static::$lastResponse['uri'] = $uri;
+        static::$lastResponse['payload'] = '';
         return $result;
     }
 
@@ -523,5 +544,19 @@ class ApiClient
                 $this->fileCreateMask = octdec(0664);
             }
         }
+    }
+
+    /**
+     * @return array
+     */
+    public function getLastResponse()
+    {
+        $response = static::$lastResponse;
+        $response['headers'] = trim(implode('', $response['headers']));
+        $decoded = json_decode($response['response'], true);
+        if ($decoded) {
+            $response['response'] = json_encode($decoded, JSON_PRETTY_PRINT);
+        }
+        return $response;
     }
 }

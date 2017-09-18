@@ -69,6 +69,18 @@
 			<trans-unit id="tx_fourallportal_domain_model_event.module">
 				<source>Module</source>
 			</trans-unit>
+			<trans-unit id="tx_fourallportal_domain_model_event.headers">
+				<source>Headers</source>
+			</trans-unit>
+			<trans-unit id="tx_fourallportal_domain_model_event.response">
+				<source>Response</source>
+			</trans-unit>
+			<trans-unit id="tx_fourallportal_domain_model_event.url">
+				<source>Requested URL</source>
+			</trans-unit>
+			<trans-unit id="tx_fourallportal_domain_model_event.payload">
+				<source>Payload in request</source>
+			</trans-unit>
 		</body>
 	</file>
 </xliff>

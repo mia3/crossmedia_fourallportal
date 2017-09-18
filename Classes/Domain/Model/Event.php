@@ -60,6 +60,36 @@ class Event extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
     protected $module = null;
 
     /**
+     * @var string
+     */
+    protected $headers;
+
+    /**
+     * @var string
+     */
+    protected $response;
+
+    /**
+     * @var string
+     */
+    protected $url;
+
+    /**
+     * @var string
+     */
+    protected $payload;
+
+    /**
+     * @var integer
+     */
+    protected $crdate;
+
+    /**
+     * @var integer
+     */
+    protected $tstamp;
+
+    /**
      * Returns the eventId
      *
      * @return int $eventId
@@ -183,6 +213,102 @@ class Event extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
     public function setEventType($eventType)
     {
         $this->eventType = $eventType;
+    }
+
+    /**
+     * @return string
+     */
+    public function getHeaders()
+    {
+        return $this->headers;
+    }
+
+    /**
+     * @param string $headers
+     */
+    public function setHeaders($headers)
+    {
+        $this->headers = $headers;
+    }
+
+    /**
+     * @return string
+     */
+    public function getResponse()
+    {
+        return $this->response;
+    }
+
+    /**
+     * @param string $response
+     */
+    public function setResponse($response)
+    {
+        $this->response = $response;
+    }
+
+    /**
+     * @return string
+     */
+    public function getUrl()
+    {
+        return $this->url;
+    }
+
+    /**
+     * @param string $url
+     */
+    public function setUrl($url)
+    {
+        $this->url = $url;
+    }
+
+    /**
+     * @return string
+     */
+    public function getPayload()
+    {
+        return $this->payload;
+    }
+
+    /**
+     * @param string $payload
+     */
+    public function setPayload($payload)
+    {
+        $this->payload = $payload;
+    }
+
+    /**
+     * @return integer
+     */
+    public function getCrdate()
+    {
+        return $this->crdate;
+    }
+
+    /**
+     * @param integer $crdate
+     */
+    public function setCrdate($crdate)
+    {
+        $this->crdate = $crdate;
+    }
+
+    /**
+     * @return integer
+     */
+    public function getTstamp()
+    {
+        return $this->tstamp;
+    }
+
+    /**
+     * @param integer $tstamp
+     */
+    public function setTstamp($tstamp)
+    {
+        $this->tstamp = $tstamp;
     }
 
     /**

@@ -66,6 +66,11 @@ CREATE TABLE tx_fourallportal_domain_model_event (
 	object_id varchar(255) DEFAULT '' NOT NULL,
 	module int(11) unsigned DEFAULT '0',
 
+	url text,
+	headers text,
+	response text,
+	payload text,
+
 	tstamp int(11) unsigned DEFAULT '0' NOT NULL,
 	crdate int(11) unsigned DEFAULT '0' NOT NULL,
 	cruser_id int(11) unsigned DEFAULT '0' NOT NULL,

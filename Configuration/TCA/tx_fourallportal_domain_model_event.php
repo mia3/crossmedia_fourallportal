@@ -21,6 +21,18 @@ return [
     ],
     'columns' => [
 
+        'crdate' => [
+            'exclude' => true,
+            'config' => [
+                'type' => 'passthrough',
+            ]
+        ],
+        'tstamp' => [
+            'exclude' => true,
+            'config' => [
+                'type' => 'passthrough',
+            ]
+        ],
         'event_id' => [
             'exclude' => true,
             'label' => 'LLL:EXT:fourallportal/Resources/Private/Language/locallang_db.xlf:tx_fourallportal_domain_model_event.event_id',
@@ -46,6 +58,34 @@ return [
                 'type' => 'input',
                 'size' => 30,
                 'eval' => 'trim'
+            ],
+        ],
+        'headers' => [
+            'exclude' => true,
+            'label' => 'LLL:EXT:fourallportal/Resources/Private/Language/locallang_db.xlf:tx_fourallportal_domain_model_event.headers',
+            'config' => [
+                'type' => 'text',
+            ],
+        ],
+        'response' => [
+            'exclude' => true,
+            'label' => 'LLL:EXT:fourallportal/Resources/Private/Language/locallang_db.xlf:tx_fourallportal_domain_model_event.response',
+            'config' => [
+                'type' => 'text',
+            ],
+        ],
+        'url' => [
+            'exclude' => true,
+            'label' => 'LLL:EXT:fourallportal/Resources/Private/Language/locallang_db.xlf:tx_fourallportal_domain_model_event.url',
+            'config' => [
+                'type' => 'text',
+            ],
+        ],
+        'payload' => [
+            'exclude' => true,
+            'label' => 'LLL:EXT:fourallportal/Resources/Private/Language/locallang_db.xlf:tx_fourallportal_domain_model_event.payload',
+            'config' => [
+                'type' => 'text',
             ],
         ],
         'skip_until' => [

@@ -83,19 +83,16 @@ class FourallportalCommandController extends CommandController
      */
     public function processEvent($event)
     {
+        $client = $this->getClientByServer($event->getModule()->getServer());
         try {
             $mapper = $event->getModule()->getMapper();
-            $mapper->import(
-                $this->getClientByServer(
-                    $event->getModule()->getServer()
-                )->getBeans(
-                    [
-                        $event->getObjectId()
-                    ],
-                    $event->getModule()->getConnectorName()
-                ),
-                $event
+            $responseData = $client->getBeans(
+                [
+                    $event->getObjectId()
+                ],
+                $event->getModule()->getConnectorName()
             );
+            $mapper->import($responseData, $event);
             $event->setStatus('claimed');
             // Update the Module's last recorded event ID, but only if the event ID was higher. This allows
             // deferred events to execute without lowering the last recorded event ID which would cause
@@ -108,6 +105,11 @@ class FourallportalCommandController extends CommandController
         } catch(\Exception $exception) {
             $event->setStatus('failed');
         }
+        $responseMetadata = $client->getLastResponse();
+        $event->setHeaders($responseMetadata['headers']);
+        $event->setUrl($responseMetadata['url']);
+        $event->setResponse($responseMetadata['response']);
+        $event->setPayload($responseMetadata['payload']);
         $this->eventRepository->update($event);
         $this->objectManager->get(PersistenceManagerInterface::class)->persistAll();
     }
