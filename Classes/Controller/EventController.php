@@ -32,7 +32,40 @@ class EventController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionController
      * @param string $search
      * @return void
      */
-    public function indexAction($status = 'deferred', $search = null)
+    public function indexAction($status = null, $search = null)
+    {
+        $eventOptions = [
+            'pending' => 'pending',
+            'failed' => 'failed',
+            'deferred' => 'deferred',
+            'claimed' => 'claimed',
+            '' => 'all'
+        ];
+
+        if ($status) {
+            // Load events with selected status
+            $events = $this->searchEventsWithStatus($status, $search);
+        } else {
+            // Find first status from prioritised list above which yields results
+            do {
+                $status = current($eventOptions);
+                $events = $this->searchEventsWithStatus($status, $search);
+                next($eventOptions);
+            } while ($events->count() === 0);
+        }
+
+        $this->view->assign('status', $status);
+        $this->view->assign('events', $events);
+        $this->view->assign('search', $search);
+        $this->view->assign('eventStatusOptions', $eventOptions);
+    }
+
+    /**
+     * @param string $status
+     * @param string $search
+     * @return \TYPO3\CMS\Extbase\Persistence\QueryResultInterface
+     */
+    protected function searchEventsWithStatus($status, $search)
     {
         $query = $this->eventRepository->createQuery();
         $constraints = [];
@@ -53,17 +86,7 @@ class EventController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionController
             $query->matching($query->logicalAnd($constraints));
         }
 
-        $events = $query->execute();
-
-        $this->view->assign('status', $status);
-        $this->view->assign('events', $events);
-        $this->view->assign('search', $search);
-        $this->view->assign('eventStatusOptions', [
-            'deferred' => 'deferred',
-            'pending' => 'pending',
-            'claimed' => 'claimed',
-            '' => 'all'
-        ]);
+        return $query->execute();
     }
 
     /**

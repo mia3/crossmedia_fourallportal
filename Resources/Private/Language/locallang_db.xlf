@@ -81,6 +81,9 @@
 			<trans-unit id="tx_fourallportal_domain_model_event.payload">
 				<source>Payload in request</source>
 			</trans-unit>
+			<trans-unit id="tx_fourallportal_domain_model_event.message">
+				<source>Message/error</source>
+			</trans-unit>
 		</body>
 	</file>
 </xliff>

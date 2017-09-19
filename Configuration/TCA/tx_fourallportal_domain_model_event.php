@@ -88,6 +88,13 @@ return [
                 'type' => 'text',
             ],
         ],
+        'message' => [
+            'exclude' => true,
+            'label' => 'LLL:EXT:fourallportal/Resources/Private/Language/locallang_db.xlf:tx_fourallportal_domain_model_event.message',
+            'config' => [
+                'type' => 'text',
+            ],
+        ],
         'skip_until' => [
             'exclude' => true,
             'label' => 'LLL:EXT:fourallportal/Resources/Private/Language/locallang_db.xlf:tx_fourallportal_domain_model_event.skip_until',
