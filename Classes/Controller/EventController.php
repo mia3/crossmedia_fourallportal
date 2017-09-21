@@ -50,8 +50,7 @@ class EventController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionController
             do {
                 $status = current($eventOptions);
                 $events = $this->searchEventsWithStatus($status, $search);
-                next($eventOptions);
-            } while ($events->count() === 0);
+            } while ($events->count() === 0 && next($eventOptions));
         }
 
         $this->view->assign('status', $status);
