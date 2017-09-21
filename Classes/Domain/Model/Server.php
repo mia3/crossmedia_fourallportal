@@ -12,6 +12,10 @@ namespace Crossmedia\Fourallportal\Domain\Model;
  *
  ***/
 
+use Crossmedia\Fourallportal\Service\ApiClient;
+use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Extbase\Object\ObjectManager;
+
 /**
  * Server
  */
@@ -264,5 +268,19 @@ class Server extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
     public function isActive()
     {
         return $this->active;
+    }
+
+    /**
+     * @return ApiClient
+     */
+    public function getClient()
+    {
+        static $client = null;
+        if ($client) {
+            return $client;
+        }
+        $client = GeneralUtility::makeInstance(ObjectManager::class)->get(ApiClient::class, $this);
+        $client->login();
+        return $client;
     }
 }

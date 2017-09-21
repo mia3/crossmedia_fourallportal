@@ -17,15 +17,24 @@ return [
         'iconfile' => 'EXT:fourallportal/Resources/Public/Icons/tx_fourallportal_domain_model_module.gif'
     ],
     'interface' => [
-        'showRecordFieldList' => 'connector_name, mapping_class, config_hash, last_event_id, shell_path, storage_pid, fal_storage, server',
+        'showRecordFieldList' => 'connector_name, module_name, mapping_class, config_hash, last_event_id, shell_path, storage_pid, fal_storage, server',
     ],
     'types' => [
-        '1' => ['showitem' => 'connector_name, mapping_class, config_hash, last_event_id, shell_path, storage_pid, fal_storage, server'],
+        '1' => ['showitem' => 'connector_name, module_name, mapping_class, config_hash, last_event_id, shell_path, storage_pid, fal_storage, server'],
     ],
     'columns' => [
         'connector_name' => [
             'exclude' => true,
             'label' => 'LLL:EXT:fourallportal/Resources/Private/Language/locallang_db.xlf:tx_fourallportal_domain_model_module.connector_name',
+            'config' => [
+                'type' => 'input',
+                'size' => 30,
+                'eval' => 'trim'
+            ],
+        ],
+        'module_name' => [
+            'exclude' => true,
+            'label' => 'LLL:EXT:fourallportal/Resources/Private/Language/locallang_db.xlf:tx_fourallportal_domain_model_module.module_name',
             'config' => [
                 'type' => 'input',
                 'size' => 30,

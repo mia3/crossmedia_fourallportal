@@ -35,12 +35,33 @@ CREATE TABLE tx_fourallportal_domain_model_module (
 	server int(11) unsigned DEFAULT '0' NOT NULL,
 
 	connector_name varchar(255) DEFAULT '' NOT NULL,
+	module_name varchar(255) DEFAULT '' NOT NULL,
 	mapping_class varchar(255) DEFAULT '' NOT NULL,
 	config_hash varchar(255) DEFAULT '' NOT NULL,
 	last_event_id int(11) DEFAULT '0' NOT NULL,
 	shell_path varchar(255) DEFAULT '' NOT NULL,
 	storage_pid int(11) DEFAULT '0' NOT NULL,
 	fal_storage int(11) DEFAULT '0' NOT NULL,
+
+	tstamp int(11) unsigned DEFAULT '0' NOT NULL,
+	crdate int(11) unsigned DEFAULT '0' NOT NULL,
+	cruser_id int(11) unsigned DEFAULT '0' NOT NULL,
+
+	PRIMARY KEY (uid),
+	KEY parent (pid),
+
+);
+
+#
+# Table structure for table 'tx_fourallportal_domain_model_complextype'
+#
+CREATE TABLE tx_fourallportal_domain_model_complextype (
+
+	uid int(11) NOT NULL auto_increment,
+	pid int(11) DEFAULT '0' NOT NULL,
+
+	name varchar(255) DEFAULT '' NOT NULL,
+	type varchar(255) DEFAULT '' NOT NULL,
 
 	tstamp int(11) unsigned DEFAULT '0' NOT NULL,
 	crdate int(11) unsigned DEFAULT '0' NOT NULL,

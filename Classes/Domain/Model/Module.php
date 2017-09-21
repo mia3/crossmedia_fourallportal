@@ -11,6 +11,7 @@ namespace Crossmedia\Fourallportal\Domain\Model;
  *  (c) 2017 Marc Neuhaus <marc@mia3.com>, MIA3 GmbH & Co. KG
  *
  ***/
+use Crossmedia\Fourallportal\Domain\Repository\ModuleRepository;
 use Crossmedia\Fourallportal\Mapping\MappingInterface;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Object\ObjectManager;
@@ -26,6 +27,13 @@ class Module extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
      * @var string
      */
     protected $connectorName = '';
+
+    /**
+     * connectorName
+     *
+     * @var string
+     */
+    protected $moduleName = '';
 
     /**
      * mappingClass
@@ -93,6 +101,22 @@ class Module extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
     public function setConnectorName($connectorName)
     {
         $this->connectorName = $connectorName;
+    }
+
+    /**
+     * @return string
+     */
+    public function getModuleName()
+    {
+        return $this->moduleName;
+    }
+
+    /**
+     * @param string $moduleName
+     */
+    public function setModuleName($moduleName)
+    {
+        $this->moduleName = $moduleName;
     }
 
     /**
@@ -243,5 +267,28 @@ class Module extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
     public function setMappingClass($mappingClass)
     {
         $this->mappingClass = $mappingClass;
+    }
+
+    /**
+     * @return array
+     */
+    public function getModuleConfiguration()
+    {
+        return $this->getServer()->getClient()->getModuleConfig($this->moduleName);
+    }
+    /**
+     * @return array
+     */
+    public function getConnectorConfiguration()
+    {
+        return $this->getServer()->getClient()->getConnectorConfig($this->connectorName);
+    }
+
+    /**
+     * @return void
+     */
+    public function update()
+    {
+        GeneralUtility::makeInstance(ObjectManager::class)->get(ModuleRepository::class)->update($this);
     }
 }

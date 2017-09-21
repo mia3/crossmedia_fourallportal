@@ -11,6 +11,7 @@ use TYPO3\CMS\Extbase\DomainObject\AbstractEntity;
 use TYPO3\CMS\Extbase\Object\ObjectManager;
 use TYPO3\CMS\Extbase\Persistence\Generic\PersistenceManager;
 use TYPO3\CMS\Extbase\Property\PropertyMappingConfiguration;
+use TYPO3\CMS\Extbase\Property\TypeConverter\PersistentObjectConverter;
 use TYPO3\CMS\Extbase\Reflection\MethodReflection;
 use TYPO3\CMS\Extbase\Reflection\ObjectAccess;
 use TYPO3\CMS\Extbase\Reflection\PropertyReflection;
@@ -84,7 +85,10 @@ abstract class AbstractMapping implements MappingInterface
         $map = MappingRegister::resolvePropertyMapForMapper(static::class);
         $properties = $data['result'][0]['properties'];
         foreach ($properties as $importedName => $propertyValue) {
-            $targetPropertyName = isset($map[$importedName]) ? $map[$importedName] : $importedName;
+            if ($map[$importedName] ?? null === false) {
+                continue;
+            }
+            $targetPropertyName = isset($map[$importedName]) ? $map[$importedName] : GeneralUtility::underscoredToLowerCamelCase($importedName);
             $this->mapPropertyValueToObject($targetPropertyName, $propertyValue, $object);
         }
     }
@@ -104,6 +108,12 @@ abstract class AbstractMapping implements MappingInterface
             return;
         }
         $configuration = new PropertyMappingConfiguration();
+        /*
+        $configuration->allowAllProperties();
+        $configuration->setTypeConverterOption(PersistentObjectConverter::class, PersistentObjectConverter::CONFIGURATION_CREATION_ALLOWED, true);
+        $configuration->setTypeConverterOption(PersistentObjectConverter::class, PersistentObjectConverter::CONFIGURATION_MODIFICATION_ALLOWED, true);
+        */
+
         $propertyMapper = $this->getAccessiblePropertyMapper();
         $targetType = $this->determineDataTypeForProperty($propertyName, $object);
         if (strpos($targetType, '<')) {
@@ -184,7 +194,7 @@ abstract class AbstractMapping implements MappingInterface
     /**
      * @return string
      */
-    protected function getEntityClassName()
+    public function getEntityClassName()
     {
         return substr(str_replace('\\Domain\\Repository\\', '\\Domain\\Model\\', $this->repositoryClassName), 0, -10);
     }
@@ -200,7 +210,7 @@ abstract class AbstractMapping implements MappingInterface
     /**
      * @return ProductRepository
      */
-    protected function getObjectRepository()
+    public function getObjectRepository()
     {
         return GeneralUtility::makeInstance(ObjectManager::class)->get($this->repositoryClassName);
     }
@@ -228,6 +238,13 @@ abstract class AbstractMapping implements MappingInterface
         } else {
             $messages[] = '<ol>';
             foreach ($map as $sourcePropertyName => $destinationPropertyName) {
+                if (!$destinationPropertyName) {
+                    $messages[] = '<li class="text-warning">';
+                    $messages[] = $sourcePropertyName;
+                    $messages[] = ' is ignored!';
+                    $messages[] = '</li>';
+                    continue;
+                }
                 $propertyExists = property_exists($entityClass, $destinationPropertyName);
                 if ($propertyExists) {
                     $messages[] = '<li class="text-success">';
@@ -235,26 +252,24 @@ abstract class AbstractMapping implements MappingInterface
                     $messages[] = '<li class="text-danger">';
                 }
                 $messages[] = $sourcePropertyName;
-                $messages[] = ' maps to ' . $entityClass . '->' . $destinationPropertyName;
-                if ($propertyExists) {
-                    $messages[] = '. Okay!';
-                } else {
+                $messages[] = ' is manually mapped to ' . $entityClass . '->' . $destinationPropertyName;
+                if (!$propertyExists) {
                     $status['class'] = 'warning';
-                    $messages[] = sprintf('. Property does not exist, will cause errors if <strong>%s</strong> is included in data!', $sourcePropertyName);
+                    $messages[] = sprintf(' - property does not exist, will cause errors if <strong>%s</strong> is included in data!', $sourcePropertyName);
                 }
                 $messages[] = '</li>';
             }
-            $messages[] = '</ol>';
         }
 
-
-        $messages[] = '<ol>';
         foreach ((new \ReflectionClass($entityClass))->getProperties() as $reflectionProperty) {
             $name = $reflectionProperty->getName();
+            if (in_array($name, $map)) {
+                continue;
+            }
             $setterMethod = 'set' . ucfirst($name);
             if (method_exists($entityClass, $setterMethod)) {
                 $messages[] = sprintf(
-                    '<li><strong>%s</strong> would map to <strong>%s->%s</strong></li>',
+                    '<li><strong>%s</strong> will map to <strong>%s->%s</strong></li>',
                     GeneralUtility::camelCaseToLowerCaseUnderscored($name),
                     $reflectionProperty->getDeclaringClass()->getNamespaceName(),
                     $name

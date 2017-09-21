@@ -4,8 +4,10 @@ namespace Crossmedia\Fourallportal\Command;
 use Crossmedia\Fourallportal\Domain\Model\Event;
 use Crossmedia\Fourallportal\Domain\Model\Module;
 use Crossmedia\Fourallportal\Domain\Model\Server;
-use Crossmedia\Fourallportal\Service\ApiClient;
+use Crossmedia\Fourallportal\DynamicModel\DynamicModelGenerator;
+use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Mvc\Controller\CommandController;
+use TYPO3\CMS\Extbase\Object\ObjectManager;
 use TYPO3\CMS\Extbase\Persistence\PersistenceManagerInterface;
 use TYPO3\CMS\Form\Domain\Runtime\Exception\PropertyMappingException;
 
@@ -43,12 +45,37 @@ class FourallportalCommandController extends CommandController
     }
 
     /**
-     * @param boolean $sync
+     * Update models
+     *
+     * Updates local model classes with properties as specified by
+     * the mapping information and model information from the API.
+     * Uses the Server and Module configurations in the system and
+     * consults the Mapping class to identify each model that must
+     * be updated, then uses the DynamicModelHandler to generate
+     * an abstract model class to use with each specific model.
+     *
+     * A special class loading function must be used in the model
+     * before it can use the dynamically generated base class. See
+     * the provided README.md file for more information about this.
+     */
+    public function updateModelsCommand()
+    {
+        GeneralUtility::makeInstance(ObjectManager::class)->get(DynamicModelGenerator::class)->generateAbstractModelsForAllModules();
+    }
+
+    /**
+     * Sync data
+     *
+     * Execute this to synchronise events from the PIM API.
+     *
+     * @param boolean $sync Set to "1" to trigger a full sync
      */
     public function syncCommand($sync = false)
     {
-        foreach ($this->serverRepository->findByActive(true) as $server) {
-            $client = $this->getClientByServer($server);
+        /** @var Server[] $servers */
+        $servers = $this->serverRepository->findByActive(true);
+        foreach ($servers as $server) {
+            $client = $server->getClient();
             foreach ($server->getModules() as $module) {
                 /** @var Module $module */
                 if (!$sync && $module->getLastEventId() > 0) {
@@ -82,7 +109,7 @@ class FourallportalCommandController extends CommandController
      */
     public function processEvent($event)
     {
-        $client = $this->getClientByServer($event->getModule()->getServer());
+        $client = $event->getModule()->getServer()->getClient();
         try {
             $mapper = $event->getModule()->getMapper();
             $responseData = $client->getBeans(
@@ -93,6 +120,7 @@ class FourallportalCommandController extends CommandController
             );
             $mapper->import($responseData, $event);
             $event->setStatus('claimed');
+            $event->setMessage('Successfully executed - no additional output available');
             // Update the Module's last recorded event ID, but only if the event ID was higher. This allows
             // deferred events to execute without lowering the last recorded event ID which would cause
             // duplicate event processing on the next run.
@@ -101,8 +129,10 @@ class FourallportalCommandController extends CommandController
             // The system was unable to map properties, most likely because of an unresolvable relation.
             // Skip the event for now; process it later.
             $event->setStatus('deferred');
+            $event->setMessage($error->getMessage() . ' (code: ' . $error->getCode() . ')');
         } catch(\Exception $exception) {
             $event->setStatus('failed');
+            $event->setMessage($exception->getMessage() . ' (code: ' . $exception->getCode() . ')');
         }
         $responseMetadata = $client->getLastResponse();
         $event->setHeaders($responseMetadata['headers']);
@@ -128,22 +158,5 @@ class FourallportalCommandController extends CommandController
         $this->eventRepository->add($event);
 
         return $event;
-    }
-
-    /**
-     * @param Server $server
-     * @return ApiClient
-     */
-    protected function getClientByServer(Server $server)
-    {
-        static $clients = [];
-        $serverId = $server->getUid();
-        if (isset($clients[$serverId])) {
-            return $clients[$serverId];
-        }
-        $client = $this->objectManager->get(ApiClient::class, $server);
-        $client->login();
-        $clients[$serverId] = $client;
-        return $client;
     }
 }

@@ -30,6 +30,9 @@
 			<trans-unit id="tx_fourallportal_domain_model_module.connector_name">
 				<source>Connector Name</source>
 			</trans-unit>
+			<trans-unit id="tx_fourallportal_domain_model_module.module_name">
+				<source>Module Name (if you don't know or have this, skip it - will be filled by API if possible)</source>
+			</trans-unit>
 			<trans-unit id="tx_fourallportal_domain_model_module.mapping_class">
 				<source>Mapping Class</source>
 			</trans-unit>

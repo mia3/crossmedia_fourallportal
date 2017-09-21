@@ -80,6 +80,11 @@ class Event extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
     protected $payload;
 
     /**
+     * @var string
+     */
+    protected $message;
+
+    /**
      * @var integer
      */
     protected $crdate;
@@ -277,6 +282,22 @@ class Event extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
     public function setPayload($payload)
     {
         $this->payload = $payload;
+    }
+
+    /**
+     * @return string
+     */
+    public function getMessage()
+    {
+        return $this->message;
+    }
+
+    /**
+     * @param string $message
+     */
+    public function setMessage($message)
+    {
+        $this->message = $message;
     }
 
     /**

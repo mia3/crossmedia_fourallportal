@@ -256,6 +256,52 @@ In order to register a `TypeConverter` you need a single line in `ext_localconf.
 );
 ```
 
+
+Dynamic domain models
+---------------------
+
+The Fourallportal extension features dynamic models on the TYPO3 side, which basically means
+that if you construct the model classes in a specific way, there is a command line command
+you can execute to generate a base class using properties returned from the remote API.
+
+Opting in to dynamic model properties requires the following steps:
+
+1. The model class file must include a special call to load a dynamically generated base
+   class before using it as base class for the model.
+2. The TCA file for the model must create the `columns` array using `array_merge` to put
+   together the basic properties and the output from a function call which reads the
+   remote API's properties for the connector that handles the model class.
+
+Note that the function call which generates the TCA should only be used in the array-returning
+TCA definition file for the model's table - since it calls the remote API it would impact
+performance negatively if the output was not allowed to be cached, which is the case if it
+were used in a so-called `Overrides` TCA file (which directly modifies the TCA array instead
+of returning an array).
+
+The rest of the requirements are automatically handled:
+
+1. SQL schema gets generated based on configured Modules and can be updated using the
+   normal schema update approaches (install tool or via third party CLI commands).
+2. The TCA gets generated automatically based on responses from the remote API.
+3. Whenever possible, dynamic model classes are regenerated on-the-fly. If this cannot
+   be done an exception is thrown informing the administrator to use the command line.
+
+The following sections describe how to integrate the three main requirements
+
+
+#### The model class file
+
+
+#### Preventing use of the automatic model
+
+
+#### The TCA definitions file
+
+
+#### The model update command
+
+
+
 Expected behavior
 -----------------
 
@@ -271,6 +317,7 @@ CLI command should cause the following chain of events to occur:
 * If successful, all properties received from PIM are mapped onto the Entity properties
   and saved to the database.
 * If any errors should occur, feedback is output identifying the source of the problem.
+
 
 Developer hints
 ---------------

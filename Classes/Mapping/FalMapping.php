@@ -25,7 +25,7 @@ class FalMapping extends AbstractMapping
     /**
      * @return string
      */
-    protected function getEntityClassName()
+    public function getEntityClassName()
     {
         return FileReference::class;
     }
