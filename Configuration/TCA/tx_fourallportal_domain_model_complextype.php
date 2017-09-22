@@ -6,18 +6,18 @@ return [
         'tstamp' => 'tstamp',
         'crdate' => 'crdate',
         'cruser_id' => 'cruser_id',
-        'delete' => 'deleted',
         'rootLevel' => 1,
+        'delete' => 'deleted',
         'enablecolumns' => [
         ],
         'searchFields' => 'event_id,event_type,status,skip_until,object_id,module',
         'iconfile' => 'EXT:fourallportal/Resources/Public/Icons/tx_fourallportal_domain_model_complextype.gif'
     ],
     'interface' => [
-        'showRecordFieldList' => 'event_id, event_type, status, skip_until, object_id, module',
+        'showRecordFieldList' => 'name, type, label, field_name, actual_value, normalized_value, cast_type',
     ],
     'types' => [
-        '1' => ['showitem' => 'event_id, event_type, status, skip_until, object_id, module'],
+        '1' => ['showitem' => 'name, type, label, field_name, actual_value, normalized_value, cast_type'],
     ],
     'columns' => [
 

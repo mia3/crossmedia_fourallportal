@@ -31,6 +31,9 @@ call_user_func(
         \TYPO3\CMS\Core\Utility\ExtensionManagementUtility::addLLrefForTCAdescr('tx_fourallportal_domain_model_server', 'EXT:fourallportal/Resources/Private/Language/locallang_csh_tx_fourallportal_domain_model_server.xlf');
         \TYPO3\CMS\Core\Utility\ExtensionManagementUtility::allowTableOnStandardPages('tx_fourallportal_domain_model_server');
 
+        \TYPO3\CMS\Core\Utility\ExtensionManagementUtility::addLLrefForTCAdescr('tx_fourallportal_domain_model_complextype', 'EXT:fourallportal/Resources/Private/Language/locallang_csh_tx_fourallportal_domain_model_complextype.xlf');
+        \TYPO3\CMS\Core\Utility\ExtensionManagementUtility::allowTableOnStandardPages('tx_fourallportal_domain_model_complextype');
+
         \TYPO3\CMS\Core\Utility\ExtensionManagementUtility::addLLrefForTCAdescr('tx_fourallportal_domain_model_module', 'EXT:fourallportal/Resources/Private/Language/locallang_csh_tx_fourallportal_domain_model_module.xlf');
         \TYPO3\CMS\Core\Utility\ExtensionManagementUtility::allowTableOnStandardPages('tx_fourallportal_domain_model_module');
 
