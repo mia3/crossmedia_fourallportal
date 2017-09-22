@@ -61,7 +61,12 @@ CREATE TABLE tx_fourallportal_domain_model_complextype (
 	pid int(11) DEFAULT '0' NOT NULL,
 
 	name varchar(255) DEFAULT '' NOT NULL,
+	field_name varchar(255) DEFAULT '' NOT NULL,
 	type varchar(255) DEFAULT '' NOT NULL,
+	label varchar(255) DEFAULT '' NOT NULL,
+	normalized_value varchar(255) DEFAULT '' NOT NULL,
+	actual_value varchar(255) DEFAULT '' NOT NULL,
+	cast_type varchar(16) DEFAULT '' NOT NULL,
 
 	tstamp int(11) unsigned DEFAULT '0' NOT NULL,
 	crdate int(11) unsigned DEFAULT '0' NOT NULL,

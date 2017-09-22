@@ -87,6 +87,30 @@
 			<trans-unit id="tx_fourallportal_domain_model_event.message">
 				<source>Message/error</source>
 			</trans-unit>
+			<trans-unit id="tx_fourallportal_domain_model_complextype">
+				<source>Complex Type</source>
+			</trans-unit>
+			<trans-unit id="tx_fourallportal_domain_model_complextype.type">
+				<source>Type ID</source>
+			</trans-unit>
+			<trans-unit id="tx_fourallportal_domain_model_complextype.name">
+				<source>Type name</source>
+			</trans-unit>
+			<trans-unit id="tx_fourallportal_domain_model_complextype.label">
+				<source>Type label/unit</source>
+			</trans-unit>
+			<trans-unit id="tx_fourallportal_domain_model_complextype.field_name">
+				<source>Field name this ComplexType is used in</source>
+			</trans-unit>
+			<trans-unit id="tx_fourallportal_domain_model_complextype.actual_value">
+				<source>The value of this ComplexType</source>
+			</trans-unit>
+			<trans-unit id="tx_fourallportal_domain_model_complextype.normalized_value">
+				<source>The value of this ComplexType, normalized</source>
+			</trans-unit>
+			<trans-unit id="tx_fourallportal_domain_model_complextype.cast_type">
+				<source>PHP data type this value gets cast to</source>
+			</trans-unit>
 		</body>
 	</file>
 </xliff>

@@ -54,16 +54,14 @@ if (!is_array($GLOBALS['TYPO3_CONF_VARS']['SYS']['caching']['cacheConfigurations
 // Closure to prevent leaking variables
 (function() {
 
-    $metricComplexType = new \Crossmedia\Fourallportal\Domain\Model\ComplexType();
-    $metricComplexType->setType('CEMetric');
-
-    $performanceHpComplexType = clone $metricComplexType;
-    $performanceHpComplexType->setName('performance');
-    $performanceHpComplexType->setLabel('hp');
-    \Crossmedia\Fourallportal\DynamicModel\ComplexTypeFactory::registerComplexTypeTemplate(
-        $metricComplexType,
+    \Crossmedia\Fourallportal\DynamicModel\ComplexTypeFactory::createComplexTypeTemplate(
+        'CEMetric',
+        'performance',
+        'hp',
+        'performance_imperial',
         [
             'type' => 'CEMetric',
+            'name' => 'performance_imperial',
             'metric' => [
                 'name' => 'performance',
                 'defaultUnit' => 'hp'
@@ -71,13 +69,14 @@ if (!is_array($GLOBALS['TYPO3_CONF_VARS']['SYS']['caching']['cacheConfigurations
         ]
     );
 
-    $performancePsComplexType = clone $metricComplexType;
-    $performancePsComplexType->setName('performance');
-    $performancePsComplexType->setLabel('ps');
-    \Crossmedia\Fourallportal\DynamicModel\ComplexTypeFactory::registerComplexTypeTemplate(
-        $performancePsComplexType,
+    \Crossmedia\Fourallportal\DynamicModel\ComplexTypeFactory::createComplexTypeTemplate(
+        'CEMetric',
+        'performance',
+        'ps',
+        'performance_metric',
         [
             'type' => 'CEMetric',
+            'name' => 'performance_metric',
             'metric' => [
                 'name' => 'performance',
                 'defaultUnit' => 'ps'
@@ -85,13 +84,14 @@ if (!is_array($GLOBALS['TYPO3_CONF_VARS']['SYS']['caching']['cacheConfigurations
         ]
     );
 
-    $lengthInchesComplexType = clone $metricComplexType;
-    $lengthInchesComplexType->setName('length');
-    $lengthInchesComplexType->setLabel('inches');
-    \Crossmedia\Fourallportal\DynamicModel\ComplexTypeFactory::registerComplexTypeTemplate(
-        $lengthInchesComplexType,
+    \Crossmedia\Fourallportal\DynamicModel\ComplexTypeFactory::createComplexTypeTemplate(
+        'CEMetric',
+        'length',
+        'inches',
+        'max_milling_depth_imperial',
         [
             'type' => 'CEMetric',
+            'name' => 'max_milling_depth_imperial',
             'metric' => [
                 'name' => 'length',
                 'defaultUnit' => 'inch'
@@ -99,13 +99,29 @@ if (!is_array($GLOBALS['TYPO3_CONF_VARS']['SYS']['caching']['cacheConfigurations
         ]
     );
 
-    $lengthMillimetersComplexType = clone $metricComplexType;
-    $lengthMillimetersComplexType->setName('length');
-    $lengthMillimetersComplexType->setLabel('millimeters');
-    \Crossmedia\Fourallportal\DynamicModel\ComplexTypeFactory::registerComplexTypeTemplate(
-        $lengthMillimetersComplexType,
+    \Crossmedia\Fourallportal\DynamicModel\ComplexTypeFactory::createComplexTypeTemplate(
+        'CEMetric',
+        'length',
+        'inches',
+        'width2_imperial',
         [
             'type' => 'CEMetric',
+            'name' => 'width2_imperial',
+            'metric' => [
+                'name' => 'length',
+                'defaultUnit' => 'inch'
+            ]
+        ]
+    );
+
+    \Crossmedia\Fourallportal\DynamicModel\ComplexTypeFactory::createComplexTypeTemplate(
+        'CEMetric',
+        'length',
+        'millimeters',
+        'max_milling_depth_metric',
+        [
+            'type' => 'CEMetric',
+            'name' => 'max_milling_depth_metric',
             'metric' => [
                 'name' => 'length',
                 'defaultUnit' => 'millimeter'
@@ -113,13 +129,44 @@ if (!is_array($GLOBALS['TYPO3_CONF_VARS']['SYS']['caching']['cacheConfigurations
         ]
     );
 
-    $weightKilogramsComplexType = clone $metricComplexType;
-    $weightKilogramsComplexType->setName('length');
-    $weightKilogramsComplexType->setLabel('kilos');
-    \Crossmedia\Fourallportal\DynamicModel\ComplexTypeFactory::registerComplexTypeTemplate(
-        $weightKilogramsComplexType,
+    \Crossmedia\Fourallportal\DynamicModel\ComplexTypeFactory::createComplexTypeTemplate(
+        'CEMetric',
+        'length',
+        'millimeters',
+        'width_metric',
         [
             'type' => 'CEMetric',
+            'name' => 'width_metric',
+            'metric' => [
+                'name' => 'length',
+                'defaultUnit' => 'millimeter'
+            ]
+        ]
+    );
+
+    \Crossmedia\Fourallportal\DynamicModel\ComplexTypeFactory::createComplexTypeTemplate(
+        'CEMetric',
+        'length',
+        'millimeters',
+        'width2_metric',
+        [
+            'type' => 'CEMetric',
+            'name' => 'width2_metric',
+            'metric' => [
+                'name' => 'length',
+                'defaultUnit' => 'millimeter'
+            ]
+        ]
+    );
+
+    \Crossmedia\Fourallportal\DynamicModel\ComplexTypeFactory::createComplexTypeTemplate(
+        'CEMetric',
+        'weight',
+        'kilos',
+        'weight_metric',
+        [
+            'type' => 'CEMetric',
+            'name' => 'weight_metric',
             'metric' => [
                 'name' => 'weight',
                 'defaultUnit' => 'Kilogramm'
@@ -127,13 +174,59 @@ if (!is_array($GLOBALS['TYPO3_CONF_VARS']['SYS']['caching']['cacheConfigurations
         ]
     );
 
-    $weightPoundsComplexType = clone $metricComplexType;
-    $weightPoundsComplexType->setName('weight');
-    $weightPoundsComplexType->setLabel('pounds');
-    \Crossmedia\Fourallportal\DynamicModel\ComplexTypeFactory::registerComplexTypeTemplate(
-        $weightPoundsComplexType,
+    \Crossmedia\Fourallportal\DynamicModel\ComplexTypeFactory::createComplexTypeTemplate(
+        'CEMetric',
+        'weight',
+        'imches',
+        'width_imperial',
         [
             'type' => 'CEMetric',
+            'name' => 'width_imperial',
+            'metric' => [
+                'name' => 'length',
+                'defaultUnit' => 'inch'
+            ]
+        ]
+    );
+
+    \Crossmedia\Fourallportal\DynamicModel\ComplexTypeFactory::createComplexTypeTemplate(
+        'CEMetric',
+        'weight',
+        'kilos',
+        'tech_output_metric',
+        [
+            'type' => 'CEMetric',
+            'name' => 'tech_output_metric',
+            'metric' => [
+                'name' => 'weight',
+                'defaultUnit' => 'Kilogramm'
+            ]
+        ]
+    );
+
+    \Crossmedia\Fourallportal\DynamicModel\ComplexTypeFactory::createComplexTypeTemplate(
+        'CEMetric',
+        'weight',
+        'pounds',
+        'tech_output_imperial',
+        [
+            'type' => 'CEMetric',
+            'name' => 'tech_output_imperial',
+            'metric' => [
+                'name' => 'weight',
+                'defaultUnit' => 'pound'
+            ]
+        ]
+    );
+
+    \Crossmedia\Fourallportal\DynamicModel\ComplexTypeFactory::createComplexTypeTemplate(
+        'CEMetric',
+        'weight',
+        'pounds',
+        'weight_imperial',
+        [
+            'type' => 'CEMetric',
+            'name' => 'weight_imperial',
             'metric' => [
                 'name' => 'weight',
                 'defaultUnit' => 'pound'

@@ -64,11 +64,29 @@ class ComplexTypeFactory
         }
         throw new \RuntimeException(
             sprintf(
-                'ComplexType "%s" with match requirements "%s" not found - if the type must be supposed, add it to the system',
+                'ComplexType "%s" with match requirements "%s" not found - if the type must be supported, add it to the system',
                 $type,
                 json_encode($subMatch)
             )
         );
+    }
+
+    /**
+     * @param string $type
+     * @param string $name
+     * @param string $label
+     * @param string $fieldName
+     * @param array $match
+     * @return void
+     */
+    public static function createComplexTypeTemplate($type, $name, $label, $fieldName, array $match)
+    {
+        $complexType = new \Crossmedia\Fourallportal\Domain\Model\ComplexType();
+        $complexType->setType($type);
+        $complexType->setName($name);
+        $complexType->setLabel($label);
+        $complexType->setFieldName($fieldName);
+        static::registerComplexTypeTemplate($complexType, $match);
     }
 
     /**
@@ -82,6 +100,7 @@ class ComplexTypeFactory
      *
      * @param ComplexType $complexType
      * @param array $subMatch
+     * @return void
      */
     public static function registerComplexTypeTemplate(ComplexType $complexType, array $subMatch)
     {

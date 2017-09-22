@@ -12,6 +12,8 @@ namespace Crossmedia\Fourallportal\Domain\Model;
  *
  ***/
 
+use TYPO3\CMS\Extbase\Reflection\ObjectAccess;
+
 /**
  * ComplexType
  */
@@ -30,7 +32,27 @@ class ComplexType extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
     /**
      * @var string
      */
+    protected $fieldName;
+
+    /**
+     * @var string
+     */
     protected $label;
+
+    /**
+     * @var string
+     */
+    protected $normalizedValue;
+
+    /**
+     * @var string
+     */
+    protected $actualValue;
+
+    /**
+     * @var string
+     */
+    protected $castType;
 
     /**
      * @return string
@@ -79,4 +101,100 @@ class ComplexType extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
     {
         $this->label = $label;
     }
+
+    /**
+     * @return string
+     */
+    public function getFieldName(): string
+    {
+        return $this->fieldName;
+    }
+
+    /**
+     * @param string $fieldName
+     */
+    public function setFieldName(string $fieldName)
+    {
+        $this->fieldName = $fieldName;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getNormalizedValue()
+    {
+        return $this->castValue($this->normalizedValue, $this->castType);
+    }
+
+    /**
+     * @param mixed $normalizedValue
+     */
+    public function setNormalizedValue($normalizedValue)
+    {
+        $this->castType = gettype($normalizedValue);
+        $this->normalizedValue = $normalizedValue;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getActualValue()
+    {
+        return $this->castValue($this->actualValue, $this->castType);
+    }
+
+    /**
+     * @param mixed $actualValue
+     */
+    public function setActualValue($actualValue)
+    {
+        $this->castType = gettype($actualValue);
+        $this->actualValue = $actualValue;
+    }
+
+    /**
+     * @return string
+     */
+    public function getCastType()
+    {
+        return $this->castType;
+    }
+
+    /**
+     * @param string $castType
+     */
+    public function setCastType($castType)
+    {
+        $this->castType = $castType;
+    }
+
+    /**
+     * @param ComplexType $other
+     * @return boolean
+     */
+    public function equals(ComplexType $other)
+    {
+        return ObjectAccess::getGettableProperties($this) == ObjectAccess::getGettableProperties($other);
+    }
+
+    /**
+     * @return string
+     */
+    public function __toString()
+    {
+        return (string) $this->getActualValue();
+    }
+
+    /**
+     * @param mixed $value
+     * @param string $type
+     * @return mixed
+     */
+    protected function castValue($value, $type)
+    {
+        settype($value, $type);
+        return $value;
+    }
+
+
 }
