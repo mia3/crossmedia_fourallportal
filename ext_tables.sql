@@ -63,6 +63,8 @@ CREATE TABLE tx_fourallportal_domain_model_complextype (
 
 	name varchar(255) DEFAULT '' NOT NULL,
 	field_name varchar(255) DEFAULT '' NOT NULL,
+	table_name varchar(255) DEFAULT '' NOT NULL,
+	parent_pid int(11) DEFAULT '0' NOT NULL,
 	type varchar(255) DEFAULT '' NOT NULL,
 	label varchar(255) DEFAULT '' NOT NULL,
 	normalized_value varchar(255) DEFAULT '' NOT NULL,

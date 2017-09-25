@@ -45,16 +45,30 @@ class DynamicModelGenerator
             $lines = [];
             foreach ($propertyConfigurations as $propertyConfiguration) {
                 $lines[] = $propertyConfiguration['column'] . ' ' . $propertyConfiguration['schema'];
-                if ($propertyConfiguration['tca']['config']['MM']) {
-                    $manyToManyRelations[] = $propertyConfiguration;
+                if (isset($propertyConfiguration['config']['MM'])) {
+                    $manyToManyRelations[] = $propertyConfiguration['config']['MM'];
                 }
             }
             $sqlString[] = 'CREATE TABLE ' . $tableName . ' (' . PHP_EOL . implode(',' . PHP_EOL, $lines) . PHP_EOL . ');';
         }
 
-        // Process all queued MM table creations
-        foreach ($manyToManyRelations as $relationPropertyConfiguration) {
+        $manyToManyTableTemplate = <<< TEMPLATE
 
+CREATE TABLE %s (
+	uid_local int(11) DEFAULT '0' NOT NULL,
+	uid_foreign int(11) DEFAULT '0' NOT NULL,
+	sorting int(11) DEFAULT '0' NOT NULL,
+	sorting_foreign int(11) DEFAULT '0' NOT NULL,
+
+	KEY uid_local_foreign (uid_local,uid_foreign)
+);
+
+TEMPLATE;
+
+
+        // Process all queued MM table creations
+        foreach ($manyToManyRelations as $manyToManyTableName) {
+            $sqlString[] = sprintf($manyToManyTableTemplate, $manyToManyTableName);
         }
 
         return [$sqlString];
@@ -280,7 +294,7 @@ class DynamicModelGenerator
                         )
                     );
                 }
-                list ($type, $schema, $tca) = $this->guessLocalTypesFromRemoteField($fieldConfiguration);
+                list ($type, $schema, $tca) = $this->guessLocalTypesFromRemoteField($fieldConfiguration, $module->getModuleName());
                 $properties[GeneralUtility::underscoredToLowerCamelCase($originalName)] = [
                     'column' => $originalName,
                     'type' => $type,
@@ -299,9 +313,10 @@ class DynamicModelGenerator
 
     /**
      * @param array $fieldConfiguration
+     * @param string $currentSideModuleName Module name for the side of the relation we are currently processing
      * @return array
      */
-    protected function guessLocalTypesFromRemoteField(array $fieldConfiguration)
+    protected function guessLocalTypesFromRemoteField(array $fieldConfiguration, $currentSideModuleName)
     {
         $textFieldTypes = ['CEText', 'MAMString', 'XMPString'];
         if ($fieldConfiguration['fulltext'] || in_array($fieldConfiguration['type'], $textFieldTypes)) {
@@ -373,8 +388,7 @@ class DynamicModelGenerator
             case 'ONE_TO_MANY':
             case 'MANY_TO_ONE':
             case 'FIELD_LINK':
-                #$tca = $this->determineTableConfigurationForRelation($fieldConfiguration);
-                $tca = ['type' => 'passthrough'];
+                $tca = $this->determineTableConfigurationForRelation($fieldConfiguration, $currentSideModuleName);
                 $dataType = 'integer';
                 $sqlType = 'int(11) default 0 NOT NULL';
                 break;
@@ -389,8 +403,25 @@ class DynamicModelGenerator
             // either thrown as Exception (Development context) or silently ignored (Production context). When
             // ignored, the field does not get added to SQL, TCA or model properties.
             $this->validatePresenceOfComplexType($fieldConfiguration);
+
+            $dataMapper = GeneralUtility::makeInstance(ObjectManager::class)->get(DataMapper::class);
+            $modules = $this->getAllConfiguredModules();
+            $entityNameParent = $modules[$currentSideModuleName]->getMapper()->getEntityClassName();
+            $entityShortNameParent = GeneralUtility::camelCaseToLowerCaseUnderscored(substr($entityNameParent, strrpos($entityNameParent, '\\') + 1));
+            $tableNameParent = $dataMapper->getDataMap($entityNameParent)->getTableName();
             $dataType = '\\' . ComplexType::class;
             $sqlType = 'int(11) default 0 NOT NULL';
+            $tca = [
+                'type' => 'inline',
+                'foreign_table' => 'tx_fourallportal_domain_model_complextype',
+                'foreign_table_field' => 'parent_uid',
+                'foreign_match_fields' => [
+                    'table_name' => $tableNameParent,
+                    'field_name' => $fieldConfiguration['name'],
+                ],
+                //'foreign_table_field' => $entityShortNameParent,
+                'maxitems' => 1
+            ];
         }
 
         return [
@@ -417,20 +448,35 @@ class DynamicModelGenerator
      * ignored and the property skipped, depending on TYPO3 context).
      *
      * @param array $fieldConfiguration
+     * @param string $currentSideModuleName Module name for the side of the relation we are currently processing
      * @throws \RuntimeException
      * @return array
      */
-    protected function determineTableConfigurationForRelation(array $fieldConfiguration)
+    protected function determineTableConfigurationForRelation(array $fieldConfiguration, $currentSideModuleName)
     {
+        $overriddenType = null;
         $objectManager = GeneralUtility::makeInstance(ObjectManager::class);
         $dataMapper = $objectManager->get(DataMapper::class);
         $modules = $this->getAllConfiguredModules();
 
+        if ($fieldConfiguration['relatedModule'] ?? false) {
+            if ($fieldConfiguration['type'] === 'CEExternalId') {
+                $overriddenType = 'ONE_TO_ONE';
+            } elseif ($fieldConfiguration['type'] === 'CEExternalIdList') {
+                $overriddenType = 'ONE_TO_MANY';
+            }
+            if (!($fieldConfiguration['child'] ?? false)) {
+                $fieldConfiguration['child'] = $fieldConfiguration['relatedModule'];
+            }
+        }
+
         try {
-            $tableNameParent = null;
+            $tableNameParent = $entityNameParent = $entityShortNameParent = null;
             if ($fieldConfiguration['parent'] ?? false) {
                 $this->validatePresenceOfConfiguredConnectorForModule($fieldConfiguration['parent']);
-                $tableNameParent = $dataMapper->getDataMap($modules[$fieldConfiguration['parent']]->getMapper()->getEntityClassName())->getTableName();
+                $entityNameParent = $modules[$fieldConfiguration['parent']]->getMapper()->getEntityClassName();
+                $entityShortNameParent = substr($entityNameParent, strrpos($entityNameParent, '\\') + 1);
+                $tableNameParent = $dataMapper->getDataMap($entityNameParent)->getTableName();
             }
         } catch (\RuntimeException $error) {
             throw new \RuntimeException(
@@ -445,10 +491,12 @@ class DynamicModelGenerator
         }
 
         try {
-            $tableNameChild = null;
+            $tableNameChild = $entityNameChild = $entityShortNameChild = null;
             if ($fieldConfiguration['child'] ?? false) {
                 $this->validatePresenceOfConfiguredConnectorForModule($fieldConfiguration['child']);
-                $tableNameChild = $dataMapper->getDataMap($modules[$fieldConfiguration['child']]->getMapper()->getEntityClassName())->getTableName();
+                $entityNameChild = $modules[$fieldConfiguration['child']]->getMapper()->getEntityClassName();
+                $entityShortNameChild = substr($entityNameChild, strrpos($entityNameChild, '\\') + 1);
+                $tableNameChild = $dataMapper->getDataMap($entityNameChild)->getTableName();
             }
         } catch (\RuntimeException $error) {
             throw new \RuntimeException(
@@ -462,21 +510,110 @@ class DynamicModelGenerator
             );
         }
 
-
         $tca = [
             'type' => 'select',
-            'foreign_table' => $tableNameParent
+            'foreign_table' => $tableNameChild ?? $tableNameParent
         ];
-        switch ($fieldConfiguration['type']) {
+
+        $fieldType = $overriddenType ?? $fieldConfiguration['type'];
+
+        switch ($fieldType) {
+
+            // M:N is expressed to TYPO3 as any other relation, but having an "MM" entry in the TCA containing a table name.
+            // This table can then be generated on-the-fly since all MM tables have the same default structure when written
+            // by this model generator class.
             case 'MANY_TO_MANY':
+                $tca['MM'] = 'tx_fourallportal_' . $fieldConfiguration['name'];
+
+                // Set "MM_opposite_field" to indicate this M:N is mirrored by other TCA. To do so, we must determine if
+                // we are currently on the child side of the relation, in which case our field name comes from the child
+                // entity name, and comes from parent if the opposite is true.
+                if ($currentSideModuleName === $fieldConfiguration['child']) {
+                    $tca['MM_opposite_field'] = GeneralUtility::camelCaseToLowerCaseUnderscored($entityShortNameChild);
+                } else {
+                    $tca['MM_opposite_field'] = GeneralUtility::camelCaseToLowerCaseUnderscored($entityShortNameParent);
+                }
                 break;
-            case 'ONE_TO_ONE':
-                break;
-            case 'ONE_TO_MANY':
-                break;
+
+            // 1:N is expressed by setting a "foreign_field" to be used when matching records. In a 1:1 relation the "uid"
+            // column will always be used, but for 1:N we need to choose a different field. Which field this is, is
+            // determined by the entity name on the local side of the relation, e.g. if the parent is a class whose short
+            // name is "Product", the chosen column name will be "product"; if "ProductCategory" the chosen field name
+            // is "product_category" and so on. We include both 1:N and N:1 since to TYPO3 these are technically the same
+            // type, but expressing the "symmetric field" on the opposite side of the relation. We determine the target
+            // entity names by analyzing which Modules have Connectors that use Mappers which handle the entities.
             case 'MANY_TO_ONE':
+            case 'ONE_TO_MANY':
+                $tca['foreign_field'] = GeneralUtility::camelCaseToLowerCaseUnderscored($entityShortNameParent);
+                $tca['symmetric_field'] = GeneralUtility::camelCaseToLowerCaseUnderscored($entityShortNameChild);
+                break;
+
+            // Fallback case; ONE_TO_ONE is the default type of relation
+            case 'ONE_TO_ONE':
+            default:
                 break;
         }
+
+        if ($tca['foreign_table'] === 'sys_file_reference') {
+            $tca['config'] = \TYPO3\CMS\Core\Utility\ExtensionManagementUtility::getFileFieldTCAConfig(
+                $fieldConfiguration['name'],
+                [
+                    'appearance' => [
+                        'createNewRelationLinkTitle' => 'LLL:EXT:frontend/Resources/Private/Language/locallang_ttc.xlf:media.addFileReference'
+                    ],
+                    'foreign_types' => [
+                        '0' => [
+                            'showitem' => '
+                                --palette--;LLL:EXT:lang/locallang_tca.xlf:sys_file_reference.imageoverlayPalette;imageoverlayPalette,
+                                --palette--;;filePalette'
+                        ],
+                        \TYPO3\CMS\Core\Resource\File::FILETYPE_TEXT => [
+                            'showitem' => '
+                                --palette--;LLL:EXT:lang/locallang_tca.xlf:sys_file_reference.imageoverlayPalette;imageoverlayPalette,
+                                --palette--;;filePalette'
+                        ],
+                        \TYPO3\CMS\Core\Resource\File::FILETYPE_IMAGE => [
+                            'showitem' => '
+                                --palette--;LLL:EXT:lang/locallang_tca.xlf:sys_file_reference.imageoverlayPalette;imageoverlayPalette,
+                                --palette--;;filePalette'
+                        ],
+                        \TYPO3\CMS\Core\Resource\File::FILETYPE_AUDIO => [
+                            'showitem' => '
+                                --palette--;LLL:EXT:lang/locallang_tca.xlf:sys_file_reference.imageoverlayPalette;imageoverlayPalette,
+                                --palette--;;filePalette'
+                        ],
+                        \TYPO3\CMS\Core\Resource\File::FILETYPE_VIDEO => [
+                            'showitem' => '
+                                --palette--;LLL:EXT:lang/locallang_tca.xlf:sys_file_reference.imageoverlayPalette;imageoverlayPalette,
+                                --palette--;;filePalette'
+                        ],
+                        \TYPO3\CMS\Core\Resource\File::FILETYPE_APPLICATION => [
+                            'showitem' => '
+                                --palette--;LLL:EXT:lang/locallang_tca.xlf:sys_file_reference.imageoverlayPalette;imageoverlayPalette,
+                                --palette--;;filePalette'
+                        ]
+                    ],
+                    'maxitems' => $fieldType  === 'ONE_TO_ONE' ? 1 : 99999,
+                    'foreign_match_fields' => [
+                        'fieldname' => $fieldConfiguration['name'],
+                        'tablenames' => 'tx_products_domain_model_product',
+                        'table_local' => 'sys_file',
+                    ]
+                ]
+            );
+        }
+
+        if (!($tca['foreign_table'] && false)) {
+            throw new \RuntimeException(
+                sprintf(
+                    'Field "%s" defines a CEExternalId or CEExternalIdList which does not configure a related module. ' .
+                    'Normally this would mean that this field should be mapped to a plain string value, but due to the ' .
+                    'ambiguity in target resource type, we require that you manually map or ignore this particular field.',
+                    $fieldConfiguration['name']
+                )
+            );
+        }
+
         return $tca;
     }
 
