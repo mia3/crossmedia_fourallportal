@@ -37,6 +37,7 @@ CREATE TABLE tx_fourallportal_domain_model_module (
 	connector_name varchar(255) DEFAULT '' NOT NULL,
 	module_name varchar(255) DEFAULT '' NOT NULL,
 	mapping_class varchar(255) DEFAULT '' NOT NULL,
+	enable_dynamic_model int(4) unsigned DEFAULT '1' NOT NULL,
 	config_hash varchar(255) DEFAULT '' NOT NULL,
 	last_event_id int(11) DEFAULT '0' NOT NULL,
 	shell_path varchar(255) DEFAULT '' NOT NULL,

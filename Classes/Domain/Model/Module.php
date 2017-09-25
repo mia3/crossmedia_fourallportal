@@ -76,6 +76,11 @@ class Module extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
     protected $falStorage = 0;
 
     /**
+     * @var bool
+     */
+    protected $enableDynamicModel = true;
+
+    /**
      * server
      *
      * @var \Crossmedia\Fourallportal\Domain\Model\Server
@@ -267,6 +272,22 @@ class Module extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
     public function setMappingClass($mappingClass)
     {
         $this->mappingClass = $mappingClass;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isEnableDynamicModel()
+    {
+        return $this->enableDynamicModel;
+    }
+
+    /**
+     * @param bool $enableDynamicModel
+     */
+    public function setEnableDynamicModel($enableDynamicModel)
+    {
+        $this->enableDynamicModel = $enableDynamicModel;
     }
 
     /**

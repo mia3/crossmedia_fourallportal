@@ -104,11 +104,17 @@ class DynamicModelGenerator
     {
         // Loop 1: generate fallbacks
         foreach ($this->getAllConfiguredModules() as $module) {
+            if (!$module->isEnableDynamicModel()) {
+                continue;
+            }
             $this->generateAbstractModelForModule($module, true);
         }
         if ($safeMode === false) {
             // Loop 2: generate actual classes, which require the presence of the fallback in order for the data map to work
             foreach ($this->getAllConfiguredModules() as $module) {
+                if (!$module->isEnableDynamicModel()) {
+                    continue;
+                }
                 $this->generateAbstractModelForModule($module);
             }
         }
