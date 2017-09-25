@@ -37,6 +37,11 @@ $GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['extbase']['commandControllers'][$_EXT
         'standardtest_reference_ceexternalid' => false, // Ignored; no connector exists for "standardtest" which is required by this relation
         'product_tech_assistance_image' => false, // Ignored; no connector exists for "product_tech" which is required by this relation
         'product_tech_availability_image' => false, // Ignored; no connector exists for "product_tech" which is required by this relation
+        'product_main_image' => false, // Ignored; requires custom property (CEExternalId w/o relatedModule)
+        'product_background_image' => false, // Ignored; requires custom property (CEExternalId w/o relatedModule)
+        'product_cat_product_cat_media' => false, // Ignored; requires custom property (CEExternalId w/o relatedModule)
+        'product_cat_main_image' => false, // Ignored; requires custom property (CEExternalId w/o relatedModule)
+        'product_main_video' => false, // Ignored; requires custom property (CEExternalId w/o relatedModule)
     ]
 );
 
