@@ -86,11 +86,14 @@ class DynamicModelGenerator
     }
 
     /**
+     * @param array $parameters
      * @return void
      */
-    public function regenerateModelsAfterCacheFlush()
+    public function regenerateModelsAfterCacheFlush(array $parameters)
     {
-        $this->generateAbstractModelsForAllModules();
+        if (in_array($parameters['cacheCmd'] ?? false, ['all', 'system'])) {
+            $this->generateAbstractModelsForAllModules();
+        }
     }
 
     /**
