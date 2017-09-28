@@ -147,7 +147,14 @@ abstract class AbstractMapping implements MappingInterface
             }
         }
 
-        ObjectAccess::setProperty($object, $propertyName, $propertyValue);
+        $setOnObject = $object;
+        $propertyPath = explode('.', $propertyName);
+        $lastPropertyName = array_pop($propertyPath);
+        foreach ($propertyPath as $currentPropertyName) {
+            $setOnObject = ObjectAccess::getProperty($setOnObject, $currentPropertyName);
+        }
+
+        ObjectAccess::setProperty($setOnObject, $lastPropertyName, $propertyValue);
     }
 
     /**
