@@ -175,7 +175,7 @@ class ApiClient
             'session' => $this->sessionId,
             'apptype' => 'MAM',
             'clientType' => 'Web',
-            //'usage' => null,
+            'usage' => 'Original',
             'id' => $objectId,
         );
         $uri = $this->server->getDataUrl() . '?' . http_build_query($query);
