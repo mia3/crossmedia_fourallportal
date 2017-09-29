@@ -1,9 +1,6 @@
 <?php
 namespace Crossmedia\Fourallportal\Service;
 
-use TYPO3\CMS\Core\DataHandling\DataHandler;
-use TYPO3\CMS\Core\Resource\ResourceFactory;
-
 
 /**
  * This class represents a central access to the extension and mapping configuration
