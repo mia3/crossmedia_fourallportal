@@ -30,12 +30,6 @@ class ApiClientPool
     protected static $sessionPool = array();
 
     /**
-     * @var \Crossmedia\Fourallportal\Service\Logger
-     * @inject
-     */
-    protected $logger;
-
-    /**
      * @var int
      */
     protected $folderCreateMask;
@@ -72,7 +66,6 @@ class ApiClientPool
                 $this->server->getCustomerName(),
             ]
         );
-        $this->logger->debug('API Login', $response);
         if (isset($response['result']['sessionID'])) {
             $this->sessionId = $response['result']['sessionID'];
 
@@ -85,7 +78,6 @@ class ApiClientPool
     public function logout()
     {
         if ($this->sessionId !== null) {
-            $this->logger->debug('API Logout', $this->sessionId);
             $this->doPostRequest(
                 $uri = $this->server->getRestUrl() . 'LoginRemoteService/logout',
                 [

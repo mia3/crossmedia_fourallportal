@@ -1,5 +1,0 @@
-# cat=logging/10; type=string; label=Logging BaseUrl (Sentry)
-fal_mam.logging.baseUrl =
-
-# cat=logging/20; type=integer; label=LogLevel: (3: Debug, 2: Info, 1: Warning, 0: Fatal)
-fal_mam.logging.log_level = 1

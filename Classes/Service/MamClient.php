@@ -63,16 +63,6 @@ class MamClient
     protected static $sessionPool = array();
 
     /**
-     * @var integer
-     */
-    protected $logLevel = 3;
-
-    /**
-     * @var \Crossmedia\Fourallportal\Service\Logger
-     */
-    protected $logger;
-
-    /**
      * @var int
      */
     protected $folderCreateMask;
@@ -84,7 +74,6 @@ class MamClient
 
     public function __construct($autologin = true)
     {
-        $this->logger = new \Crossmedia\Fourallportal\Service\Logger();
         if ($autologin === true) {
             $this->initialize();
         }
@@ -259,7 +248,6 @@ class MamClient
             urlencode($this->password),
             $this->customer,
         ));
-        $this->logger->debug('MAM API Login', $response);
         if (isset($response['sessionID'])) {
             $this->sessionId = $response['sessionID'];
 
@@ -272,7 +260,6 @@ class MamClient
     public function logout()
     {
         if ($this->sessionId !== null) {
-            $this->logger->debug('MAM API Logout', $this->sessionId);
             $this->getRequest('logout', array(
                 $this->sessionId,
             ));
@@ -466,21 +453,10 @@ class MamClient
             $derivateFilename = trim($matches[1]);
             $derivateSuffix = strtolower(pathinfo($derivateFilename, PATHINFO_EXTENSION));
             if (empty($derivateSuffix)) {
-                $this->logger->error("failed to determine derivate suffix!", array(
-                    'uri' => $uri,
-                    'derivateFilename' => $derivateFilename,
-                ));
+                throw new MamApiException('failed to determine derivate suffix for derivate ' . $derivateFilename);
             }
         } else {
-            $this->logger->error("missing Content-Disposition Header!",
-                array(
-                    'uri' => $uri,
-                    'headers' => $headers,
-                    'matches' => $matches,
-                    'filename' => $filename,
-                    'objectId' => $objectId,
-                )
-            );
+            throw new MamApiException("missing Content-Disposition Header!");
         }
 
         if (preg_match('/Content-Length:[^0-9]*([0-9]+)/', $headers, $matches)) {
@@ -488,13 +464,7 @@ class MamClient
         }
 
         if (!empty($curlError = curl_error($ch))) {
-            $this->logger->warning('CURL Failed with the Error: ' . $curlError, array(
-                'uri' => $uri,
-                'filename' => $filename,
-                'object_id' => $objectId,
-                'expected size: ' => $expectedFileSize,
-                'downloaded size: ' => filesize($temporaryFilename),
-            ));
+            throw new MamApiException('CURL Failed with the Error: ' . $curlError);
         }
 
         curl_close($ch);
@@ -502,18 +472,8 @@ class MamClient
         $output = ob_get_clean();
 
         if ($expectedFileSize > 0 && $expectedFileSize != filesize($temporaryFilename)) {
-            $this->logger->warning('The downloaded file does not match the expected filesize',
-                array(
-                    'uri' => $uri,
-                    'filename' => $filename,
-                    'object_id' => $objectId,
-                    'expected size: ' => $expectedFileSize,
-                    'downloaded size: ' => filesize($temporaryFilename),
-                )
-            );
             unlink($temporaryFilename);
-
-            return false;
+            throw new MamApiException('The downloaded file does not match the expected filesize');
         }
 
         if (strtolower(pathinfo($filename, PATHINFO_EXTENSION)) != strtolower($derivateSuffix)) {

@@ -28,12 +28,6 @@ class ApiClient
     protected static $sessionPool = array();
 
     /**
-     * @var \Crossmedia\Fourallportal\Service\Logger
-     * @inject
-     */
-    protected $logger;
-
-    /**
      * @var int
      */
     protected $folderCreateMask;
@@ -75,7 +69,6 @@ class ApiClient
                 $this->server->getCustomerName(),
             ]
         );
-        $this->logger->debug('API Login', $response);
         if (isset($response['result']['sessionID'])) {
             $this->sessionId = $response['result']['sessionID'];
 
@@ -88,7 +81,6 @@ class ApiClient
     public function logout()
     {
         if ($this->sessionId !== null) {
-            $this->logger->debug('API Logout', $this->sessionId);
             $this->doPostRequest(
                 $uri = $this->server->getRestUrl() . 'LoginRemoteService/logout',
                 [
@@ -202,13 +194,7 @@ class ApiClient
         }
 
         if (!empty($curlError = curl_error($ch))) {
-            $this->logger->warning('CURL Failed with the Error: ' . $curlError, array(
-                'uri' => $uri,
-                'filename' => $filename,
-                'object_id' => $objectId,
-                'expected size: ' => $expectedFileSize,
-                'downloaded size: ' => filesize($temporaryFilename),
-            ));
+            throw new ApiException('CURL Failed with the Error: ' . $curlError);
         }
 
         curl_close($ch);
@@ -217,18 +203,8 @@ class ApiClient
         ob_end_flush();
 
         if ($expectedFileSize > 0 && $expectedFileSize != filesize($temporaryFilename)) {
-            $this->logger->warning('The downloaded file does not match the expected filesize',
-                array(
-                    'uri' => $uri,
-                    'filename' => $filename,
-                    'object_id' => $objectId,
-                    'expected size: ' => $expectedFileSize,
-                    'downloaded size: ' => filesize($temporaryFilename),
-                )
-            );
             unlink($temporaryFilename);
-
-            return false;
+            throw new ApiException('The downloaded file does not match the expected filesize');
         }
 
         if (!file_exists(dirname($filename))) {
