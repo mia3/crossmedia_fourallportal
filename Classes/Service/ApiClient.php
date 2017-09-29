@@ -110,14 +110,31 @@ class ApiClient
                 $connectorName,
             ]
         );
-        switch ($response['code']) {
-            case 0:
-                return $response['result'];
-                break;
+        $this->validateResponseCode($response);
+        return $response['result'];
+    }
 
-            default:
-                throw new ApiException($response['code'] . ': ' . $response['message']);
-        }
+    /**
+     * Get module configuration from MAM
+     *
+     * @apiparam session_id - Usersession
+     * @apiparam connector_name - Name des Connectors
+     *
+     * @param string $moduleName
+     * @return array $configuration
+     * @throws ApiException
+     */
+    public function getModuleConfig($moduleName = null)
+    {
+        $response = $this->doPostRequest(
+            $uri = $this->server->getRestUrl() . 'PAPRemoteService/getModuleConfig',
+            [
+                $this->sessionId,
+                $moduleName,
+            ]
+        );
+        $this->validateResponseCode($response);
+        return $response['result'];
     }
 
     /**
@@ -158,7 +175,7 @@ class ApiClient
             'session' => $this->sessionId,
             'apptype' => 'MAM',
             'clientType' => 'Web',
-            //'usage' => null,
+            'usage' => 'Original',
             'id' => $objectId,
         );
         $uri = $this->server->getDataUrl() . '?' . http_build_query($query);

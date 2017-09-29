@@ -109,6 +109,7 @@ mapping class registration method takes a second argument that is a column map:
     array(
         'emission_class' => 'emissionclass',
         'product_cat' => 'categories',
+        'ignored_property' => false, // Mapping any incoming column name to FALSE ignores the column
     )
 );
 ```
@@ -256,6 +257,363 @@ In order to register a `TypeConverter` you need a single line in `ext_localconf.
 );
 ```
 
+
+"Complex Types"
+---------------
+
+Certain properties from the remote API have a so-called complex type, which means the value
+consists of the value itself, along with meta-information about the nature of the value.
+For example, `CEMetric` types exist to cover length in millimeters and inches, weight in
+kilos and pounds, and so on.
+
+Usage of these types is automatic (and happens via a special TypeConverter, see above). You
+can of course also map such ComplexType properties manually but the creation of the instances
+themselves happens automatically and internally.
+
+The way complex types work requires each possible complex type to be configured before it can
+be used. An annotated example of such a configuration:
+
+```php
+<?php
+// in ext_localconf.php of an extension
+\Crossmedia\Fourallportal\DynamicModel\ComplexTypeFactory::createComplexTypeTemplate(
+    'CEMetric', // The name this shared type has in the remote API
+    'performance', // An internal name identifying what the value describes
+    'hp', // A label that can be rendered after the value, such as "kg", "g", "mm" etc.
+    'performance_imperial', // The specific property name (on any parent object type) which uses this complex type as value
+    
+    // The final parameter is a special matching array which contains a subset of the
+    // field configuration array returned from the remote API. This array is then checked
+    // when detecting a ComplexType to use for a certain field: if all values in this
+    // array match the corresponding settings in the API's responses, then this complex
+    // type will be used.
+    [
+        'type' => 'CEMetric',
+        'name' => 'performance_imperial',
+        'metric' => [
+            'name' => 'performance',
+            'defaultUnit' => 'hp'
+        ]
+    ]
+);
+```
+
+When a complex type value is saved it gets saved as a 1:1 related record in the database.
+This record contains information how to process the value (which type to cast) and is unique
+for each property on each parent (parents never share complex type values: they are *not*
+value objects as such!). Before saving it, the value coming from the remote API gets assigned
+along with the data type the value had when it was received. The value getter method then
+casts the value to the right type before returning it.
+
+
+#### Accessing complex type values in templates and code
+
+In order to "read" the value stored in a complex type, dotted path access can be used to
+reference the value (or the label, or the name) of the type.
+
+Example Fluid template accessing:
+
+```xml
+<!-- Assuming the variable {product} has a property "weight" that is a valid ComplexType -->
+
+Product: {product.name}
+Weight: <f:format.number decimals="1">{product.weight.normalizedValue}</f:format.number> {product.weight.label}
+
+<!-- Which could for example output in the last line: "Weight: 5.0 kg" -->
+```
+
+Example PHP access:
+
+```php
+<?php
+$weight = $product->getWeight();
+$weightString = 'Weight: ' . number_format($weight->getNormalizedValue(), 2) . ' ' . $weight->getLabel();
+
+// $weightString value for example: "Weight: 5.0 kg"
+```
+
+Alternatively, the special `TYPO3\CMS\Extbase\Reflection\ObjectAccess` class can be used to
+extract a specific value by path (which is useful if the path comes from external sources):
+
+```php
+<?php
+$weightAsDouble = ObjectAccess::getProperty($product, 'weight.normalizedValue');
+```
+
+Contrary to the chained PHP method calls, using ObjectAcceess throws an exception if the path
+does not exist (which happens if the chain links can't be accessed with getter methods).
+
+> Note: for exactly things like determining how many decimal places to render, the remote API
+> actually returns this information, but stored in separate properties. So, for example, you
+> may be calling another getter method first to get `$decimalPlaces` then use that when formatting
+> the value you read from the complex type. Since these are stored separately there is unfortunately
+> no way to return an already formatted value directly from the ComplexType instance.
+
+
+Dynamic domain models
+---------------------
+
+The Fourallportal extension features dynamic models on the TYPO3 side, which basically means
+that if you construct the model classes in a specific way, there is a command line command
+you can execute to generate a base class using properties returned from the remote API.
+
+Opting in to dynamic model properties requires the following steps:
+
+1. The model class file must include a special call to load a dynamically generated base
+   class before using it as base class for the model.
+2. The TCA file for the model must create the `columns` array using `array_merge` to put
+   together the basic properties and the output from a function call which reads the
+   remote API's properties for the connector that handles the model class.
+
+Note that the function call which generates the TCA should only be used in the array-returning
+TCA definition file for the model's table - since it calls the remote API it would impact
+performance negatively if the output was not allowed to be cached, which is the case if it
+were used in a so-called `Overrides` TCA file (which directly modifies the TCA array instead
+of returning an array).
+
+The rest of the requirements are automatically handled:
+
+1. SQL schema gets generated based on configured Modules and can be updated using the
+   normal schema update approaches (install tool or via third party CLI commands).
+2. The TCA gets generated automatically based on responses from the remote API.
+3. Whenever possible, dynamic model classes are regenerated on-the-fly. If this cannot
+   be done an exception is thrown informing the administrator to use the command line.
+
+The system generates dynamic model classes in two steps: first, a safe fallback class is
+generated to ensure that if runtime errors happen during custom properties processing,
+there will be no fatal errors that classes cannot be found. Second step is to generate
+the actual class with all the custom properties.
+
+Properties which require custom types or special overrides can be handled in two different
+ways depending on the desired outcome:
+
+1. The model class property, getter and setter added in the dynamically generated parent class
+   can be overridden (as long as the method signatures are compatible; the signatures on the
+   parent class are intentionally as loose as possible)
+2. Properties can be mapped to other properties, which for example makes it possible to create
+   relations and values which don't come from the remote API.
+   
+The first strategy can be used when the property names are compatible and for example the getter
+method should transform the value before returning it. The second strategy can be used when
+field names are incompatible or when the field is using a data type that doesn't come from the
+remote API (for example, a relation to a TYPO3-only record like a domain, a user, a page, etc.). 
+
+The following sections describe how to integrate the three main requirements
+
+
+#### The model class file
+
+The model file looks like any other domain model class you find in TYPO3 with one exception:
+before the class is defined, a special API is used to load the parent class. This class is then
+loaded separately from the normal class loading (since the class file exists as a pseudo cache
+file containing a class definition).
+
+If the parent class for some reason cannot be loaded a specific error message is used instead
+of just reporting a missing class.
+
+In other words: the dynamic parent class is used instead of `AbstractEntity` but in all other
+ways the model works like a normal Extbase domain model. 
+
+An annotated domain model class example:
+
+```php
+<?php
+// Load the class, and generate the fallback and attempt to generate the dynamic
+// class file if this is possible (config complete, API responding) and if not already
+// generated. Any inclusion generates all classes for all modules since relations may
+// point to other models.
+DynamicModelGenerator::loadAbstractClass(AbstractProduct::class);
+
+/**
+ * Product
+ *
+ * The implementation using the dynamic parent class.
+ * This class can contain custom properties or overrides
+ * of properties on the parent class.
+ */
+class Product extends AbstractProduct
+{
+    /**
+     * Example of a property which needs a special instance
+     * type. This property is overridden here and annotated
+     * with a different property type than the one coming
+     * from the remote API. This annotation is then read and
+     * assuming you have a so-called "TypeConverter" that can
+     * convert from the data type the remote API returns, to
+     * this class type, the value from the remote API gets
+     * converted to an instance of `My\Special\Class` before
+     * it is passed to the setter method.
+     *
+     * @var \My\Special\Class
+     */
+    protected $specialProperty;
+    
+    // Imagine a standard getter and setter method for $this->specialProperty here
+
+    /**
+     * Overridden getter for a dynamically added property.
+     * Useful if the value must be transformed before display,
+     * for example to preserve only some tags in HTML that
+     * you display in the template without escaping it.
+     *
+     * The property name in the remote API in this case is
+     * "my_property" which in TYPO3 gets converted to the
+     * lowerCamelCase format and becomes "myProperty".
+     *
+     * @return string
+     */
+    public function getMyProperty()
+    {
+        return strip_tags($this->myProperty, '<a><em><i><strong><b>');
+    }
+}
+```
+
+Note: in order to make these classes visible to an IDE, the file system path must be included
+and not excluded. The default folder in which classes get generated is:
+
+```
+./typo3temp/var/Cache/Code/fourallportal_classes/
+```
+
+Normal practice is to exclude scanning files in `typo3temp` but in the context of fourallportal
+it is very helpful to not exclude this specific folder.
+
+You can also inspect the generated classes in this folder. They use a shared-hash filename with
+a suffix to identify the fallback version.
+
+
+#### Preventing use of the automatic model
+
+In some cases it may be necessary to opt out from dynamic model generation. There are two ways
+in which this can be done, both of which are equally valid:
+
+1. You can manually create the `AbstractXyz` class in the namespace where it is expected. When
+   the class already exists there, attempting to load the class returns that implementation
+   instead of the dynamic one _even if you called the special loadClass API method in a model
+   class file!_
+2. You can configure a toggle in the Module settings in TYPO3 to disable the dynamic model
+   feature on a per-connector/module basis. Doing this implies you *must* manually create the
+   parent class and simply not use the parent class nor API related when creating your model
+   class and TCA for the entity.
+
+
+#### The TCA definitions file
+
+TCA (Table Configuration Array) must be written for entities - just like any other Extbase
+model requires it - but the TCA array must be constructed with some parts using an API call
+to the fourallportal extension, to add the dynamic columns that are returned from the remote
+API. Without this TCA, the properties will simply be ignored when they are persited; the
+query to update the database will not contain the columns at all.
+
+The following is a *heavily* truncated example TCA configuration file, like the ones you would
+place in your extension to configure your entities:
+
+```php
+<?php
+return [
+    'ctrl' => [
+        'title' => 'LLL:EXT:products/Resources/Private/Language/locallang_db.xlf:tx_products_domain_model_product',
+    ],
+    'interface' => [
+        'showRecordFieldList' => 'brand, dyn1, dyn2',
+    ],
+    'columns' => array_merge(
+        \Crossmedia\Fourallportal\DynamicModel\DynamicModelGenerator::generateTableConfigurationForModuleIdentifiedByModelClassName(\Crossmedia\Products\Domain\Model\Product::class),
+        [
+            'brand' => [
+                'exclude' => true,
+                'label' => 'LLL:EXT:products/Resources/Private/Language/locallang_db.xlf:tx_products_domain_model_product.brand',
+                'config' => [
+                    'type' => 'input',
+                ],
+            ],
+        ]
+    )
+];
+```
+
+The important part to notice is that instead of hard-coding an array in the `columns` index,
+as is normally done with TCA, the PHP function `array_merge()` is called with two arrays as
+input to create a merged result:
+
+1. The dynamic array of TCA based on columns returned from the remote API. 
+2. The associative array you would normally define in `columns` which describe all of the
+   properties that you *manually* added or are required by TYPO3 itself. This array gets quite
+   big and in this example only contains a single field; normally you have 10+.
+
+Anything you define in the second array will overrule what is generated in the first array. If
+you need this to be different simply pass the API call as second array for `array_merge`.
+
+The TCA generated this way gets cached by TYPO3 and will not be cleared unless the "all" or
+"system" caches are cleared, which fits perfectly with the rebuilding of the model class files.
+
+#### The model update command
+
+There are two ways to force dynamic models to be updated.
+
+From the command line (or as scheduler task executing the "Extbase Controller Command")
+
+```bash
+./typo3/cli_dispatch.phpsh extbase fourallportal:updateModels
+```
+
+This command force-updates all models by reading the remote API and then regenerating
+the classes (overwriting already generated ones if they exist).
+
+The second way is to flush the TYPO3 system caches. This also triggers a model rebuild
+and is intended as a way to let developers quickly trigger the rebuild on demand. Note
+that the rebuild only happens if you flush the "all" or "system" caches.
+
+
+Adding a scheduled task
+-----------------------
+
+In order to schedule the import command so it will execute at regular intervals, you have
+two main strategies available to you:
+
+1. Directly running the import command from crontab
+2. Creating a scheduled task in TYPO3 which executes the command controller
+
+The first option is covered in extensive detail in `man crontab` on any UNIX system so it
+won't be covered here.
+
+The second option, adding a scheduled task in TYPO3, requires the following steps:
+
+* Make sure a crontab task exists which calls `./typo3/cli_dispatch.phpsh scheduler` at
+  regular intervals. The interval you set for this crontab task will be the lowest possible
+  frequency at which jobs can run in TYPO3; suggested value is every 5 minutes.
+* Make sure the `scheduler` system extension is installed in TYPO3.
+* In the Scheduler backend module, add a new task and select the "Extbase command controller"
+  task from the list of task types.
+* Fill in an interval, for example `*/5 * * * *` or `300` which both mean every 5 minutes.
+* Now save the scheduled task (save, do not save and close).
+* Scroll down to the newly added field where you select the Extbase command controller to be
+  executed. Select the `Fourallportal fourallportal: sync` command type.
+* Now save the task again (save, do not save and close).
+* Once again, scroll down and you will find the last configurable field with the label
+  `sync`. If you enable this field, the task will do a full synchronisation resetting the
+  last received event ID and spooling all events again. Leaving it disabled makes the task
+  start with the last received event.
+  
+The necessity to save and re-edit the task multiple times is caused by the slightly old API
+that exists in Scheduler: it does not allow scanning all of the available tasks and their
+arguments, so the command options do not become available until a task type is selected and
+the task is saved - and the arguments the command takes does not become available until the
+command type is selected and the task is saved again.
+
+This approach is necessary with any Extbase command controller.
+
+Note that the `sync` argument should only be enabled if you explicitly want the task to do
+a full synchronisation every time it runs. This should never be enabled on production
+systems; it is there mostly for development and resetting if/when event errors should occur. 
+
+Like the `sync` command, the `updateModels` command can also be scheduled should you wish to
+make your models be updated at certain times. The recommendation however is to only trigger
+model rebuilding manually since updates may reveal a need to extend the local mapping info
+or add properties to models.
+
+
 Expected behavior
 -----------------
 
@@ -271,6 +629,7 @@ CLI command should cause the following chain of events to occur:
 * If successful, all properties received from PIM are mapped onto the Entity properties
   and saved to the database.
 * If any errors should occur, feedback is output identifying the source of the problem.
+
 
 Developer hints
 ---------------

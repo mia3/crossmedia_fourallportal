@@ -8,10 +8,14 @@ use Crossmedia\Fourallportal\Service\ApiClient;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Resource\Exception\ExistingTargetFileNameException;
 use TYPO3\CMS\Core\Resource\Exception\FolderDoesNotExistException;
+use TYPO3\CMS\Core\Resource\File;
 use TYPO3\CMS\Core\Resource\FileRepository;
+use TYPO3\CMS\Core\Resource\Index\MetaDataRepository;
+use TYPO3\CMS\Core\Resource\ResourceStorageInterface;
 use TYPO3\CMS\Core\Resource\StorageRepository;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Domain\Model\FileReference;
+use TYPO3\CMS\Extbase\DomainObject\AbstractEntity;
 use TYPO3\CMS\Extbase\Object\ObjectManager;
 use TYPO3\CMS\Extbase\Persistence\Generic\PersistenceManager;
 
@@ -25,7 +29,7 @@ class FalMapping extends AbstractMapping
     /**
      * @return string
      */
-    protected function getEntityClassName()
+    public function getEntityClassName()
     {
         return FileReference::class;
     }
@@ -63,18 +67,8 @@ class FalMapping extends AbstractMapping
                     return;
                 }
             case 'create':
-                if (!$object) {
-                    // Download the file's binary data to local storage, then load the file as File object, then manually update the database to set the one column we can't access through the model.
-                    $object = $this->downloadFileAndGetCreatedFileObject($objectId, $data, $event);
-                }
+                $object = $this->downloadFileAndGetFileObject($objectId, $data, $event);
                 $this->mapPropertiesFromDataToObject($data, $object);
-                /*
-                if ($object->getUid()) {
-                    $repository->update($object);
-                } else {
-                    $repository->add($object);
-                }
-                */
                 break;
             default:
                 throw new \RuntimeException('Unknown event type: ' . $event->getEventType());
@@ -88,21 +82,47 @@ class FalMapping extends AbstractMapping
     }
 
     /**
+     * @param array $data
+     * @param \TYPO3\CMS\Extbase\DomainObject\AbstractEntity $object
+     * @return AbstractEntity
+     */
+    protected function mapPropertiesFromDataToObject(array $data, $object)
+    {
+        parent::mapPropertiesFromDataToObject($data, $object);
+        $metadata = [];
+        $map = MappingRegister::resolvePropertyMapForMapper(static::class);
+
+        foreach ($data['result'][0]['properties'] as $propertyName => $propertyValue) {
+            if (isset($map[$propertyName])) {
+                $targetPropertyName = $map[$propertyName];
+                if (substr($targetPropertyName, 0, 9) === 'metadata.') {
+                    $metadata[substr($targetPropertyName, 9)] = $propertyValue;
+                }
+            }
+        }
+
+        if (!empty($metadata)) {
+            $metadataRepository = $this->getMetaDataRepository();
+            $metadataRepository->update($object->getUid(), $metadata);
+        }
+        return $object;
+    }
+
+    /**
      * @param string $objectId
      * @param array $data
      * @param Event $event
      * @return File
      */
-    protected function downloadFileAndGetCreatedFileObject($objectId, array $data, Event $event)
+    protected function downloadFileAndGetFileObject($objectId, array $data, Event $event)
     {
-        $client = $this->getClientByServer($event->getModule()->getServer());
-
         $targetFilename = $data['result'][0]['properties']['data_name'];
         $tempPathAndFilename = GeneralUtility::tempnam('mamfal', $targetFilename);
 
         $trimShellPath = $event->getModule()->getShellPath();
         $targetFolder = substr($data['result'][0]['properties']['data_shellpath'], strlen($trimShellPath));
 
+        $client = $this->getClientByServer($event->getModule()->getServer());
         $storage = (new StorageRepository())->findByUid($event->getModule()->getFalStorage());
         try {
             $folder = $storage->getFolder($targetFolder);
@@ -110,10 +130,11 @@ class FalMapping extends AbstractMapping
             $folder = $storage->createFolder($targetFolder);
         }
 
+        $client->saveDerivate($tempPathAndFilename, $event->getObjectId());
+        $contents = file_get_contents($tempPathAndFilename);
+
         try {
-            $client->saveDerivate($tempPathAndFilename, $objectId);
-            $contents = file_get_contents($tempPathAndFilename);
-            $file = $folder->createFile($targetFilename)->setContents($contents);
+            $file = $folder->createFile($targetFilename);
         } catch (ExistingTargetFileNameException $error) {
             $file = reset($this->getObjectRepository()->searchByName($folder, $targetFilename));
         }
@@ -122,6 +143,7 @@ class FalMapping extends AbstractMapping
             throw new \RuntimeException('Unable to either create or re-use existing file: ' . $targetFolder . $targetFilename);
         }
 
+        $file->setContents($contents);
 
         $queryBuilder = (new ConnectionPool())->getConnectionForTable('sys_file')->createQueryBuilder();
         $query = $queryBuilder->update('sys_file', 'f')
@@ -232,4 +254,11 @@ class FalMapping extends AbstractMapping
         return $status;
     }
 
+    /**
+     * @return MetaDataRepository
+     */
+    protected function getMetaDataRepository()
+    {
+        return GeneralUtility::makeInstance(MetaDataRepository::class);
+    }
 }

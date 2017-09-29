@@ -35,7 +35,9 @@ CREATE TABLE tx_fourallportal_domain_model_module (
 	server int(11) unsigned DEFAULT '0' NOT NULL,
 
 	connector_name varchar(255) DEFAULT '' NOT NULL,
+	module_name varchar(255) DEFAULT '' NOT NULL,
 	mapping_class varchar(255) DEFAULT '' NOT NULL,
+	enable_dynamic_model int(4) unsigned DEFAULT '1' NOT NULL,
 	config_hash varchar(255) DEFAULT '' NOT NULL,
 	last_event_id int(11) DEFAULT '0' NOT NULL,
 	shell_path varchar(255) DEFAULT '' NOT NULL,
@@ -45,6 +47,34 @@ CREATE TABLE tx_fourallportal_domain_model_module (
 	tstamp int(11) unsigned DEFAULT '0' NOT NULL,
 	crdate int(11) unsigned DEFAULT '0' NOT NULL,
 	cruser_id int(11) unsigned DEFAULT '0' NOT NULL,
+
+	PRIMARY KEY (uid),
+	KEY parent (pid),
+
+);
+
+#
+# Table structure for table 'tx_fourallportal_domain_model_complextype'
+#
+CREATE TABLE tx_fourallportal_domain_model_complextype (
+
+	uid int(11) NOT NULL auto_increment,
+	pid int(11) DEFAULT '0' NOT NULL,
+
+	name varchar(255) DEFAULT '' NOT NULL,
+	field_name varchar(255) DEFAULT '' NOT NULL,
+	table_name varchar(255) DEFAULT '' NOT NULL,
+	parent_pid int(11) DEFAULT '0' NOT NULL,
+	type varchar(255) DEFAULT '' NOT NULL,
+	label varchar(255) DEFAULT '' NOT NULL,
+	normalized_value varchar(255) DEFAULT '' NOT NULL,
+	actual_value varchar(255) DEFAULT '' NOT NULL,
+	cast_type varchar(16) DEFAULT '' NOT NULL,
+
+	tstamp int(11) unsigned DEFAULT '0' NOT NULL,
+	crdate int(11) unsigned DEFAULT '0' NOT NULL,
+	cruser_id int(11) unsigned DEFAULT '0' NOT NULL,
+	deleted smallint(5) unsigned DEFAULT '0' NOT NULL,
 
 	PRIMARY KEY (uid),
 	KEY parent (pid),
