@@ -42,7 +42,7 @@ class FalMapping extends AbstractMapping
 
         // We have to do things the hard way, unfortunately. Because someone didn't implement a real Repository but declared the class a Repository anyway. Sigh.
         $queryBuilder = (new ConnectionPool())->getConnectionForTable('sys_file')->createQueryBuilder();
-        $query = $queryBuilder->select('uid')->from('sys_file')->where(sprintf('remote_id = \'%s\'', $objectId))->setMaxResults(1);
+        $query = $queryBuilder->select('uid')->from('sys_file')->where($queryBuilder->expr()->eq('remote_id', $objectId))->setMaxResults(1);
         $record = $query->execute()->fetch();
         if ($record) {
             $object = $repository->findByUid($record['uid']);
@@ -126,7 +126,7 @@ class FalMapping extends AbstractMapping
         $queryBuilder = (new ConnectionPool())->getConnectionForTable('sys_file')->createQueryBuilder();
         $query = $queryBuilder->update('sys_file', 'f')
             ->set('f.remote_id', $objectId)
-            ->where('f.uid = ' . $file->getUid())
+            ->where($queryBuilder->expr()->eq('f.uid', $file->getUid()))
             ->setMaxResults(1);
 
         if (!is_int($query->execute())) {
