@@ -4,9 +4,8 @@ namespace Crossmedia\Fourallportal\Command;
 use Crossmedia\Fourallportal\Domain\Model\Event;
 use Crossmedia\Fourallportal\Domain\Model\Module;
 use Crossmedia\Fourallportal\Domain\Model\Server;
-use Crossmedia\Fourallportal\Error\ApiException;
 use Crossmedia\Fourallportal\Service\ApiClient;
-use \TYPO3\CMS\Extbase\Mvc\Controller\CommandController;
+use TYPO3\CMS\Extbase\Mvc\Controller\CommandController;
 use TYPO3\CMS\Extbase\Persistence\PersistenceManagerInterface;
 use TYPO3\CMS\Form\Domain\Runtime\Exception\PropertyMappingException;
 
