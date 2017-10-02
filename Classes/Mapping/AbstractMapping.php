@@ -85,7 +85,7 @@ abstract class AbstractMapping implements MappingInterface
         $map = MappingRegister::resolvePropertyMapForMapper(static::class);
         $properties = $data['result'][0]['properties'];
         foreach ($properties as $importedName => $propertyValue) {
-            if ($map[$importedName] ?? null === false) {
+            if (($map[$importedName] ?? null) === false) {
                 continue;
             }
             $targetPropertyName = isset($map[$importedName]) ? $map[$importedName] : GeneralUtility::underscoredToLowerCamelCase($importedName);
