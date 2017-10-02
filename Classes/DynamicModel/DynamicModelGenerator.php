@@ -293,6 +293,9 @@ TEMPLATE;
                             $module->getMapper()->getEntityClassName()
                         )
                     );
+                } elseif (MappingRegister::resolvePropertyValueSetter($module->getMappingClass(), $originalName)) {
+                    // Properties which are mapped using ValueSetter implementations must be skipped.
+                    continue;
                 }
                 list ($type, $schema, $tca) = $this->guessLocalTypesFromRemoteField($fieldConfiguration, $module->getModuleName());
                 $properties[GeneralUtility::underscoredToLowerCamelCase($originalName)] = [

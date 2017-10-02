@@ -192,6 +192,55 @@ Once the desired target data type is determined, the mapping class uses a limite
 the features of the `PropertyMapper` to detect a `TypeConverter` that accepts the input data
 type and yields the expected output type.
 
+
+#### Edge case per-property conversion
+
+It is not always the case that the standard Extbase/TYPO3 property types fit exactly with the
+desired input- and output data types - and sometimes, not even a `TypeConverter` is flexible
+enough to handle input values.
+
+For these edge cases a special `ValueSetterInterface` is added which can be implemented by
+a class and then configured in the mapping array:
+
+ ```php
+ <?php
+ // In ext_localconf.php of custom extension
+ \Crossmedia\Fourallportal\Mapping\MappingRegister::registerMapping(
+     \Crossmedia\Products\Fourallportal\ProductMapping::class,
+     array(
+         'description' => \My\Special\ValueSetterImplementation::class,
+     )
+ );
+ ```
+
+```php
+<?php
+// The class used in that mapping array
+namespace My\Special;
+
+use Crossmedia\Fourallportal\Mapping\MappingInterface;
+use Crossmedia\Fourallportal\Mapping\ValueSetterInterface;
+
+class ValueSetterImplementation implements ValueSetterInterface
+{
+    public function setValueOnObject($value, $sourcePropertyName, array $inputData, $object, MappingInterface $mappingClass)
+    {
+        // Do something to the input property value that normal TypeConverters can't.
+        // Or call special setters or other methods on the object to set values in ways
+        // standard setters can't, for example when using non-standard setter methods
+        // or methods which toggle multiple other properties based on data from the API.
+        $object->doSomethingSpecialWithValue($value);
+        // There is no return value since $object gets updated by reference. 
+    }
+}
+
+```
+
+Note that such properties are ignored when building dynamic properties. This means that if
+the property you handle requires either a domain object property, TCA or SQL schema, then
+you must manually define all of these things since they will not be added automatically.
+
+
 #### The purpose of `TypeConverters`
 
 The choice of `TypeConverters` to do the actual conversion is a way to approximate how TYPO3

@@ -1,6 +1,8 @@
 <?php
 namespace Crossmedia\Fourallportal\Mapping;
 
+use TYPO3\CMS\Core\Utility\GeneralUtility;
+
 class MappingRegister
 {
     /**
@@ -36,6 +38,20 @@ class MappingRegister
     public static function resolvePropertyMapForMapper($className)
     {
         return self::$propertyMaps[$className];
+    }
+
+    /**
+     * @param string $className
+     * @param string $sourcePropertyName
+     * @return ValueSetterInterface|null
+     */
+    public static function resolvePropertyValueSetter($className, $sourcePropertyName)
+    {
+        $targetPropertyMapping = static::resolvePropertyMapForMapper($className)[$sourcePropertyName] ?? null;
+        if ($targetPropertyMapping && is_a($targetPropertyMapping, ValueSetterInterface::class, true)) {
+            return GeneralUtility::makeInstance($targetPropertyMapping);
+        }
+        return null;
     }
 
     /**

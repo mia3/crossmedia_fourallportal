@@ -88,8 +88,13 @@ abstract class AbstractMapping implements MappingInterface
             if (($map[$importedName] ?? null) === false) {
                 continue;
             }
-            $targetPropertyName = isset($map[$importedName]) ? $map[$importedName] : GeneralUtility::underscoredToLowerCamelCase($importedName);
-            $this->mapPropertyValueToObject($targetPropertyName, $propertyValue, $object);
+            $customSetter = MappingRegister::resolvePropertyValueSetter(static::class, $importedName);
+            if ($customSetter) {
+                $customSetter->setValueOnObject($propertyValue, $importedName, $data, $object, $this);
+            } else {
+                $targetPropertyName = isset($map[$importedName]) ? $map[$importedName] : GeneralUtility::underscoredToLowerCamelCase($importedName);
+                $this->mapPropertyValueToObject($targetPropertyName, $propertyValue, $object);
+            }
         }
     }
 
