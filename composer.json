@@ -24,5 +24,9 @@
         "psr-4": {
             "Crossmedia\\Fourallportal\\Tests\\": "Tests/"
         }
+    },
+    "replace": {
+        "fourallportal": "self.version",
+        "typo3-ter/fourallportal": "self.version"
     }
 }
