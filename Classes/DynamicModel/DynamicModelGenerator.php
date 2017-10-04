@@ -391,8 +391,9 @@ TEMPLATE;
             case 'ONE_TO_MANY':
             case 'MANY_TO_ONE':
             case 'FIELD_LINK':
+                $modules = $this->getAllConfiguredModules();
                 $tca = $this->determineTableConfigurationForRelation($fieldConfiguration, $currentSideModuleName);
-                $dataType = 'integer';
+                $dataType = '\\' . $modules[$fieldConfiguration['relatedModule']]->getMapper()->getEntityClassName();
                 $sqlType = 'int(11) default 0 NOT NULL';
                 break;
             default:
@@ -558,6 +559,7 @@ TEMPLATE;
         }
 
         if ($tca['foreign_table'] === 'sys_file_reference') {
+            $tca['type'] = 'inline';
             $tca['config'] = \TYPO3\CMS\Core\Utility\ExtensionManagementUtility::getFileFieldTCAConfig(
                 $fieldConfiguration['name'],
                 [
@@ -606,7 +608,7 @@ TEMPLATE;
             );
         }
 
-        if (!($tca['foreign_table'] && false)) {
+        if (!($tca['foreign_table'] ?? false)) {
             throw new \RuntimeException(
                 sprintf(
                     'Field "%s" defines a CEExternalId or CEExternalIdList which does not configure a related module. ' .
