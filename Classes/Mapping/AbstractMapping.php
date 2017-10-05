@@ -16,6 +16,7 @@ use TYPO3\CMS\Extbase\Property\TypeConverter\PersistentObjectConverter;
 use TYPO3\CMS\Extbase\Reflection\MethodReflection;
 use TYPO3\CMS\Extbase\Reflection\ObjectAccess;
 use TYPO3\CMS\Extbase\Reflection\PropertyReflection;
+use TYPO3\CMS\Extbase\Validation\Error;
 
 abstract class AbstractMapping implements MappingInterface
 {
@@ -114,22 +115,23 @@ abstract class AbstractMapping implements MappingInterface
             return;
         }
         $configuration = new PropertyMappingConfiguration();
-        /*
+
         $configuration->allowAllProperties();
         $configuration->setTypeConverterOption(PersistentObjectConverter::class, PersistentObjectConverter::CONFIGURATION_CREATION_ALLOWED, true);
         $configuration->setTypeConverterOption(PersistentObjectConverter::class, PersistentObjectConverter::CONFIGURATION_MODIFICATION_ALLOWED, true);
-        */
+
 
         $propertyMapper = $this->getAccessiblePropertyMapper();
         $targetType = $this->determineDataTypeForProperty($propertyName, $object);
         if (strpos($targetType, '<')) {
             $childType = substr($targetType, strpos($targetType, '<') + 1, -1);
+            $childType = trim($childType, '\\');
             $objectStorage = ObjectAccess::getProperty($object, $propertyName);
             foreach ((array) $propertyValue as $identifier) {
                 if (!$identifier) {
                     continue;
                 }
-                $child = $propertyMapper->findTypeConverter($identifier, $childType, $configuration)->convertFrom($identifier, $childType);
+                $child = $propertyMapper->findTypeConverter($identifier, $childType, $configuration)->convertFrom($identifier, $childType, [], $configuration);
                 if (!$child) {
                     throw new \RuntimeException('Child of type ' . $childType . ' identified by ' . $identifier . ' could not be found');
                 }
@@ -138,11 +140,23 @@ abstract class AbstractMapping implements MappingInterface
             $propertyValue = $objectStorage;
         } else {
             if ($targetType !== $propertyMapper->determineSourceType($propertyValue)) {
+                $targetType = trim($targetType, '\\');
                 $typeConverter = $propertyMapper->findTypeConverter($propertyValue, $targetType, $configuration);
                 if ($typeConverter instanceof PimBasedTypeConverterInterface) {
                     $typeConverter->setParentObjectAndProperty($object, $propertyName);
                 }
-                $propertyValue = $typeConverter->convertFrom($propertyValue, $targetType);
+                $propertyValue = $typeConverter->convertFrom($propertyValue, $targetType, [], $configuration);
+
+                if ($propertyValue instanceof Error) {
+                    // For whatever reason, property validators will return a validation error rather than throw an exception.
+                    // We therefore need to check this, log the problem, and skip the property.
+                    GeneralUtility::sysLog(
+                        'Error mapping ' . get_class($object) . '->' . $propertyName . ': ' . $propertyValue->getMessage(),
+                        'fourallportal',
+                        GeneralUtility::SYSLOG_SEVERITY_WARNING
+                    );
+                    return;
+                }
 
                 // Sanity filter: do not attempt to set Entity with setter if an instance is required but the value is null.
                 if ((new \ReflectionMethod(get_class($object), 'set' . ucfirst($propertyName)))->getNumberOfRequiredParameters() === 1) {
@@ -154,10 +168,13 @@ abstract class AbstractMapping implements MappingInterface
         }
 
         $setOnObject = $object;
-        $propertyPath = explode('.', $propertyName);
-        $lastPropertyName = array_pop($propertyPath);
-        foreach ($propertyPath as $currentPropertyName) {
-            $setOnObject = ObjectAccess::getProperty($setOnObject, $currentPropertyName);
+        $lastPropertyName = $propertyName;
+        if (strpos($propertyName, '.') !== false) {
+            $propertyPath = explode('.', $propertyName);
+            $lastPropertyName = array_pop($propertyPath);
+            foreach ($propertyPath as $currentPropertyName) {
+                $setOnObject = ObjectAccess::getProperty($setOnObject, $currentPropertyName);
+            }
         }
 
         ObjectAccess::setProperty($setOnObject, $lastPropertyName, $propertyValue);

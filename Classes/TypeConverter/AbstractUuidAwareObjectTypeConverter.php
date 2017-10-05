@@ -86,12 +86,4 @@ abstract class AbstractUuidAwareObjectTypeConverter extends AbstractTypeConverte
     {
         return 90;
     }
-
-    /**
-     * @return string
-     */
-    public function getSupportedTargetType()
-    {
-        return '\\' . ltrim($this->targetType, '\\');
-    }
 }
