@@ -9,7 +9,6 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Mvc\Controller\CommandController;
 use TYPO3\CMS\Extbase\Object\ObjectManager;
 use TYPO3\CMS\Extbase\Persistence\PersistenceManagerInterface;
-use TYPO3\CMS\Form\Domain\Runtime\Exception\PropertyMappingException;
 
 class FourallportalCommandController extends CommandController
 {
@@ -125,7 +124,7 @@ class FourallportalCommandController extends CommandController
             // deferred events to execute without lowering the last recorded event ID which would cause
             // duplicate event processing on the next run.
             $event->getModule()->setLastEventId(max($event->getEventId(), $event->getModule()->getLastEventId()));
-        } catch (PropertyMappingException $error) {
+        } catch (\InvalidArgumentException $error) {
             // The system was unable to map properties, most likely because of an unresolvable relation.
             // Skip the event for now; process it later.
             $event->setStatus('deferred');
