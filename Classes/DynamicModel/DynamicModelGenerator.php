@@ -568,8 +568,7 @@ TEMPLATE;
         }
 
         if (($tca['foreign_table'] ?? null) === 'sys_file_reference') {
-            $tca['type'] = 'inline';
-            $tca['config'] = \TYPO3\CMS\Core\Utility\ExtensionManagementUtility::getFileFieldTCAConfig(
+            $tca = \TYPO3\CMS\Core\Utility\ExtensionManagementUtility::getFileFieldTCAConfig(
                 $fieldConfiguration['name'],
                 [
                     'appearance' => [
