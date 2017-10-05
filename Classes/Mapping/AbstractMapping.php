@@ -10,6 +10,7 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\DomainObject\AbstractEntity;
 use TYPO3\CMS\Extbase\Object\ObjectManager;
 use TYPO3\CMS\Extbase\Persistence\Generic\PersistenceManager;
+use TYPO3\CMS\Extbase\Persistence\ObjectStorage;
 use TYPO3\CMS\Extbase\Persistence\RepositoryInterface;
 use TYPO3\CMS\Extbase\Property\PropertyMappingConfiguration;
 use TYPO3\CMS\Extbase\Property\TypeConverter\PersistentObjectConverter;
@@ -126,7 +127,7 @@ abstract class AbstractMapping implements MappingInterface
         if (strpos($targetType, '<')) {
             $childType = substr($targetType, strpos($targetType, '<') + 1, -1);
             $childType = trim($childType, '\\');
-            $objectStorage = ObjectAccess::getProperty($object, $propertyName);
+            $objectStorage = ObjectAccess::getProperty($object, $propertyName) ?? new ObjectStorage();
             foreach ((array) $propertyValue as $identifier) {
                 if (!$identifier) {
                     continue;
