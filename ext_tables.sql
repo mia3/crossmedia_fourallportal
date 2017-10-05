@@ -98,7 +98,7 @@ CREATE TABLE tx_fourallportal_domain_model_event (
 
 	url text,
 	headers text,
-	response text,
+	response longtext,
 	payload text,
 	message text,
 
