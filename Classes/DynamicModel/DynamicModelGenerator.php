@@ -14,6 +14,7 @@ use TYPO3\CMS\Extbase\DomainObject\AbstractEntity;
 use TYPO3\CMS\Extbase\Object\ObjectManager;
 use TYPO3\CMS\Extbase\Persistence\Generic\Mapper\DataMapper;
 use TYPO3\CMS\Extbase\Persistence\Generic\PersistenceManager;
+use TYPO3\CMS\Extbase\Persistence\ObjectStorage;
 
 /**
  * Class DynamicModelGenerator
@@ -382,18 +383,20 @@ TEMPLATE;
                 $dataType = 'array';
                 $sqlType = 'text';
                 break;
-            case 'CEId':
-            case 'CEIdList':
-            case 'CEExternalId':
             case 'CEExternalIdList':
+            case 'CEIdList':
             case 'MANY_TO_MANY':
-            case 'ONE_TO_ONE':
             case 'ONE_TO_MANY':
             case 'MANY_TO_ONE':
+                $modules = $this->getAllConfiguredModules();
+                $dataType = '\\' . ObjectStorage::class . '<\\' . $modules[$fieldConfiguration['relatedModule']]->getMapper()->getEntityClassName() . '>';
+            case 'CEId':
+            case 'CEExternalId':
+            case 'ONE_TO_ONE':
             case 'FIELD_LINK':
                 $modules = $this->getAllConfiguredModules();
                 $tca = $this->determineTableConfigurationForRelation($fieldConfiguration, $currentSideModuleName);
-                $dataType = '\\' . $modules[$fieldConfiguration['relatedModule']]->getMapper()->getEntityClassName();
+                $dataType = $dataType ?? '\\' . $modules[$fieldConfiguration['relatedModule']]->getMapper()->getEntityClassName();
                 $sqlType = 'int(11) default 0 NOT NULL';
                 break;
             default:
@@ -418,11 +421,12 @@ TEMPLATE;
             $tca = [
                 'type' => 'inline',
                 'foreign_table' => 'tx_fourallportal_domain_model_complextype',
-                'foreign_table_field' => 'parent_uid',
+                'foreign_field' => 'parent_uid',
                 'foreign_match_fields' => [
-                    'table_name' => $tableNameParent,
+                    //'table_name' => $tableNameParent,
                     'field_name' => $fieldConfiguration['name'],
                 ],
+                'foreign_table_field' => 'table_name',
                 //'foreign_table_field' => $entityShortNameParent,
                 'maxitems' => 1
             ];
@@ -467,7 +471,7 @@ TEMPLATE;
             if ($fieldConfiguration['type'] === 'CEExternalId') {
                 $overriddenType = 'ONE_TO_ONE';
             } elseif ($fieldConfiguration['type'] === 'CEExternalIdList') {
-                $overriddenType = 'ONE_TO_MANY';
+                $overriddenType = 'MANY_TO_MANY';
             }
             if (!($fieldConfiguration['child'] ?? false)) {
                 $fieldConfiguration['child'] = $fieldConfiguration['relatedModule'];
@@ -527,16 +531,21 @@ TEMPLATE;
             // This table can then be generated on-the-fly since all MM tables have the same default structure when written
             // by this model generator class.
             case 'MANY_TO_MANY':
-                $tca['MM'] = 'tx_fourallportal_' . $fieldConfiguration['name'];
+                $tca['type'] = 'group';
+                $tca['internal_type'] = 'db';
+                $tca['allowed'] = $tableNameChild ?? $tableNameParent;
+                $tca['MM'] = 'tx_fourallportal_' . $fieldConfiguration['name'] . '_mm';
 
                 // Set "MM_opposite_field" to indicate this M:N is mirrored by other TCA. To do so, we must determine if
                 // we are currently on the child side of the relation, in which case our field name comes from the child
                 // entity name, and comes from parent if the opposite is true.
+                /*
                 if ($currentSideModuleName === $fieldConfiguration['child']) {
                     $tca['MM_opposite_field'] = GeneralUtility::camelCaseToLowerCaseUnderscored($entityShortNameChild);
                 } else {
                     $tca['MM_opposite_field'] = GeneralUtility::camelCaseToLowerCaseUnderscored($entityShortNameParent);
                 }
+                */
                 break;
 
             // 1:N is expressed by setting a "foreign_field" to be used when matching records. In a 1:1 relation the "uid"
@@ -548,8 +557,8 @@ TEMPLATE;
             // entity names by analyzing which Modules have Connectors that use Mappers which handle the entities.
             case 'MANY_TO_ONE':
             case 'ONE_TO_MANY':
-                $tca['foreign_field'] = GeneralUtility::camelCaseToLowerCaseUnderscored($entityShortNameParent);
-                $tca['symmetric_field'] = GeneralUtility::camelCaseToLowerCaseUnderscored($entityShortNameChild);
+                $tca['foreign_field'] = GeneralUtility::camelCaseToLowerCaseUnderscored($entityShortNameParent) ?: $currentSideModuleName;
+                //$tca['symmetric_field'] = GeneralUtility::camelCaseToLowerCaseUnderscored($entityShortNameChild);
                 break;
 
             // Fallback case; ONE_TO_ONE is the default type of relation
@@ -558,7 +567,7 @@ TEMPLATE;
                 break;
         }
 
-        if ($tca['foreign_table'] === 'sys_file_reference') {
+        if (($tca['foreign_table'] ?? null) === 'sys_file_reference') {
             $tca['type'] = 'inline';
             $tca['config'] = \TYPO3\CMS\Core\Utility\ExtensionManagementUtility::getFileFieldTCAConfig(
                 $fieldConfiguration['name'],
@@ -608,7 +617,7 @@ TEMPLATE;
             );
         }
 
-        if (!($tca['foreign_table'] ?? false)) {
+        if (!($tca['foreign_table'] ?? false) && ($tca['type'] ?? false) !== 'group') {
             throw new \RuntimeException(
                 sprintf(
                     'Field "%s" defines a CEExternalId or CEExternalIdList which does not configure a related module. ' .
