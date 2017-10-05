@@ -9,7 +9,6 @@ use Crossmedia\Fourallportal\DynamicModel\ComplexTypeFactory;
 use Crossmedia\Fourallportal\Mapping\MappingInterface;
 use Crossmedia\Fourallportal\Mapping\MappingRegister;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
-use TYPO3\CMS\Extbase\Domain\Model\FileReference;
 use TYPO3\CMS\Extbase\DomainObject\AbstractEntity;
 use TYPO3\CMS\Extbase\Object\ObjectManager;
 use TYPO3\CMS\Extbase\Persistence\RepositoryInterface;

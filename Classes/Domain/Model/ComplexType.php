@@ -55,6 +55,11 @@ class ComplexType extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
     protected $castType;
 
     /**
+     * @var int
+     */
+    protected $parentUid;
+
+    /**
      * @return string
      */
     public function getType()
@@ -166,6 +171,22 @@ class ComplexType extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
     public function setCastType($castType)
     {
         $this->castType = $castType;
+    }
+
+    /**
+     * @return int
+     */
+    public function getParentUid()
+    {
+        return $this->parentUid;
+    }
+
+    /**
+     * @param int $parentUid
+     */
+    public function setParentUid($parentUid)
+    {
+        $this->parentUid = $parentUid;
     }
 
     /**

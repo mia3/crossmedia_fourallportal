@@ -8,8 +8,6 @@ return [
         'cruser_id' => 'cruser_id',
         'rootLevel' => 1,
         'delete' => 'deleted',
-        'enablecolumns' => [
-        ],
         'searchFields' => 'event_id,event_type,status,skip_until,object_id,module',
         'iconfile' => 'EXT:fourallportal/Resources/Public/Icons/tx_fourallportal_domain_model_complextype.gif'
     ],
@@ -78,6 +76,13 @@ return [
         'cast_type' => [
             'exclude' => true,
             'label' => 'LLL:EXT:fourallportal/Resources/Private/Language/locallang_db.xlf:tx_fourallportal_domain_model_complextype.cast_type',
+            'config' => [
+                'type' => 'passthrough',
+            ]
+        ],
+        'parent_uid' => [
+            'exclude' => true,
+            'label' => 'LLL:EXT:fourallportal/Resources/Private/Language/locallang_db.xlf:tx_fourallportal_domain_model_complextype.parent_uid',
             'config' => [
                 'type' => 'passthrough',
             ]
