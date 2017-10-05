@@ -94,14 +94,13 @@ class FileReferenceTypeConverter extends AbstractUuidAwareObjectTypeConverter im
         // invalid or impossible to resolve - and an exception is thrown, causing the importing to be
         // resumed on next run which should then have imported the target file so we can point to it.
         $queryBuilder = (new ConnectionPool())->getConnectionForTable('sys_file')->createQueryBuilder();
-        $original = $queryBuilder->select('f.uid')->from('sys_file', 'f')->where(
-            sprintf(
-                'f.remote_id = \'%s\'',
-                $source
-            )
-        )->setMaxResults(1)->execute()->fetchAll();
+        $original = $queryBuilder->select('f.uid')->from('sys_file', 'f')
+            ->where($queryBuilder->expr()->eq('f.remote_id', $queryBuilder->quote($source)))
+            ->setMaxResults(1)
+            ->execute()
+            ->fetchAll();
         if (!isset($original[0]['uid'])) {
-            throw new PropertyMappingException('Unable to map ' . $this->propertyName . ' on ' . get_class($this->parentObject));
+            throw new \InvalidArgumentException('Unable to map ' . $this->propertyName . ' on ' . get_class($this->parentObject));
         }
 
         // File reference object needs to be created with the exact composition of this array. Not
@@ -113,6 +112,10 @@ class FileReferenceTypeConverter extends AbstractUuidAwareObjectTypeConverter im
             'uid_local' => $original[0]['uid'],
             'uid_foreign' => $this->parentObject->getUid()
         ]);
+
+        if (!isset($reference)) {
+            throw new \InvalidArgumentException('A reference could not be resolved');
+        }
 
         // New Extbase model FileReference instance is fitted with target and returned. The resulting
         // object persists correctly because the $reference above has had all properties manually set.
