@@ -3,6 +3,9 @@
 	<file source-language="en" datatype="plaintext" original="messages" date="2017-08-03T23:42:08Z" product-name="fourallportal">
 		<header/>
 		<body>
+			<trans-unit id="universal.remote_id">
+				<source>Remote ID</source>
+			</trans-unit>
 			<trans-unit id="tx_fourallportal_domain_model_server">
 				<source>Server</source>
 			</trans-unit>

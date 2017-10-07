@@ -597,6 +597,45 @@ you need this to be different simply pass the API call as second array for `arra
 The TCA generated this way gets cached by TYPO3 and will not be cleared unless the "all" or
 "system" caches are cleared, which fits perfectly with the rebuilding of the model class files.
 
+
+#### Completely automated models
+
+If your models are essentially duplicates of each other with different names, which often is
+the case when using the dynamic model feature, you may wish to have all of the schema sources
+generated for you using standard composition.
+
+For models which have completely boilerplate TCA and SQL schemas you can use this API:
+
+
+```php
+<?php
+\Crossmedia\Fourallportal\DynamicModel\DynamicModelRegister::registerModelForAutomaticHandling(\My\Ext\Domain\Model\MyModel::class);
+```
+
+Combined with the following TCA file (which should be placed in the standard TCA file path):
+
+
+```php
+<?php
+return \Crossmedia\Fourallportal\DynamicModel\DynamicModelGenerator::generateAutomaticTableConfigurationForModelClassName(
+    \My\Ext\Domain\Model\MyModel::class
+);
+```
+
+Doing so causes the following to happen:
+
+1. You no longer have to define the entity's table in `ext_tables.sql` as the schema will be
+   generated completely automatically.
+2. You need no other TCA, but can still override the properties by the standard TCA overrides
+   file path convention.
+
+Note that this strategy can be combined with custom domain model properties. When doing this
+you must add the custom fields only, in `ext_tables.sql` (e.g. a partial schema like when
+adding fields on `pages` or `tt_content`), and must add the TCA for that field using TCA
+override files - and must manually add the fields to the list of shown fields. It is highly
+recommended to use the TYPO3 API for adding TCA fields for this use case!
+
+
 #### The model update command
 
 There are two ways to force dynamic models to be updated.

@@ -9,6 +9,7 @@ use Crossmedia\Fourallportal\Mapping\MappingRegister;
 use TYPO3\CMS\Core\Cache\CacheManager;
 use TYPO3\CMS\Core\Cache\Frontend\PhpFrontend;
 use TYPO3\CMS\Core\Core\Bootstrap;
+use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\DomainObject\AbstractEntity;
 use TYPO3\CMS\Extbase\Object\ObjectManager;
@@ -25,6 +26,37 @@ use TYPO3\CMS\Extbase\Persistence\ObjectStorage;
  */
 class DynamicModelGenerator
 {
+    protected $automaticSchemaColumns = [
+        'uid INT(11) NOT NULL auto_increment',
+        'pid INT(11) DEFAULT \'0\' NOT NULL',
+        'tstamp INT(11) unsigned DEFAULT \'0\' NOT NULL',
+        'crdate INT(11) unsigned DEFAULT \'0\' NOT NULL',
+        'cruser_id INT(11) unsigned DEFAULT \'0\' NOT NULL',
+        'deleted TINYINT(4) unsigned DEFAULT \'0\' NOT NULL',
+        't3ver_oid INT(11) DEFAULT \'0\' NOT NULL',
+        't3ver_id INT(11) DEFAULT \'0\' NOT NULL',
+        't3ver_wsid INT(11) DEFAULT \'0\' NOT NULL',
+        't3ver_label VARCHAR(255) DEFAULT \'\' NOT NULL',
+        't3ver_state TINYINT(4) DEFAULT \'0\' NOT NULL',
+        't3ver_stage INT(11) DEFAULT \'0\' NOT NULL',
+        't3ver_count INT(11) DEFAULT \'0\' NOT NULL',
+        't3ver_tstamp INT(11) DEFAULT \'0\' NOT NULL',
+        't3ver_move_id INT(11) DEFAULT \'0\' NOT NULL',
+        'sys_language_uid INT(11) DEFAULT \'0\' NOT NULL',
+        'l10n_state TEXT DEFAULT NULL',
+        'l10n_parent INT(11) DEFAULT \'0\' NOT NULL',
+        'l10n_diffsource mediumblob',
+        'remote_id varchar(255) DEFAULT \'\' NOT NULL',
+    ];
+    
+    protected $automaticSchemaKeys = [
+        'PRIMARY KEY (uid)',
+        'KEY parent (pid)',
+        'KEY remote_id (remote_id)',
+        'KEY t3ver_oid (t3ver_oid,t3ver_wsid)',
+        'KEY language (l10n_parent,sys_language_uid)',
+    ];
+    
     /**
      * @return array
      */
@@ -41,15 +73,25 @@ class DynamicModelGenerator
                 continue;
             }
 
-            $tableName = $objectManager->get(DataMapper::class)->getDataMap($module->getMapper()->getEntityClassName())->getTableName();
+            $entityClassName = $module->getMapper()->getEntityClassName();
+            $tableName = $objectManager->get(DataMapper::class)->getDataMap($entityClassName)->getTableName();
+            if (DynamicModelRegister::isModelRegisteredForAutomaticHandling($entityClassName)) {
+                $lines = $this->automaticSchemaColumns;
+            } else {
+                $lines = [];
+            }
 
-            $lines = [];
             foreach ($propertyConfigurations as $propertyConfiguration) {
                 $lines[] = $propertyConfiguration['column'] . ' ' . $propertyConfiguration['schema'];
                 if (isset($propertyConfiguration['config']['MM'])) {
                     $manyToManyRelations[] = $propertyConfiguration['config']['MM'];
                 }
             }
+            
+            if (DynamicModelRegister::isModelRegisteredForAutomaticHandling($entityClassName)) {
+                $lines = array_merge($lines, $this->automaticSchemaKeys);
+            }
+            
             $sqlString[] = 'CREATE TABLE ' . $tableName . ' (' . PHP_EOL . implode(',' . PHP_EOL, $lines) . PHP_EOL . ');';
         }
 
@@ -73,6 +115,56 @@ TEMPLATE;
         }
 
         return [$sqlString];
+    }
+
+    /**
+     * @param string $extensionKey
+     * @param string $tableName
+     * @return string
+     */
+    protected static function findIconFile($extensionKey, $tableName)
+    {
+        $extensions = ['svg', 'png', 'jpg', 'jpeg', 'gif'];
+        $detectedFiles = GeneralUtility::getFilesInDir(
+            ExtensionManagementUtility::extPath($extensionKey, 'Resources/Public/Icons/'),
+            implode(',', $extensions)
+        );
+        foreach ($detectedFiles as $file) {
+            if (in_array(pathinfo($file, PATHINFO_EXTENSION), $extensions)) {
+                return $file;
+            }
+        }
+
+        return $tableName . '.svg';
+    }
+
+    /**
+     * @param string $modelClassName
+     * @return array
+     */
+    public static function generateAutomaticTableConfigurationForModelClassName($modelClassName)
+    {
+        $modelClassNameParts = explode('\\', substr($modelClassName, 0, strpos($modelClassName, '\\Domain\\Model\\')));
+        $extensionName = array_pop($modelClassNameParts);
+        $extensionKey = GeneralUtility::camelCaseToLowerCaseUnderscored($extensionName);
+        $tableName = GeneralUtility::makeInstance(ObjectManager::class)->get(DataMapper::class)->getDataMap($modelClassName)->getTableName();
+        $tca = include ExtensionManagementUtility::extPath('fourallportal', 'Configuration/TCA/BoilerPlate/AutomaticTableConfiguration.php');
+        $additionalColumns = \Crossmedia\Fourallportal\DynamicModel\DynamicModelGenerator::generateTableConfigurationForModuleIdentifiedByModelClassName($modelClassName);
+        $additionalColumnNames = implode(',', array_keys($additionalColumns));
+        $detectedIconFile = static::findIconFile($extensionKey, $tableName);
+        $tca['columns'] = array_replace($additionalColumns, $tca['columns']);
+        $tca['interface']['showRecordFieldList'] .= ',' . $additionalColumnNames;
+        $tca['types']['1']['showitem'] .= ',' . $additionalColumnNames;
+        $tca['columns']['l10n_parent']['config']['foreign_table'] = $tableName;
+        $tca['columns']['l10n_parent']['config']['foreign_table_where'] = str_replace(
+            '###TABLE###',
+            $tableName,
+            $tca['columns']['l10n_parent']['config']['foreign_table_where']
+        );
+        $tca['ctrl']['label'] = key($additionalColumns);
+        $tca['ctrl']['iconfile'] = 'EXT:' . $extensionKey . '/Resources/Public/Icons/' . $tableName . '.' . pathinfo($detectedIconFile, PATHINFO_EXTENSION);
+        $tca['ctrl']['title'] = 'LLL:EXT:' . $extensionKey . '/Resources/Private/Language/locallang.xlf:' . $tableName;
+        return $tca;
     }
 
     /**
