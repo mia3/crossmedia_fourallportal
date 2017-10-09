@@ -63,19 +63,24 @@ class DynamicModelGenerator
     public function addSchemasForAllModules(array $sqlString)
     {
         $objectManager = GeneralUtility::makeInstance(ObjectManager::class);
+        $dataMapper = $objectManager->get(DataMapper::class);
 
         $manyToManyRelations = [];
+        $configuredDynamicModels = DynamicModelRegister::getModelClassNamesRegisteredForAutomaticHandling();
+        $configuredDynamicModels = array_combine($configuredDynamicModels, $configuredDynamicModels);
 
         foreach ($this->getAllConfiguredModules() as $module) {
+            $entityClassName = $module->getMapper()->getEntityClassName();
+            $isAutomatedModel = DynamicModelRegister::isModelRegisteredForAutomaticHandling($entityClassName);
 
             $propertyConfigurations = $this->getPropertyConfigurationFromConnector($module);
-            if (empty($propertyConfigurations)) {
+            if (empty($propertyConfigurations) && !$isAutomatedModel) {
                 continue;
             }
 
-            $entityClassName = $module->getMapper()->getEntityClassName();
             $tableName = $objectManager->get(DataMapper::class)->getDataMap($entityClassName)->getTableName();
-            if (DynamicModelRegister::isModelRegisteredForAutomaticHandling($entityClassName)) {
+            if ($isAutomatedModel) {
+                unset($configuredDynamicModels[$entityClassName]);
                 $lines = $this->automaticSchemaColumns;
             } else {
                 $lines = [];
@@ -87,11 +92,19 @@ class DynamicModelGenerator
                     $manyToManyRelations[] = $propertyConfiguration['config']['MM'];
                 }
             }
-            
-            if (DynamicModelRegister::isModelRegisteredForAutomaticHandling($entityClassName)) {
+
+            if ($isAutomatedModel) {
                 $lines = array_merge($lines, $this->automaticSchemaKeys);
             }
-            
+
+            $sqlString[] = 'CREATE TABLE ' . $tableName . ' (' . PHP_EOL . implode(',' . PHP_EOL, $lines) . PHP_EOL . ');';
+        }
+
+        // Iterate dynamic model classes which were NOT handled by a configured module.
+        // This is done to ensure that the schema exists even if the connector module is not yet configured.
+        foreach ($configuredDynamicModels as $entityClassName) {
+            $tableName = $dataMapper->getDataMap($entityClassName)->getTableName();
+            $lines = array_merge($this->automaticSchemaColumns, $this->automaticSchemaKeys);
             $sqlString[] = 'CREATE TABLE ' . $tableName . ' (' . PHP_EOL . implode(',' . PHP_EOL, $lines) . PHP_EOL . ');';
         }
 
@@ -307,26 +320,26 @@ TEMPLATE;
         }
 
         if (!class_exists($className, false)) {
-            // Attempt to load the fallback class which should be completely safe and always present even if
-            // the generated class with properties from the remote API could not be loaded. Check the TYPO3
-            // application context first of all - if we are in Development context, throw an error instead of
-            // silently allowing the base class to load. This is done in order to protect Production systems
-            // from potentially uncaught exceptions or complete failures when trying to use the models.
-            // Using the model classes is then possible, but none of the dynamic properties can be retrieved.
-            if (Bootstrap::getInstance()->getApplicationContext()->isDevelopment()) {
-                throw new \RuntimeException(
-                    sprintf(
-                        'Attempting to load the dynamically generated class "%s" caused the fallback class to be ' .
-                        'resolved. Since your TYPO3 site is in Development application context you see this error ' .
-                        'to inform you that there is a possible lack of support for the returned properties that you ' .
-                        'should address in the code before you let it deploy to production.',
-                        $className
-                    )
-                );
-            }
 
             try {
                 $cache->requireOnce($identifier . '_fallback');
+                // Attempt to load the fallback class which should be completely safe and always present even if
+                // the generated class with properties from the remote API could not be loaded. Check the TYPO3
+                // application context first of all - if we are in Development context, throw an error instead of
+                // silently allowing the base class to load. This is done in order to protect Production systems
+                // from potentially uncaught exceptions or complete failures when trying to use the models.
+                // Using the model classes is then possible, but none of the dynamic properties can be retrieved.
+                if (Bootstrap::getInstance()->getApplicationContext()->isDevelopment()) {
+                    throw new \RuntimeException(
+                        sprintf(
+                            'Attempting to load the dynamically generated class "%s" caused the fallback class to be ' .
+                            'resolved. Since your TYPO3 site is in Development application context you see this error ' .
+                            'to inform you that there is a possible lack of support for the returned properties that you ' .
+                            'should address in the code before you let it deploy to production.',
+                            $className
+                        )
+                    );
+                }
             } catch (\RuntimeException $error) {
                 // Suppressed; if even the fallback class can't load, the standard reason below will be given.
             }
@@ -481,14 +494,16 @@ TEMPLATE;
             case 'ONE_TO_MANY':
             case 'MANY_TO_ONE':
                 $modules = $this->getAllConfiguredModules();
-                $dataType = '\\' . ObjectStorage::class . '<\\' . $modules[$fieldConfiguration['relatedModule']]->getMapper()->getEntityClassName() . '>';
+                $relatedModule = $fieldConfiguration['relatedModule'] ?? $fieldConfiguration['child'] ?? $fieldConfiguration['parent'];
+                $dataType = '\\' . ObjectStorage::class . '<\\' . $modules[$relatedModule]->getMapper()->getEntityClassName() . '>';
             case 'CEId':
             case 'CEExternalId':
             case 'ONE_TO_ONE':
             case 'FIELD_LINK':
-                $modules = $this->getAllConfiguredModules();
+                $modules = $modules ?? $this->getAllConfiguredModules();
+                $relatedModule = $relatedModule ?? $fieldConfiguration['relatedModule'] ?? $fieldConfiguration['child'] ?? $fieldConfiguration['parent'];
                 $tca = $this->determineTableConfigurationForRelation($fieldConfiguration, $currentSideModuleName);
-                $dataType = $dataType ?? '\\' . $modules[$fieldConfiguration['relatedModule']]->getMapper()->getEntityClassName();
+                $dataType = $dataType ?? '\\' . $modules[$relatedModule]->getMapper()->getEntityClassName();
                 $sqlType = 'int(11) default 0 NOT NULL';
                 break;
             default:
