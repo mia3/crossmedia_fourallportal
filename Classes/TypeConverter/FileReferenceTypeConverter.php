@@ -102,7 +102,7 @@ class FileReferenceTypeConverter extends AbstractUuidAwareObjectTypeConverter im
             ->execute()
             ->fetchAll();
         if (!isset($original[0]['uid'])) {
-            throw new \InvalidArgumentException('Unable to map ' . $this->propertyName . ' on ' . get_class($this->parentObject));
+            throw new \InvalidArgumentException('Unable to map ' . $this->propertyName . ' on ' . get_class($this->parentObject) . ': Asset ' . $source . ' does not appear to exist');
         }
 
         // File reference object needs to be created with the exact composition of this array. Not
