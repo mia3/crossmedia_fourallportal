@@ -300,9 +300,7 @@ class ApiClient
             $uri = $this->server->getRestUrl() . 'PAPRemoteService/synchronize',
             [
                 $this->sessionId,
-                $connectorName,
-                0,
-                0,
+                $connectorName
             ]
         );
         switch ($response['code']) {
