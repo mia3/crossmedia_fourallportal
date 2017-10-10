@@ -196,7 +196,12 @@ class FalMapping extends AbstractMapping
         $status['description'] .= '
             <h3>FalMapping</h3>
         ';
-        foreach($beans['result'] as $result) {
+        if (!isset($beans['result'])) {
+            $messages['no_beans'] = '<p><strong class="text-danger">The connector did not return any beans when queried! Response: ' . var_export($beans, true) . '</strong></p>';
+        }
+        $files = $beans['result'] ?? [];
+
+        foreach($files as $result) {
             if (!isset($result['properties']['data_name'])) {
                 $status['class'] = 'danger';
                 $messages['data_name'] = '<p><strong class="text-danger">Connector does not provide required "data_name" property</strong></p>';
@@ -228,27 +233,29 @@ class FalMapping extends AbstractMapping
                 </p>
             ';
         }
-        $temporaryFile = GeneralUtility::tempnam('derivative_');
-        $client->saveDerivate($temporaryFile, $ids[0]);
-        if (!file_exists($temporaryFile)) {
-            $status['class'] = 'danger';
-            $messages['derivative_download_failed'] = sprintf('
-                <p>
-                    <strong class="text-danger">ApiClient was unable to download derivative with ID %s. Errors have been logged or are displayed above.</strong><br />
-                </p>
-            ', $ids[0]);
-        } else {
-            $receivedBytes = filesize($temporaryFile);
-            $messages['derivative_download_success'] = sprintf('
-                <p>
-                    <strong class="text-success">Derivative was downloaded from API. Received %d bytes.</strong><br />
-                </p>
-            ', $receivedBytes);
+        if (count($files)) {
+            $temporaryFile = GeneralUtility::tempnam('derivative_');
+            $client->saveDerivate($temporaryFile, $ids[0]);
+            if (!file_exists($temporaryFile) || !filesize($temporaryFile)) {
+                $status['class'] = 'danger';
+                $messages['derivative_download_failed'] = sprintf('
+                    <p>
+                        <strong class="text-danger">ApiClient was unable to download derivative with ID %s. Errors have been logged or are displayed above.</strong><br />
+                    </p>
+                ', $ids[0]);
+            } else {
+                $receivedBytes = filesize($temporaryFile);
+                $messages['derivative_download_success'] = sprintf('
+                    <p>
+                        <strong class="text-success">Derivative was downloaded from API. Received %d bytes.</strong><br />
+                    </p>
+                ', $receivedBytes);
+            }
+            $messages[] = '<p>
+                    <strong>Paths of the 3 first Files:</strong><br />
+                    ' . implode('<br />', $paths) . '
+                </p>';
         }
-        $messages[] = '<p>
-                <strong>Paths of the 3 first Files:</strong><br />
-                ' . implode('<br />', $paths) . '
-            </p>';
         $status['description'] .= implode(chr(10), $messages);
         return $status;
     }
