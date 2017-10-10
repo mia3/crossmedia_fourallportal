@@ -5,9 +5,12 @@ use Crossmedia\Fourallportal\Domain\Model\Event;
 use Crossmedia\Fourallportal\Domain\Model\Module;
 use Crossmedia\Fourallportal\Domain\Model\Server;
 use Crossmedia\Fourallportal\DynamicModel\DynamicModelGenerator;
+use Crossmedia\Fourallportal\DynamicModel\DynamicModelRegister;
+use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Mvc\Controller\CommandController;
 use TYPO3\CMS\Extbase\Object\ObjectManager;
+use TYPO3\CMS\Extbase\Persistence\Generic\Mapper\DataMapper;
 use TYPO3\CMS\Extbase\Persistence\PersistenceManagerInterface;
 
 class FourallportalCommandController extends CommandController
@@ -63,30 +66,189 @@ class FourallportalCommandController extends CommandController
     }
 
     /**
+     * Generate TCA for model
+     *
+     * This command can be used instead or or together with the
+     * dynamic model feature to generate a TCA file for a particular
+     * entity, by its class name.
+     *
+     * Internally the class name is analysed to determine the
+     * extension it belongs to, and makes an assumption about the
+     * table name. The command then writes the generated TCA to the
+     * exact TCA configuration file (by filename convention) and
+     * will overwrite any existing TCA in that file.
+     *
+     * Should you need to adapt individual properties such as the
+     * field used for label, the icon path etc. please use the
+     * Configuration/TCA/Overrides/$tableName.php file instead.
+     *
+     * @param string $entityClassName
+     */
+    public function generateTableConfigurationCommand($entityClassName = null)
+    {
+        foreach ($this->getEntityClassNames($entityClassName) as $entityClassName) {
+            $tca = DynamicModelGenerator::generateAutomaticTableConfigurationForModelClassName($entityClassName);
+            $table = $this->objectManager->get(DataMapper::class)->getDataMap($entityClassName)->getTableName();
+            $extensionKey = $this->getExtensionKeyFromEntityClasNamE($entityClassName);
+
+            // Note: although extPath() supports a second argument we concatenate to prevent file exists. It may not exist yet!
+            $targetFilePathAndFilename = ExtensionManagementUtility::extPath($extensionKey) . 'Configuration/TCA/' . $table . '.php';
+            $targetFileContent = '<?php' . PHP_EOL . 'return ' . var_export($tca, true) . ';' . PHP_EOL;
+            GeneralUtility::writeFile(
+                $targetFilePathAndFilename,
+                $targetFileContent
+            );
+        }
+    }
+
+    /**
+     * Generate abstract entity class
+     *
+     * This command can be used as substitute for the automatic
+     * model class generation feature. Each entity class generated
+     * with this command prevents usage of the dynamically created
+     * class (which still gets created!). To re-enable dynamic
+     * operation simply remove the generated abstract class again.
+     *
+     * Generates an abstract PHP class in the same namespace as
+     * the input entity class name. The abstract class contains
+     * all of the dynamically generated properties associated with
+     * the Module.
+     *
+     * @param string $entityClassName
+     */
+    public function generateAbstractModelClassCommand($entityClassName = null)
+    {
+        $dynamicModelGenerator = $this->objectManager->get(DynamicModelGenerator::class);
+
+        $modulesByEntityClassName = [];
+        foreach ($dynamicModelGenerator->getAllConfiguredModules() as $module) {
+            if ($module->isEnableDynamicModel()) {
+                $modulesByEntityClassName[$module->getMapper()->getEntityClassName()] = $module;
+            }
+        }
+
+        foreach ($this->getEntityClassNames($entityClassName) as $entityClassName) {
+            if (!isset($modulesByEntityClassName[$entityClassName])) {
+                $this->response->appendContent('Cannot generate model for ' . $entityClassName . ' - has no configured module to handle the entity' . PHP_EOL);
+                continue;
+            }
+            $extensionKey = $this->getExtensionKeyFromEntityClasNamE($entityClassName);
+            $module = $modulesByEntityClassName[$entityClassName];
+            $sourceCode = $dynamicModelGenerator->generateAbstractModelForModule($module);
+            $abstractClassName = 'Abstract' . substr($entityClassName, strrpos($entityClassName, '\\') + 1);
+            $targetFileContent = '<?php' . PHP_EOL . $sourceCode . PHP_EOL;
+            $targetFilePathAndFilename = ExtensionManagementUtility::extPath($extensionKey) . 'Classes/Domain/Model/' . $abstractClassName . '.php';
+            GeneralUtility::writeFile(
+                $targetFilePathAndFilename,
+                $targetFileContent
+            );
+        }
+    }
+
+    /**
+     * Generate additional SQL schema file
+     *
+     * This command can be used as substitute for the automatic
+     * SQL schema generation - using it disables the analysis of
+     * the Module to read schema properties. If used, should be
+     * combined with both of the other "generate" commands from
+     * this package, to create a completely static set of assets
+     * based on the configured Modules and prevent dynamic changes.
+     *
+     * Generates all schemas for all modules, and generates a static
+     * SQL schema file in the extension to which the entity belongs.
+     * The SQL schema registration hook then circumvents the normal
+     * schema fetching and uses the static schema instead, when the
+     * extension has a static schema.
+     */
+    public function generateSqlSchemaCommand()
+    {
+        $dynamicModelGenerator = $this->objectManager->get(DynamicModelGenerator::class);
+        $modulesByExtensionKey = [];
+        foreach ($dynamicModelGenerator->getAllConfiguredModules() as $name => $module) {
+            if (!$module->isEnableDynamicModel()) {
+                continue;
+            }
+            $extensionKey = $this->getExtensionKeyFromEntityClasNamE($module->getMapper()->getEntityClassName());
+            if (!isset($modulesByExtensionKey[$extensionKey])) {
+                $modulesByExtensionKey[$extensionKey] = [$module];
+            } else {
+                $modulesByExtensionKey[$extensionKey][] = $module;
+            }
+        }
+        foreach ($modulesByExtensionKey as $extensionKey => $groupedModules) {
+            $targetFileContent = implode(PHP_EOL, $dynamicModelGenerator->generateSchemasForModules($groupedModules));
+            $targetFilePathAndFilename = ExtensionManagementUtility::extPath($extensionKey) . 'Configuration/SQL/DynamicSchema.sql';
+            GeneralUtility::mkdir_deep(dirname($targetFilePathAndFilename));
+            GeneralUtility::writeFile(
+                $targetFilePathAndFilename,
+                $targetFileContent
+            );
+        }
+    }
+
+    /**
+     * @param string $entityClassName
+     * @return array
+     */
+    protected function getEntityClassNames($entityClassName)
+    {
+        if ($entityClassName) {
+            $entityClassNames = [$entityClassName];
+        } else {
+            $entityClassNames = DynamicModelRegister::getModelClassNamesRegisteredForAutomaticHandling();
+        }
+        return $entityClassNames;
+    }
+
+    /**
+     * @param string $entityClassName
+     * @return string
+     */
+    protected function getExtensionKeyFromEntityClasNamE($entityClassName)
+    {
+        $entityClassNameParts = explode('\\', $entityClassName);
+        $entityClassNameBase = array_slice($entityClassNameParts, 0, -3);
+        $extensionName = array_pop($entityClassNameBase);
+        return GeneralUtility::camelCaseToLowerCaseUnderscored($extensionName);
+    }
+
+    /**
      * Sync data
      *
      * Execute this to synchronise events from the PIM API.
      *
      * @param boolean $sync Set to "1" to trigger a full sync
+     * @param string $module If passed can be used to only sync one module, using the module or connector name it has in 4AP.
      */
-    public function syncCommand($sync = false)
+    public function syncCommand($sync = false, $module = null)
     {
         /** @var Server[] $servers */
         $servers = $this->serverRepository->findByActive(true);
         foreach ($servers as $server) {
             $client = $server->getClient();
-            foreach ($server->getModules() as $module) {
-                /** @var Module $module */
-                if (!$sync && $module->getLastEventId() > 0) {
-                    $results = $client->getEvents($module->getConnectorName(), $module->getLastEventId());
+            /** @var Module[] $modules */
+            $modules = $server->getModules();
+            foreach ($modules as $configuredModule) {
+                if ($module && ($configuredModule->getModuleName() !== $module && $configuredModule->getConnectorName() !== $module)) {
+                    continue;
+                }
+                /** @var Module $configuredModule */
+                if (!$sync && $configuredModule->getLastEventId() > 0) {
+                    $results = $client->getEvents($configuredModule->getConnectorName(), $configuredModule->getLastEventId());
                 } else {
-                    $this->eventRepository->removeAll();
-                    $results = $client->synchronize($module->getConnectorName());
+                    $moduleEvents = $this->eventRepository->findByModule($configuredModule->getUid());
+                    foreach ($moduleEvents as $moduleEvent) {
+                        $this->eventRepository->remove($moduleEvent);
+                    }
+                    $this->objectManager->get(PersistenceManagerInterface::class)->persistAll();
+                    $results = $client->synchronize($configuredModule->getConnectorName());
                 }
                 foreach ($results as $result) {
-                    $this->queueEvent($module, $result);
+                    $this->queueEvent($configuredModule, $result);
                 }
-                $this->moduleRepository->update($module);
+                $this->moduleRepository->update($configuredModule);
             }
         }
 

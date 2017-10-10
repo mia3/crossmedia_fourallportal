@@ -56,20 +56,22 @@ class DynamicModelGenerator
         'KEY t3ver_oid (t3ver_oid,t3ver_wsid)',
         'KEY language (l10n_parent,sys_language_uid)',
     ];
-    
+
     /**
+     * @param Module[] $modules
      * @return array
      */
-    public function addSchemasForAllModules(array $sqlString)
+    public function generateSchemasForModules(array $modules)
     {
         $objectManager = GeneralUtility::makeInstance(ObjectManager::class);
         $dataMapper = $objectManager->get(DataMapper::class);
 
+        $sqlString = [];
         $manyToManyRelations = [];
         $configuredDynamicModels = DynamicModelRegister::getModelClassNamesRegisteredForAutomaticHandling();
         $configuredDynamicModels = array_combine($configuredDynamicModels, $configuredDynamicModels);
 
-        foreach ($this->getAllConfiguredModules() as $module) {
+        foreach ($modules as $module) {
             $entityClassName = $module->getMapper()->getEntityClassName();
             $isAutomatedModel = DynamicModelRegister::isModelRegisteredForAutomaticHandling($entityClassName);
 
@@ -127,7 +129,42 @@ TEMPLATE;
             $sqlString[] = sprintf($manyToManyTableTemplate, $manyToManyTableName);
         }
 
-        return [$sqlString];
+        return $sqlString;
+    }
+    
+    /**
+     * @return array
+     */
+    public function addSchemasForAllModules(array $sqlString)
+    {
+        $modules = $this->getAllConfiguredModules();
+        $modulesWithoutStaticSchema = [];
+        $staticSchemasFromExtensions = [];
+        foreach ($modules as $name => $module) {
+            if (!$module->isEnableDynamicModel()) {
+                continue;
+            }
+            $entityClassName = $module->getMapper()->getEntityClassName();
+            $entityClassNameParts = explode('\\', $entityClassName);
+            $entityClassNameBase = array_slice($entityClassNameParts, 0, -3);
+            $extensionName = array_pop($entityClassNameBase);
+            $extensionKey = GeneralUtility::camelCaseToLowerCaseUnderscored($extensionName);
+            if (!isset($staticSchemasFromExtensions[$extensionKey])) {
+                $possibleSchemaFile = ExtensionManagementUtility::extPath($extensionKey) . 'Configuration/SQL/DynamicSchema.sql';
+                if (is_file($possibleSchemaFile)) {
+                    $staticSchemasFromExtensions[$extensionKey] = file_get_contents($possibleSchemaFile);
+                } else {
+                    $modulesWithoutStaticSchema[] = $module;
+                }
+            }
+        }
+        return [
+            array_merge(
+                $sqlString,
+                $this->generateSchemasForModules($modulesWithoutStaticSchema),
+                $staticSchemasFromExtensions
+            )
+        ];
     }
 
     /**
@@ -227,12 +264,15 @@ TEMPLATE;
             if (!$module->isEnableDynamicModel()) {
                 continue;
             }
+            if (class_exists($module->getMapper()->getEntityClassName()) || class_exists($module->getMapper()->getEntityClassName())) {
+                continue;
+            }
             $this->generateAbstractModelForModule($module, true);
         }
         if ($safeMode === false) {
             // Loop 2: generate actual classes, which require the presence of the fallback in order for the data map to work
             foreach ($this->getAllConfiguredModules() as $module) {
-                if (!$module->isEnableDynamicModel()) {
+                if (!$module->isEnableDynamicModel() || class_exists($module->getMapper()->getEntityClassName())) {
                     continue;
                 }
                 $this->generateAbstractModelForModule($module);
@@ -276,7 +316,7 @@ TEMPLATE;
             // This class is generated at a time in the process where errors based on remote API data
             // have not yet been raised - as long as the local code base is intact, this class can be
             // generated and trusted.
-            $this->generateCachedClassFile($abstractModelClassName, AbstractEntity::class, [], sha1($abstractModelClassName) . '_fallback');
+            $sourceCode = $this->generateCachedClassFile($abstractModelClassName, AbstractEntity::class, [], sha1($abstractModelClassName) . '_fallback');
 
         } else {
             // Phase 2: the more risky dynamic model with properties read from the remote API. If any
@@ -284,8 +324,9 @@ TEMPLATE;
             // PHP/SQL representations, either errors will be raised or the remaining safe properties
             // will be written - depending on the context of the TYPO3 site (Development = errors thrown)
             $propertyConfiguration = $this->getPropertyConfigurationFromConnector($module);
-            $this->generateCachedClassFile($abstractModelClassName, AbstractEntity::class, $propertyConfiguration);
+            $sourceCode = $this->generateCachedClassFile($abstractModelClassName, AbstractEntity::class, $propertyConfiguration);
         }
+        return $sourceCode;
     }
 
     /**
@@ -451,6 +492,7 @@ TEMPLATE;
                     'size' => $fieldConfiguration['length']
                 ];
                 break;
+            case 'MAMDate':
             case 'CEDate':
                 $dataType = '\\DateTime';
                 $sqlType = 'int(11) default 0 NOT NULL';
@@ -458,6 +500,7 @@ TEMPLATE;
                     'type' => 'input'
                 ];
                 break;
+            case 'MAMBoolean';
             case 'CEBoolean':
                 $dataType = 'boolean';
                 $sqlType = 'int(1) default 0 NOT NULL';
@@ -782,7 +825,7 @@ TEMPLATE;
      * @param string $parentClass
      * @param array $propertyConfiguration
      * @param string $identifier
-     * @return void
+     * @return string
      */
     protected function generateCachedClassFile($className, $parentClass, array $propertyConfiguration, $identifier = null)
     {
@@ -809,6 +852,7 @@ TEMPLATE;
 TEMPLATE;
 
         $functionsAndProperties = '';
+        $objectStorageInitializations = '';
         foreach ($propertyConfiguration as $propertyName => $property) {
             $upperCasePropertyName = ucfirst($propertyName);
             $functionsAndProperties .= sprintf(
@@ -825,6 +869,9 @@ TEMPLATE;
                 $propertyName,
                 '$' . $propertyName
             );
+            if (strpos($property['type'], '\\Persistence\\ObjectStorage<') !== false) {
+                $objectStorageInitializations .= '$this->' . $propertyName . ' = new \\TYPO3\\CMS\\Extbase\\Persistence\\ObjectStorage();' . PHP_EOL;
+            }
         }
 
         $classTemplate = <<< TEMPLATE
@@ -833,6 +880,16 @@ namespace %s;
 class %s extends %s
 {
     %s
+    
+    public function __construct()
+    {
+        \$this->initializeStorageObjects();
+    }
+    
+    public function initializeStorageObjects()
+    {
+        %s
+    }
 }
 
 TEMPLATE;
@@ -845,11 +902,13 @@ TEMPLATE;
             $namespace,
             $classShortName,
             '\\' . ltrim($parentClass, '\\'),
-            $functionsAndProperties
+            $functionsAndProperties,
+            $objectStorageInitializations
         );
 
         $identifier = $identifier ?: sha1($className);
         static::getGeneratedClassCache()->set($identifier, $classSourceCode);
+        return $classSourceCode;
     }
 
     /**
@@ -861,9 +920,23 @@ TEMPLATE;
     }
 
     /**
+     * @param string $entityClassName
+     * @return Module|null
+     */
+    public function getModuleByHandledEntityClassName($entityClassName)
+    {
+        foreach ($this->getAllConfiguredModules() as $module) {
+            if ($module->getMapper()->getEntityClassName() === $entityClassName) {
+                return $module;
+            }
+        }
+        return null;
+    }
+
+    /**
      * @return Module[]
      */
-    protected function getAllConfiguredModules()
+    public function getAllConfiguredModules()
     {
         static $configuredModules = [];
         if (!empty($configuredModules)) {
