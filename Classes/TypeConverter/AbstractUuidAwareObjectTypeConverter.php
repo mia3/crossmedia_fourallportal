@@ -1,6 +1,7 @@
 <?php
 namespace Crossmedia\Fourallportal\TypeConverter;
 
+use Crossmedia\Fourallportal\DynamicModel\DynamicModelGenerator;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\DomainObject\AbstractEntity;
 use TYPO3\CMS\Extbase\Object\ObjectManager;
@@ -11,8 +12,18 @@ use TYPO3\CMS\Extbase\Property\TypeConverter\AbstractTypeConverter;
 use TYPO3\CMS\Extbase\Property\TypeConverterInterface;
 use TYPO3\CMS\Extbase\Reflection\ObjectAccess;
 
-abstract class AbstractUuidAwareObjectTypeConverter extends AbstractTypeConverter implements TypeConverterInterface
+abstract class AbstractUuidAwareObjectTypeConverter extends AbstractTypeConverter implements TypeConverterInterface, PimBasedTypeConverterInterface
 {
+    /**
+     * @var AbstractEntity
+     */
+    protected $parent;
+
+    /**
+     * @var string
+     */
+    protected $propertyName;
+
     /**
      * Converters convert from strings (UUIDs) and integers (UIDs).
      * Contrary to the generic persisted object converter, this type
@@ -27,6 +38,17 @@ abstract class AbstractUuidAwareObjectTypeConverter extends AbstractTypeConverte
         'string',
         'integer'
     ];
+
+    /**
+     * @param AbstractEntity $object
+     * @param string $propertyName
+     * @return void
+     */
+    public function setParentObjectAndProperty($object, $propertyName)
+    {
+        $this->parent = $object;
+        $this->propertyName = $propertyName;
+    }
 
     /**
      * @param mixed $source

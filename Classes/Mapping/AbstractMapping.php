@@ -132,7 +132,11 @@ abstract class AbstractMapping implements MappingInterface
                 if (!$identifier) {
                     continue;
                 }
-                $child = $propertyMapper->findTypeConverter($identifier, $childType, $configuration)->convertFrom($identifier, $childType, [], $configuration);
+                $typeConverter = $propertyMapper->findTypeConverter($identifier, $childType, $configuration);
+                if ($typeConverter instanceof PimBasedTypeConverterInterface) {
+                    $typeConverter->setParentObjectAndProperty($object, $propertyName);
+                }
+                $child = $typeConverter->convertFrom($identifier, $childType, [], $configuration);
                 if (!$child) {
                     throw new \RuntimeException('Child of type ' . $childType . ' identified by ' . $identifier . ' could not be found');
                 }
