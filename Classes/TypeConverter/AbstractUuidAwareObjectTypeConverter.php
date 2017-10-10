@@ -66,7 +66,10 @@ abstract class AbstractUuidAwareObjectTypeConverter extends AbstractTypeConverte
         }
 
         $candidate = $repository->findByUid((integer) $source);
-        if (!$candidate) {
+        if (!$candidate && preg_match('/[a-z0-9]{8}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{8}/', $source)) {
+            // Automatically create objects absolutely only if the ID is a proper UUID.
+            // It may happen that the relation is merely the title of an object (which cannot be associated
+            // since, for example, it isn't published). In this case we ignore the automatic creation.
             $candidate = $this->autoCreateObject($repository, $source);
         }
         return $candidate;
