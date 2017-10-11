@@ -85,7 +85,8 @@ class ApiClient
                 $uri = $this->server->getRestUrl() . 'LoginRemoteService/logout',
                 [
                     $this->sessionId,
-                ]
+                ],
+                false
             );
             $this->sessionId = null;
         }
@@ -108,7 +109,8 @@ class ApiClient
             [
                 $this->sessionId,
                 $connectorName,
-            ]
+            ],
+            false
         );
         $this->validateResponseCode($response);
         return $response['result'];
@@ -131,7 +133,8 @@ class ApiClient
             [
                 $this->sessionId,
                 $moduleName,
-            ]
+            ],
+            false
         );
         $this->validateResponseCode($response);
         return $response['result'];
@@ -267,7 +270,8 @@ class ApiClient
                 $connectorName,
                 $eventId,
                 $connectorConfig['config_hash']
-            ]
+            ],
+            false
         );
         switch ($response['code']) {
             case 0:
@@ -375,9 +379,10 @@ class ApiClient
     /**
      * @param string $uri
      * @param array $data
+     * @param bool $persist
      * @return array
      */
-    public function doPostRequest($uri, $data)
+    public function doPostRequest($uri, $data, $persist = true)
     {
         $ch = curl_init($uri);
         curl_setopt($ch, CURLOPT_POST, 0);
@@ -388,11 +393,14 @@ class ApiClient
             'Content-Type: application/json',
         ]);
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-        curl_setopt($ch, CURLOPT_HEADERFUNCTION, array(&$this, 'catchResponseHeaderCallback'));
-        static::$lastResponse['headers'] = [];
-        static::$lastResponse['response'] = $response = curl_exec($ch);
-        static::$lastResponse['url'] = $uri;
-        static::$lastResponse['payload'] = json_encode($data, JSON_PRETTY_PRINT);
+        $response = curl_exec($ch);
+        if ($persist) {
+            curl_setopt($ch, CURLOPT_HEADERFUNCTION, array(&$this, 'catchResponseHeaderCallback'));
+            static::$lastResponse['headers'] = [];
+            static::$lastResponse['response'] = $response;
+            static::$lastResponse['url'] = $uri;
+            static::$lastResponse['payload'] = json_encode($data, JSON_PRETTY_PRINT);
+        }
         $result = json_decode($response, true);
 
         $this->validateResponseCode($result);
