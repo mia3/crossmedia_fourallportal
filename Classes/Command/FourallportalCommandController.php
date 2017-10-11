@@ -246,6 +246,11 @@ class FourallportalCommandController extends CommandController
                     $results = $client->synchronize($configuredModule->getConnectorName());
                 }
                 foreach ($results as $result) {
+                    $this->response->setContent('Receiving event ID "' . $result['id'] . '" from connector "' . $configuredModule->getConnectorName() . '"' . PHP_EOL);
+                    if (!$result['id']) {
+                        $this->response->appendContent(var_export($result, true) . PHP_EOL);
+                    }
+                    $this->response->send();
                     $this->queueEvent($configuredModule, $result);
                 }
                 $this->moduleRepository->update($configuredModule);
@@ -313,7 +318,7 @@ class FourallportalCommandController extends CommandController
     {
         $event = new Event();
         $event->setModule($module);
-        $event->setEventId($result['event_id']);
+        $event->setEventId($result['id']);
         $event->setObjectId($result['object_id']);
         $event->setEventType(Event::resolveEventType($result['event_type']));
         $this->eventRepository->add($event);
