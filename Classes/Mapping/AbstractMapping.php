@@ -57,13 +57,14 @@ abstract class AbstractMapping implements MappingInterface
                     $object = new $class();
                     ObjectAccess::setProperty($object, 'remoteId', $objectId);
                 }
-                $this->mapPropertiesFromDataToObject($data, $object);
                 $object->setPid($event->getModule()->getStoragePid());
                 if ($object->getUid()) {
                     $repository->update($object);
                 } else {
                     $repository->add($object);
                 }
+                $this->mapPropertiesFromDataToObject($data, $object);
+                $repository->update($object);
                 break;
             default:
                 throw new \RuntimeException('Unknown event type: ' . $event->getEventType());
