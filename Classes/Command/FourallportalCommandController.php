@@ -66,6 +66,22 @@ class FourallportalCommandController extends CommandController
     }
 
     /**
+     * Generates all configuration
+     *
+     * Shortcut method for calling all of the three specific
+     * generate commands to generate static configuration files for
+     * all dynamic-model-enabled modules' entities.
+     *
+     * @param string $entityClassName
+     */
+    public function generateCommand($entityClassName = null)
+    {
+        $this->generateSqlSchemaCommand();
+        $this->generateTableConfigurationCommand($entityClassName);
+        $this->generateAbstractModelClassCommand($entityClassName);
+    }
+
+    /**
      * Generate TCA for model
      *
      * This command can be used instead or or together with the
@@ -215,6 +231,35 @@ class FourallportalCommandController extends CommandController
     }
 
     /**
+     * Replay events
+     *
+     * Replays the specified number of events, optionally only
+     * for the provided module named by connector or module name.
+     *
+     * By default the command replays only the last event.
+     *
+     * @param int $events
+     * @param string $module
+     */
+    public function replayCommand($events = 1, $module = null)
+    {
+        foreach ($this->getActiveModuleOrModules($module) as $module) {
+            $eventQuery = $this->eventRepository->createQuery();
+            $eventQuery->matching(
+                $eventQuery->equals('module', $module->getUid())
+            );
+            $eventQuery->setLimit($events);
+            $eventQuery->setOrderings(['event_id' => 'DESC']);
+            foreach ($eventQuery->execute() as $event) {
+                $event->setStatus('pending');
+                $this->eventRepository->update($event);
+            }
+        }
+        $this->objectManager->get(PersistenceManagerInterface::class)->persistAll();
+        $this->processAllPendingAndDeferredEvents();
+    }
+
+    /**
      * Sync data
      *
      * Execute this to synchronise events from the PIM API.
@@ -224,41 +269,58 @@ class FourallportalCommandController extends CommandController
      */
     public function syncCommand($sync = false, $module = null)
     {
-        /** @var Server[] $servers */
-        $servers = $this->serverRepository->findByActive(true);
-        foreach ($servers as $server) {
-            $client = $server->getClient();
-            /** @var Module[] $modules */
-            $modules = $server->getModules();
-            foreach ($modules as $configuredModule) {
-                if ($module && ($configuredModule->getModuleName() !== $module && $configuredModule->getConnectorName() !== $module)) {
-                    continue;
+        foreach ($this->getActiveModuleOrModules($module) as $module) {
+            $client = $module->getServer()->getClient();
+            /** @var Module $configuredModule */
+            if (!$sync && $module->getLastEventId() > 0) {
+                $results = $client->getEvents($module->getConnectorName(), $module->getLastEventId());
+            } else {
+                $moduleEvents = $this->eventRepository->findByModule($module->getUid());
+                foreach ($moduleEvents as $moduleEvent) {
+                    $this->eventRepository->remove($moduleEvent);
                 }
-                /** @var Module $configuredModule */
-                if (!$sync && $configuredModule->getLastEventId() > 0) {
-                    $results = $client->getEvents($configuredModule->getConnectorName(), $configuredModule->getLastEventId());
-                } else {
-                    $moduleEvents = $this->eventRepository->findByModule($configuredModule->getUid());
-                    foreach ($moduleEvents as $moduleEvent) {
-                        $this->eventRepository->remove($moduleEvent);
-                    }
-                    $this->objectManager->get(PersistenceManagerInterface::class)->persistAll();
-                    $results = $client->synchronize($configuredModule->getConnectorName());
-                }
-                foreach ($results as $result) {
-                    $this->response->setContent('Receiving event ID "' . $result['id'] . '" from connector "' . $configuredModule->getConnectorName() . '"' . PHP_EOL);
-                    if (!$result['id']) {
-                        $this->response->appendContent(var_export($result, true) . PHP_EOL);
-                    }
-                    $this->response->send();
-                    $this->queueEvent($configuredModule, $result);
-                }
-                $this->moduleRepository->update($configuredModule);
+                $this->objectManager->get(PersistenceManagerInterface::class)->persistAll();
+                $results = $client->synchronize($module->getConnectorName());
             }
+            foreach ($results as $result) {
+                $this->response->setContent('Receiving event ID "' . $result['id'] . '" from connector "' . $module->getConnectorName() . '"' . PHP_EOL);
+                if (!$result['id']) {
+                    $this->response->appendContent(var_export($result, true) . PHP_EOL);
+                }
+                $this->response->send();
+                $this->queueEvent($module, $result);
+            }
+            $this->moduleRepository->update($module);
         }
 
         $this->objectManager->get(PersistenceManagerInterface::class)->persistAll();
+        $this->processAllPendingAndDeferredEvents();
+    }
 
+    /**
+     * @param string $moduleName
+     * @return Module[]
+     */
+    protected function getActiveModuleOrModules($moduleName = null)
+    {
+        $activeModules = [];
+        /** @var Server[] $servers */
+        $servers = $this->serverRepository->findByActive(true);
+        foreach ($servers as $server) {
+            /** @var Module[] $modules */
+            $modules = $server->getModules();
+            foreach ($modules as $configuredModule) {
+                if ($moduleName && ($configuredModule->getModuleName() !== $moduleName && $configuredModule->getConnectorName() !== $moduleName)) {
+                    continue;
+                }
+                $activeModules[] = $configuredModule;
+            }
+        }
+        return $activeModules;
+    }
+
+    protected function processAllPendingAndDeferredEvents()
+    {
         // Handle new, pending events first, which may cause some to be deferred:
         foreach ($this->eventRepository->findByStatus('pending') as $event) {
             $this->processEvent($event);
