@@ -537,14 +537,16 @@ TEMPLATE;
             case 'ONE_TO_MANY':
             case 'MANY_TO_ONE':
                 $modules = $this->getAllConfiguredModules();
-                $relatedModule = $fieldConfiguration['relatedModule'] ?? $fieldConfiguration['child'] ?? $fieldConfiguration['parent'];
+                $foreignModuleSide = ($fieldConfiguration['parent'] ?? false) === $currentSideModuleName ? ($fieldConfiguration['child'] ?? null) : ($fieldConfiguration['parent'] ?? null);
+                $relatedModule = $fieldConfiguration['relatedModule'] ?? $foreignModuleSide;
                 $dataType = '\\' . ObjectStorage::class . '<\\' . $modules[$relatedModule]->getMapper()->getEntityClassName() . '>';
             case 'CEId':
             case 'CEExternalId':
             case 'ONE_TO_ONE':
             case 'FIELD_LINK':
                 $modules = $modules ?? $this->getAllConfiguredModules();
-                $relatedModule = $relatedModule ?? $fieldConfiguration['relatedModule'] ?? $fieldConfiguration['child'] ?? $fieldConfiguration['parent'];
+                $foreignModuleSide = $foreignModuleSide ?? (($fieldConfiguration['parent'] ?? false) === $currentSideModuleName ? ($fieldConfiguration['child'] ?? null) : ($fieldConfiguration['parent'] ?? null));
+                $relatedModule = $relatedModule ?? $foreignModuleSide;
                 $tca = $this->determineTableConfigurationForRelation($fieldConfiguration, $currentSideModuleName);
                 $dataType = $dataType ?? '\\' . $modules[$relatedModule]->getMapper()->getEntityClassName();
                 $sqlType = 'int(11) default 0 NOT NULL';
