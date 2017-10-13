@@ -708,13 +708,9 @@ TEMPLATE;
                 // Set "MM_opposite_field" to indicate this M:N is mirrored by other TCA. To do so, we must determine if
                 // we are currently on the child side of the relation, in which case our field name comes from the child
                 // entity name, and comes from parent if the opposite is true.
-                /*
-                if ($currentSideModuleName === $fieldConfiguration['child']) {
-                    $tca['MM_opposite_field'] = GeneralUtility::camelCaseToLowerCaseUnderscored($entityShortNameChild);
-                } else {
-                    $tca['MM_opposite_field'] = GeneralUtility::camelCaseToLowerCaseUnderscored($entityShortNameParent);
+                if ($currentSideModuleName !== $fieldConfiguration['child']) {
+                    $tca['MM_opposite_field'] = GeneralUtility::camelCaseToLowerCaseUnderscored($fieldConfiguration['name']);
                 }
-                */
                 break;
 
             // 1:N is expressed by setting a "foreign_field" to be used when matching records. In a 1:1 relation the "uid"
