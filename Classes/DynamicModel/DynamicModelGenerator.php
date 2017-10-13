@@ -537,18 +537,35 @@ TEMPLATE;
             case 'ONE_TO_MANY':
             case 'MANY_TO_ONE':
                 $modules = $this->getAllConfiguredModules();
-                $foreignModuleSide = ($fieldConfiguration['parent'] ?? false) === $currentSideModuleName ? ($fieldConfiguration['child'] ?? null) : ($fieldConfiguration['parent'] ?? null);
-                $relatedModule = $fieldConfiguration['relatedModule'] ?? $foreignModuleSide;
-                $dataType = '\\' . ObjectStorage::class . '<\\' . $modules[$relatedModule]->getMapper()->getEntityClassName() . '>';
+                if (!empty($fieldConfiguration['relatedModule'])) {
+                    $relatedModule = $fieldConfiguration['relatedModule'];
+                } elseif (($fieldConfiguration['parent'] ?? false) === $currentSideModuleName) {
+                    $relatedModule = $fieldConfiguration['child'];
+                } else {
+                    $relatedModule = $fieldConfiguration['parent'];
+                }
+                $entityClassName = $modules[$relatedModule]->getMapper()->getEntityClassName();
+                $dataType = '\\' . ObjectStorage::class . '<\\' . $entityClassName . '>';
             case 'CEId':
             case 'CEExternalId':
             case 'ONE_TO_ONE':
             case 'FIELD_LINK':
-                $modules = $modules ?? $this->getAllConfiguredModules();
-                $foreignModuleSide = $foreignModuleSide ?? (($fieldConfiguration['parent'] ?? false) === $currentSideModuleName ? ($fieldConfiguration['child'] ?? null) : ($fieldConfiguration['parent'] ?? null));
-                $relatedModule = $relatedModule ?? $foreignModuleSide;
+                if (empty($relatedModule)) {
+                    $modules = $this->getAllConfiguredModules();
+                    if (!empty($fieldConfiguration['relatedModule'])) {
+                        $relatedModule = $fieldConfiguration['relatedModule'];
+                    } elseif (($fieldConfiguration['parent'] ?? false) === $currentSideModuleName) {
+                        $relatedModule = $fieldConfiguration['child'];
+                    } else {
+                        $relatedModule = $fieldConfiguration['parent'];
+                    }
+                    $entityClassName = $modules[$relatedModule]->getMapper()->getEntityClassName();
+                }
+                if (!isset($modules[$relatedModule])) {
+                    throw new \RuntimeException('Property ' . $fieldConfiguration['name'] . ' points to module ' . $relatedModule . ' which is not defined');
+                }
                 $tca = $this->determineTableConfigurationForRelation($fieldConfiguration, $currentSideModuleName);
-                $dataType = $dataType ?? '\\' . $modules[$relatedModule]->getMapper()->getEntityClassName();
+                $dataType = $dataType ?? '\\' . ($entityClassName ?? $modules[$relatedModule]->getMapper()->getEntityClassName());
                 $sqlType = 'int(11) default 0 NOT NULL';
                 break;
             default:
@@ -625,9 +642,6 @@ TEMPLATE;
             } elseif ($fieldConfiguration['type'] === 'CEExternalIdList') {
                 $overriddenType = 'MANY_TO_MANY';
             }
-            if (!($fieldConfiguration['child'] ?? false)) {
-                $fieldConfiguration['child'] = $fieldConfiguration['relatedModule'];
-            }
         }
 
         try {
@@ -651,13 +665,16 @@ TEMPLATE;
         }
 
         try {
-            $tableNameChild = $entityNameChild = $entityShortNameChild = null;
-            if ($fieldConfiguration['child'] ?? false) {
-                $this->validatePresenceOfConfiguredConnectorForModule($fieldConfiguration['child']);
-                $entityNameChild = $modules[$fieldConfiguration['child']]->getMapper()->getEntityClassName();
-                $entityShortNameChild = substr($entityNameChild, strrpos($entityNameChild, '\\') + 1);
-                $tableNameChild = $dataMapper->getDataMap($entityNameChild)->getTableName();
+            if (!empty($fieldConfiguration['relatedModule'])) {
+                $relatedModule = $fieldConfiguration['relatedModule'];
+            } elseif (($fieldConfiguration['parent'] ?? false) === $currentSideModuleName) {
+                $relatedModule = $fieldConfiguration['child'];
+            } else {
+                $relatedModule = $fieldConfiguration['parent'];
             }
+            $this->validatePresenceOfConfiguredConnectorForModule($relatedModule);
+            $entityNameChild = $modules[$relatedModule]->getMapper()->getEntityClassName();
+            $tableNameChild = $dataMapper->getDataMap($entityNameChild)->getTableName();
         } catch (\RuntimeException $error) {
             throw new \RuntimeException(
                 sprintf(
