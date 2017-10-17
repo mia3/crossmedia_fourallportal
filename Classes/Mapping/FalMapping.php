@@ -5,10 +5,15 @@ use Crossmedia\Fourallportal\Domain\Model\Event;
 use Crossmedia\Fourallportal\Domain\Model\Module;
 use Crossmedia\Fourallportal\Domain\Model\Server;
 use Crossmedia\Fourallportal\Service\ApiClient;
+use TYPO3\CMS\Core\Charset\CharsetConverter;
 use TYPO3\CMS\Core\Database\ConnectionPool;
+use TYPO3\CMS\Core\Resource\Driver\AbstractHierarchicalFilesystemDriver;
+use TYPO3\CMS\Core\Resource\Driver\LocalDriver;
 use TYPO3\CMS\Core\Resource\Exception\ExistingTargetFileNameException;
 use TYPO3\CMS\Core\Resource\Exception\FolderDoesNotExistException;
+use TYPO3\CMS\Core\Resource\Exception\InvalidFileNameException;
 use TYPO3\CMS\Core\Resource\File;
+use TYPO3\CMS\Core\Resource\FileInterface;
 use TYPO3\CMS\Core\Resource\FileRepository;
 use TYPO3\CMS\Core\Resource\Index\MetaDataRepository;
 use TYPO3\CMS\Core\Resource\StorageRepository;
@@ -115,34 +120,56 @@ class FalMapping extends AbstractMapping
      */
     protected function downloadFileAndGetFileObject($objectId, array $data, Event $event)
     {
-        $targetFilename = $data['result'][0]['properties']['data_name'];
+        $originalFileName = $data['result'][0]['properties']['data_name'];
+        $targetFilename = $this->sanitizeFileName($originalFileName);
         $tempPathAndFilename = GeneralUtility::tempnam('mamfal', $targetFilename);
 
         $trimShellPath = $event->getModule()->getShellPath();
-        $targetFolder = substr($data['result'][0]['properties']['data_shellpath'], strlen($trimShellPath));
+        $targetFolder = trim(substr($data['result'][0]['properties']['data_shellpath'], strlen($trimShellPath)), '/');
+        $targetFolder = implode('/', array_map([$this, 'sanitizeFileName'], explode('/', $targetFolder))) . '/';
 
         $client = $this->getClientByServer($event->getModule()->getServer());
         $storage = (new StorageRepository())->findByUid($event->getModule()->getFalStorage());
         try {
             $folder = $storage->getFolder($targetFolder);
+            echo 'Re-using folder ' . $targetFolder . PHP_EOL;
         } catch (FolderDoesNotExistException $error) {
             $folder = $storage->createFolder($targetFolder);
+            echo 'Created folder ' . $targetFolder . PHP_EOL;
         }
 
-        $client->saveDerivate($tempPathAndFilename, $event->getObjectId());
-        $contents = file_get_contents($tempPathAndFilename);
+        $download = !empty($targetFolder . $targetFilename);
 
-        try {
-            $file = $folder->createFile($targetFilename);
-        } catch (ExistingTargetFileNameException $error) {
-            $file = reset($this->getObjectRepository()->searchByName($folder, $targetFilename));
+        $file = null;
+        if ($folder->hasFile($targetFilename)) {
+            /** @var FileInterface $file */
+            $file = reset($this->getObjectRepository()->searchByName($folder, $targetFilename)) ?: null;
+            $download = $file && $file->getModificationTime() < (new \DateTime($data['result'][0]['mod_time']))->format('U');
+        }
+
+        if ($download) {
+            echo 'Downloading: ' . $targetFolder . $targetFilename . PHP_EOL;
+            $client->saveDerivate($tempPathAndFilename, $event->getObjectId());
+            $contents = file_get_contents($tempPathAndFilename);
+
+            try {
+                $file = $folder->createFile($targetFilename);
+            } catch (ExistingTargetFileNameException $error) {
+                $file = reset($this->getObjectRepository()->searchByName($folder, $targetFilename));
+            }
+
+            if (!$file) {
+                throw new \RuntimeException('Unable to either create or re-use existing file: ' . $targetFolder . $targetFilename, 1508242160);
+            }
+
+            $file->setContents($contents);
+        } else {
+            echo 'Skipping: ' . $targetFolder . $targetFilename . PHP_EOL;
         }
 
         if (!$file) {
-            throw new \RuntimeException('Unable to either create or re-use existing file: ' . $targetFolder . $targetFilename);
+            throw new \RuntimeException('Unable to either create or re-use existing file: ' . $targetFolder . $targetFilename, 1508242161);
         }
-
-        $file->setContents($contents);
 
         $queryBuilder = (new ConnectionPool())->getConnectionForTable('sys_file')->createQueryBuilder();
         $query = $queryBuilder->update('sys_file', 'f')
@@ -155,6 +182,34 @@ class FalMapping extends AbstractMapping
         }
 
         return $file;
+    }
+
+    /**
+     * @param string $fileName
+     * @param string $charset
+     * @return string
+     * @throws InvalidFileNameException
+     */
+    protected function sanitizeFileName($fileName, $charset = 'utf-8')
+    {
+        // Handle UTF-8 characters
+        if ($GLOBALS['TYPO3_CONF_VARS']['SYS']['UTF8filesystem']) {
+            // Allow ".", "-", 0-9, a-z, A-Z and everything beyond U+C0 (latin capital letter a with grave)
+            $cleanFileName = preg_replace('/[' . LocalDriver::UNSAFE_FILENAME_CHARACTER_EXPRESSION . ']/u', '_', trim($fileName));
+        } else {
+            $fileName = $this->getCharsetConversion()->specCharsToASCII($charset, $fileName);
+            // Replace unwanted characters by underscores
+            $cleanFileName = preg_replace('/[' . LocalDriver::UNSAFE_FILENAME_CHARACTER_EXPRESSION . '\\xC0-\\xFF]/', '_', trim($fileName));
+        }
+        // Strip trailing dots and return
+        $cleanFileName = rtrim($cleanFileName, '.');
+        if ($cleanFileName === '') {
+            throw new InvalidFileNameException(
+                'File name ' . $fileName . ' is invalid.',
+                1320288991
+            );
+        }
+        return $cleanFileName;
     }
 
     /**
@@ -266,5 +321,13 @@ class FalMapping extends AbstractMapping
     protected function getMetaDataRepository()
     {
         return GeneralUtility::makeInstance(MetaDataRepository::class);
+    }
+
+    /**
+     * @return CharsetConverter
+     */
+    protected function getCharsetConversion()
+    {
+        return GeneralUtility::makeInstance(CharsetConverter::class);
     }
 }
