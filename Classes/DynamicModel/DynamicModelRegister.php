@@ -1,6 +1,8 @@
 <?php
 namespace Crossmedia\Fourallportal\DynamicModel;
 
+use TYPO3\CMS\Extbase\DomainObject\AbstractEntity;
+
 class DynamicModelRegister
 {
     /**
@@ -14,6 +16,13 @@ class DynamicModelRegister
     public static function registerModelForAutomaticHandling($modelClassName)
     {
         if (!in_array($modelClassName, static::$handledModelClasses)) {
+            $segments = explode('\\', $modelClassName);
+            $className = array_pop($segments);
+            $segments[] = 'Abstract' . $className;
+            $abstractClassName = implode('\\', $segments);
+            if (!class_exists($abstractClassName)) {
+                class_alias(AbstractEntity::class, $abstractClassName);
+            }
             static::$handledModelClasses[] = $modelClassName;
         }
     }
