@@ -576,11 +576,11 @@ TEMPLATE;
                     } else {
                         $relatedModule = $fieldConfiguration['parent'];
                     }
-                    $entityClassName = $modules[$relatedModule]->getMapper()->getEntityClassName();
                 }
                 if (!isset($modules[$relatedModule])) {
-                    throw new \RuntimeException('Property ' . $fieldConfiguration['name'] . ' points to module ' . $relatedModule . ' which is not defined');
+                    throw new \RuntimeException('Property "' . $fieldConfiguration['name'] . '" points to module "' . $relatedModule . '" which is not defined');
                 }
+                $entityClassName = $entityClassName ?? $modules[$relatedModule]->getMapper()->getEntityClassName();
                 $tca = $this->determineTableConfigurationForRelation($fieldConfiguration, $currentSideModuleName);
                 $dataType = $dataType ?? '\\' . ($entityClassName ?? $modules[$relatedModule]->getMapper()->getEntityClassName());
                 $sqlType = 'int(11) default 0 NOT NULL';
