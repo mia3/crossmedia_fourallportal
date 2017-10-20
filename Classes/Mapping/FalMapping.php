@@ -132,7 +132,6 @@ class FalMapping extends AbstractMapping
         $storage = (new StorageRepository())->findByUid($event->getModule()->getFalStorage());
         try {
             $folder = $storage->getFolder($targetFolder);
-            echo 'Re-using folder ' . $targetFolder . PHP_EOL;
         } catch (FolderDoesNotExistException $error) {
             $folder = $storage->createFolder($targetFolder);
             echo 'Created folder ' . $targetFolder . PHP_EOL;
