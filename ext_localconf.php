@@ -75,7 +75,6 @@ if (!is_array($GLOBALS['TYPO3_CONF_VARS']['SYS']['caching']['cacheConfigurations
             'name' => 'performance_imperial',
             'metric' => [
                 'name' => 'performance',
-                'defaultUnit' => 'hp'
             ]
         ]
     );
@@ -90,7 +89,6 @@ if (!is_array($GLOBALS['TYPO3_CONF_VARS']['SYS']['caching']['cacheConfigurations
             'name' => 'performance_metric',
             'metric' => [
                 'name' => 'performance',
-                'defaultUnit' => 'ps'
             ]
         ]
     );
@@ -105,7 +103,6 @@ if (!is_array($GLOBALS['TYPO3_CONF_VARS']['SYS']['caching']['cacheConfigurations
             'name' => 'max_milling_depth_imperial',
             'metric' => [
                 'name' => 'length',
-                'defaultUnit' => 'inch'
             ]
         ]
     );
@@ -120,7 +117,6 @@ if (!is_array($GLOBALS['TYPO3_CONF_VARS']['SYS']['caching']['cacheConfigurations
             'name' => 'width2_imperial',
             'metric' => [
                 'name' => 'length',
-                'defaultUnit' => 'inch'
             ]
         ]
     );
@@ -135,7 +131,6 @@ if (!is_array($GLOBALS['TYPO3_CONF_VARS']['SYS']['caching']['cacheConfigurations
             'name' => 'max_milling_depth_metric',
             'metric' => [
                 'name' => 'length',
-                'defaultUnit' => 'millimeter'
             ]
         ]
     );
@@ -150,7 +145,20 @@ if (!is_array($GLOBALS['TYPO3_CONF_VARS']['SYS']['caching']['cacheConfigurations
             'name' => 'width_metric',
             'metric' => [
                 'name' => 'length',
-                'defaultUnit' => 'millimeter'
+            ]
+        ]
+    );
+
+    \Crossmedia\Fourallportal\DynamicModel\ComplexTypeFactory::createComplexTypeTemplate(
+        'CEMetric',
+        'length',
+        'millimeters',
+        'width_metric',
+        [
+            'type' => 'CEMetric',
+            'name' => 'width_metric',
+            'metric' => [
+                'name' => 'length',
             ]
         ]
     );
@@ -165,7 +173,6 @@ if (!is_array($GLOBALS['TYPO3_CONF_VARS']['SYS']['caching']['cacheConfigurations
             'name' => 'width2_metric',
             'metric' => [
                 'name' => 'length',
-                'defaultUnit' => 'millimeter'
             ]
         ]
     );
@@ -180,7 +187,6 @@ if (!is_array($GLOBALS['TYPO3_CONF_VARS']['SYS']['caching']['cacheConfigurations
             'name' => 'weight_metric',
             'metric' => [
                 'name' => 'weight',
-                'defaultUnit' => 'Kilogramm'
             ]
         ]
     );
@@ -195,7 +201,6 @@ if (!is_array($GLOBALS['TYPO3_CONF_VARS']['SYS']['caching']['cacheConfigurations
             'name' => 'width_imperial',
             'metric' => [
                 'name' => 'length',
-                'defaultUnit' => 'inch'
             ]
         ]
     );
@@ -210,7 +215,6 @@ if (!is_array($GLOBALS['TYPO3_CONF_VARS']['SYS']['caching']['cacheConfigurations
             'name' => 'tech_output_metric',
             'metric' => [
                 'name' => 'weight',
-                'defaultUnit' => 'Kilogramm'
             ]
         ]
     );
@@ -225,7 +229,6 @@ if (!is_array($GLOBALS['TYPO3_CONF_VARS']['SYS']['caching']['cacheConfigurations
             'name' => 'tech_output_imperial',
             'metric' => [
                 'name' => 'weight',
-                'defaultUnit' => 'pound'
             ]
         ]
     );
@@ -240,7 +243,6 @@ if (!is_array($GLOBALS['TYPO3_CONF_VARS']['SYS']['caching']['cacheConfigurations
             'name' => 'weight_imperial',
             'metric' => [
                 'name' => 'weight',
-                'defaultUnit' => 'pound'
             ]
         ]
     );
