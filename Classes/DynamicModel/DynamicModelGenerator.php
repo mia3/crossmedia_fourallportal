@@ -427,6 +427,7 @@ TEMPLATE;
         $map = MappingRegister::resolvePropertyMapForMapper($module->getMappingClass());
         $moduleConfiguration = $module->getModuleConfiguration();
         $connectorConfiguration = $module->getConnectorConfiguration();
+        $entityClassName = $module->getMapper()->getEntityClassName();
 
         $fieldsAndRelations = array_replace(
             array_intersect_assoc(
@@ -437,6 +438,12 @@ TEMPLATE;
         );
 
         foreach ($fieldsAndRelations as $originalName => $fieldConfiguration) {
+
+            // We need to reset a possibly overridden types so they use the *module* configuration's list of fields and
+            // types as the actual type of the field. This is important to the subsequent logic!
+            if (!empty($moduleConfiguration['field_conf'][$fieldConfiguration['field']]['type'])) {
+                $fieldConfiguration['type'] = $moduleConfiguration['field_conf'][$fieldConfiguration['field']]['type'];
+            }
 
             try {
                 if (isset($map[$originalName])) {
@@ -454,14 +461,18 @@ TEMPLATE;
                             'add it to the property map for the model "%s"',
                             $originalName,
                             GeneralUtility::underscoredToLowerCamelCase($originalName),
-                            $module->getMapper()->getEntityClassName()
+                            $entityClassName
                         )
                     );
                 } elseif (MappingRegister::resolvePropertyValueSetter($module->getMappingClass(), $originalName)) {
                     // Properties which are mapped using ValueSetter implementations must be skipped.
                     continue;
                 }
+
                 list ($type, $schema, $tca) = $this->guessLocalTypesFromRemoteField($fieldConfiguration, $module->getModuleName());
+
+                echo 'Generating: ' . $module->getModuleName() . '->' . $entityClassName . '->' . GeneralUtility::underscoredToLowerCamelCase($originalName) . '(' . $fieldConfiguration['type'] . ', ' . $type . ', ' . $schema . ')' . PHP_EOL;
+
                 $properties[GeneralUtility::underscoredToLowerCamelCase($originalName)] = [
                     'column' => $originalName,
                     'type' => $type,
@@ -554,35 +565,43 @@ TEMPLATE;
             case 'ONE_TO_MANY':
             case 'MANY_TO_ONE':
                 $modules = $this->getAllConfiguredModules();
-                if (!empty($fieldConfiguration['relatedModule'])) {
+                if (!empty($fieldConfiguration['modules'])) {
+                    $relatedModule = reset($fieldConfiguration['modules']);
+                } elseif (!empty($fieldConfiguration['relatedModule'])) {
                     $relatedModule = $fieldConfiguration['relatedModule'];
                 } elseif (($fieldConfiguration['parent'] ?? false) === $currentSideModuleName) {
                     $relatedModule = $fieldConfiguration['child'];
                 } else {
                     $relatedModule = $fieldConfiguration['parent'];
                 }
+                if (!isset($modules[$relatedModule])) {
+                    throw new \RuntimeException('Property "' . $fieldConfiguration['name'] . '" points to module "' . $relatedModule . '" which is not defined');
+                }
                 $entityClassName = $modules[$relatedModule]->getMapper()->getEntityClassName();
+                $tca = $this->determineTableConfigurationForRelation($fieldConfiguration, $currentSideModuleName);
                 $dataType = '\\' . ObjectStorage::class . '<\\' . $entityClassName . '>';
+                $sqlType = 'int(11) default 0 NOT NULL';
+                break;
             case 'CEId':
             case 'CEExternalId':
             case 'ONE_TO_ONE':
             case 'FIELD_LINK':
-                if (empty($relatedModule)) {
-                    $modules = $this->getAllConfiguredModules();
-                    if (!empty($fieldConfiguration['relatedModule'])) {
-                        $relatedModule = $fieldConfiguration['relatedModule'];
-                    } elseif (($fieldConfiguration['parent'] ?? false) === $currentSideModuleName) {
-                        $relatedModule = $fieldConfiguration['child'];
-                    } else {
-                        $relatedModule = $fieldConfiguration['parent'];
-                    }
+                $modules = $this->getAllConfiguredModules();
+                if (!empty($fieldConfiguration['modules'])) {
+                    $relatedModule = reset($fieldConfiguration['modules']);
+                } elseif (!empty($fieldConfiguration['relatedModule'])) {
+                    $relatedModule = $fieldConfiguration['relatedModule'];
+                } elseif (($fieldConfiguration['parent'] ?? false) === $currentSideModuleName) {
+                    $relatedModule = $fieldConfiguration['child'];
+                } else {
+                    $relatedModule = $fieldConfiguration['parent'];
                 }
                 if (!isset($modules[$relatedModule])) {
                     throw new \RuntimeException('Property "' . $fieldConfiguration['name'] . '" points to module "' . $relatedModule . '" which is not defined');
                 }
                 $entityClassName = $entityClassName ?? $modules[$relatedModule]->getMapper()->getEntityClassName();
                 $tca = $this->determineTableConfigurationForRelation($fieldConfiguration, $currentSideModuleName);
-                $dataType = $dataType ?? '\\' . ($entityClassName ?? $modules[$relatedModule]->getMapper()->getEntityClassName());
+                $dataType = $dataType ?? ('\\' . $entityClassName);
                 $sqlType = 'int(11) default 0 NOT NULL';
                 break;
             default:
@@ -607,12 +626,12 @@ TEMPLATE;
             $tca = [
                 'type' => 'inline',
                 'foreign_table' => 'tx_fourallportal_domain_model_complextype',
-                'foreign_field' => 'parent_uid',
-                'foreign_match_fields' => [
+                //'foreign_field' => 'parent_uid',
+                //'foreign_match_fields' => [
                     //'table_name' => $tableNameParent,
-                    'field_name' => $fieldConfiguration['name'],
-                ],
-                'foreign_table_field' => 'table_name',
+                    //'field_name' => $fieldConfiguration['name'],
+                //],
+                //'foreign_table_field' => 'table_name',
                 //'foreign_table_field' => $entityShortNameParent,
                 'maxitems' => 1
             ];
@@ -653,13 +672,23 @@ TEMPLATE;
         $dataMapper = $objectManager->get(DataMapper::class);
         $modules = $this->getAllConfiguredModules();
 
-        if ($fieldConfiguration['relatedModule'] ?? false) {
+        if (!empty($fieldConfiguration['modules'])) {
+            $relatedModule = reset($fieldConfiguration['modules']);
+        } elseif (!empty($fieldConfiguration['relatedModule'])) {
+            $relatedModule = $fieldConfiguration['relatedModule'];
+        } elseif (($fieldConfiguration['parent'] ?? false) === $currentSideModuleName) {
+            $relatedModule = $fieldConfiguration['child'];
+        } else {
+            $relatedModule = $fieldConfiguration['parent'];
+        }
+
+        //if ($fieldConfiguration['relatedModule'] ?? false) {
             if ($fieldConfiguration['type'] === 'CEExternalId') {
                 $overriddenType = 'ONE_TO_ONE';
             } elseif ($fieldConfiguration['type'] === 'CEExternalIdList') {
                 $overriddenType = 'MANY_TO_MANY';
             }
-        }
+        //}
 
         try {
             $tableNameParent = $entityNameParent = $entityShortNameParent = null;
@@ -682,13 +711,6 @@ TEMPLATE;
         }
 
         try {
-            if (!empty($fieldConfiguration['relatedModule'])) {
-                $relatedModule = $fieldConfiguration['relatedModule'];
-            } elseif (($fieldConfiguration['parent'] ?? false) === $currentSideModuleName) {
-                $relatedModule = $fieldConfiguration['child'];
-            } else {
-                $relatedModule = $fieldConfiguration['parent'];
-            }
             $this->validatePresenceOfConfiguredConnectorForModule($relatedModule);
             $entityNameChild = $modules[$relatedModule]->getMapper()->getEntityClassName();
             $tableNameChild = $dataMapper->getDataMap($entityNameChild)->getTableName();
@@ -716,6 +738,8 @@ TEMPLATE;
             // M:N is expressed to TYPO3 as any other relation, but having an "MM" entry in the TCA containing a table name.
             // This table can then be generated on-the-fly since all MM tables have the same default structure when written
             // by this model generator class.
+            case 'CEExternalIdList':
+            case 'CEIdList':
             case 'MANY_TO_MANY':
                 $tca['type'] = 'group';
                 $tca['internal_type'] = 'db';
@@ -790,9 +814,9 @@ TEMPLATE;
                     ],
                     'maxitems' => $fieldType  === 'ONE_TO_ONE' ? 1 : 99999,
                     'foreign_match_fields' => [
-                        'fieldname' => $fieldConfiguration['name'],
-                        'tablenames' => 'tx_products_domain_model_product',
-                        'table_local' => 'sys_file',
+                        //'fieldname' => $fieldConfiguration['name'],
+                        //'tablenames' => 'tx_products_domain_model_product',
+                        //'table_local' => 'sys_file',
                     ]
                 ]
             );
