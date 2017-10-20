@@ -105,7 +105,7 @@ class FourallportalCommandController extends CommandController
         foreach ($this->getEntityClassNames($entityClassName) as $entityClassName) {
             $tca = DynamicModelGenerator::generateAutomaticTableConfigurationForModelClassName($entityClassName);
             $table = $this->objectManager->get(DataMapper::class)->getDataMap($entityClassName)->getTableName();
-            $extensionKey = $this->getExtensionKeyFromEntityClasNamE($entityClassName);
+            $extensionKey = $this->getExtensionKeyFromEntityClasName($entityClassName);
 
             // Note: although extPath() supports a second argument we concatenate to prevent file exists. It may not exist yet!
             $targetFilePathAndFilename = ExtensionManagementUtility::extPath($extensionKey) . 'Configuration/TCA/' . $table . '.php';
@@ -149,7 +149,7 @@ class FourallportalCommandController extends CommandController
                 $this->response->appendContent('Cannot generate model for ' . $entityClassName . ' - has no configured module to handle the entity' . PHP_EOL);
                 continue;
             }
-            $extensionKey = $this->getExtensionKeyFromEntityClasNamE($entityClassName);
+            $extensionKey = $this->getExtensionKeyFromEntityClasName($entityClassName);
             $module = $modulesByEntityClassName[$entityClassName];
             $sourceCode = $dynamicModelGenerator->generateAbstractModelForModule($module);
             $abstractClassName = 'Abstract' . substr($entityClassName, strrpos($entityClassName, '\\') + 1);
@@ -186,7 +186,7 @@ class FourallportalCommandController extends CommandController
             if (!$module->isEnableDynamicModel()) {
                 continue;
             }
-            $extensionKey = $this->getExtensionKeyFromEntityClasNamE($module->getMapper()->getEntityClassName());
+            $extensionKey = $this->getExtensionKeyFromEntityClasName($module->getMapper()->getEntityClassName());
             if (!isset($modulesByExtensionKey[$extensionKey])) {
                 $modulesByExtensionKey[$extensionKey] = [$module];
             } else {
@@ -222,7 +222,7 @@ class FourallportalCommandController extends CommandController
      * @param string $entityClassName
      * @return string
      */
-    protected function getExtensionKeyFromEntityClasNamE($entityClassName)
+    protected function getExtensionKeyFromEntityClasName($entityClassName)
     {
         $entityClassNameParts = explode('\\', $entityClassName);
         $entityClassNameBase = array_slice($entityClassNameParts, 0, -3);
