@@ -47,6 +47,168 @@ class FourallportalCommandController extends CommandController
     }
 
     /**
+     * Initialize system
+     *
+     * Creates Server and Module configuration if configured in
+     * extension configuration. The array in:
+     *
+     * $GLOBALS['TYPO3_CONF_VARS']['EXT']['extConf']['fourallportal']
+     *
+     * can contain an array of servers and modules, e.g.:
+     *
+     * · [
+     * ·   'default' => [
+     * ·     'domain' => '',
+     * ·     'customerName' => '',
+     * ·     'username' => '',
+     * ·     'password' => '',
+     * ·     'active' => 1,
+     * ·     'modules' => [
+     * ·       'module_name' => [
+     * ·         'connectorName' => '',
+     * ·         'mappingClass' => '',
+     * ·         'shellPath' => '',
+     * ·         'falStorage' => '',
+     * ·         'storagePid' => '',
+     * ·       ],
+     * ·     ],
+     * ·   ],
+     * · ]
+     *
+     * Note that the module properties may differ depending on which
+     * mapping class the module uses, and that the server name does
+     * not get used - it is only there to identify the entry in your
+     * configuration file.
+     *
+     * @param bool $fail If TRUE, any connectivity test failure will cause the command to exit with failure.
+     */
+    public function initializeCommand($fail = false)
+    {
+        $settings = GeneralUtility::removeDotsFromTS((array) unserialize($GLOBALS['TYPO3_CONF_VARS']['EXT']['extConf']['fourallportal']));
+        if (isset($settings['servers'])) {
+            foreach ($settings['servers'] as $server) {
+                $currentServer = $this->serverRepository->findOneByDomain($server['domain']);
+                if (!$currentServer) {
+                    $this->response->appendContent('Creating new server for ' . $server['domain'] . PHP_EOL);
+                    $currentServer = new Server();
+                    $this->serverRepository->add($currentServer);
+                } else {
+                    $this->response->appendContent('Updating configuration for ' . $server['domain'] . PHP_EOL);
+                    $this->serverRepository->update($currentServer);
+                }
+
+                if ($server['username']) {
+                    $currentServer->setUsername($server['username']);
+                    $this->response->appendContent('* Username: ' . $server['username'] . PHP_EOL);
+                }
+
+                if ($server['password']) {
+                    $currentServer->setPassword($server['password']);
+                    $this->response->appendContent('* Password: ' . $server['password'] . PHP_EOL);
+                }
+
+                $currentServer->setActive((bool) $server['active']);
+                $this->response->appendContent('* Active: ' . $server['active'] . PHP_EOL);
+
+                $currentServer->setCustomerName($server['customerName']);
+                $this->response->appendContent('* Username: ' . $server['customerName'] . PHP_EOL);
+
+                $this->response->appendContent('* Testing connectivity... ');
+                $this->response->send();
+                $this->response->setContent('');
+
+                try {
+                    $currentServer->getClient()->login();
+                    $this->response->appendContent('OKAY!');
+                } catch (\Exception $error) {
+                    $this->response->appendContent('ERROR! ' . $error->getMessage());
+                    if ($fail) {
+                        $this->response->setExitCode(1);
+                    }
+                }
+                $this->response->appendContent(PHP_EOL);
+
+                foreach ($server['modules'] as $moduleName => $moduleProperties) {
+                    $module = $this->ensureServerHasModule($currentServer, $moduleName, $moduleProperties);
+
+                    $this->response->appendContent('* Testing connectivity... ');
+                    $this->response->send();
+                    $this->response->setContent('');
+
+                    try {
+                        $module->getModuleConfiguration();
+                        $this->response->appendContent('OKAY!');
+                    } catch (\Exception $error) {
+                        $this->response->appendContent('ERROR! ' . $error->getMessage());
+                        if ($fail) {
+                            $this->response->setExitCode(1);
+                        }
+                    }
+                    $this->response->appendContent(PHP_EOL);
+                }
+            }
+        }
+    }
+
+    /**
+     * @param Server $server
+     * @param string $moduleName
+     * @param array $moduleProperties
+     * @return Module
+     */
+    protected function ensureServerHasModule(Server $server, $moduleName, array $moduleProperties)
+    {
+        $currentModule = new Module();
+        $foundModule = false;
+        foreach ($server->getModules() as $module) {
+            if ($module->getModuleName() === $moduleName) {
+                $foundModule = true;
+                $currentModule = $module;
+                break;
+            }
+        }
+        if (!$foundModule) {
+            $this->response->appendContent('Adding new module for ' . $moduleName . PHP_EOL);
+        } else {
+            $this->response->appendContent('Updating existing module configuration for ' . $moduleName . PHP_EOL);
+        }
+
+        $currentModule->setModuleName($moduleName);
+
+        $currentModule->setConnectorName($moduleProperties['connectorName']);
+        $this->response->appendContent('* Connector name: ' . $moduleProperties['connectorName'] . PHP_EOL);
+
+        $currentModule->setMappingClass($moduleProperties['mappingClass']);
+        $this->response->appendContent('* Mapping class: ' . $moduleProperties['mappingClass'] . PHP_EOL);
+
+        $currentModule->setEnableDynamicModel($moduleProperties['enableDynamicModel'] ?? false);
+        $this->response->appendContent('* Dynamic: ' . $moduleProperties['enableDynamicModel'] . PHP_EOL);
+
+        if ($moduleProperties['shellPath'] ?? false) {
+            $currentModule->setShellPath($moduleProperties['shellPath']);
+            $this->response->appendContent('* Shell path: ' . $moduleProperties['shellPath'] . PHP_EOL);
+        }
+
+        if ($moduleProperties['falStorage'] ?? false) {
+            $currentModule->setFalStorage((int) $moduleProperties['falStorage']);
+            $this->response->appendContent('* FAL storage: ' . $moduleProperties['falStorage'] . PHP_EOL);
+        }
+
+        if ($moduleProperties['storagePid'] ?? false) {
+            $currentModule->setStoragePid((int) $moduleProperties['storagePid']);
+            $this->response->appendContent('* Storage PID: ' . $moduleProperties['storagePid'] . PHP_EOL);
+        }
+
+        if ($currentModule->getUid()) {
+            $this->moduleRepository->update($currentModule);
+        } else {
+            $this->moduleRepository->add($currentModule);
+            $server->getModules()->attach($currentModule);
+        }
+        return $currentModule;
+    }
+
+    /**
      * Update models
      *
      * Updates local model classes with properties as specified by
