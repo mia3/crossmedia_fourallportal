@@ -64,7 +64,7 @@ abstract class AbstractMapping implements MappingInterface
                 } else {
                     $repository->add($object);
                 }
-                $this->mapPropertiesFromDataToObject($data, $object);
+                $this->mapPropertiesFromDataToObject($data, $object, $event->getModule());
                 $repository->update($object);
                 break;
             default:
@@ -81,8 +81,9 @@ abstract class AbstractMapping implements MappingInterface
     /**
      * @param array $data
      * @param AbstractEntity $object
+     * @param Module $module
      */
-    protected function mapPropertiesFromDataToObject(array $data, $object)
+    protected function mapPropertiesFromDataToObject(array $data, $object, Module $module)
     {
         if (!$data['result']) {
             return;
@@ -95,7 +96,7 @@ abstract class AbstractMapping implements MappingInterface
             }
             $customSetter = MappingRegister::resolvePropertyValueSetter(static::class, $importedName);
             if ($customSetter) {
-                $customSetter->setValueOnObject($propertyValue, $importedName, $data, $object, $this);
+                $customSetter->setValueOnObject($propertyValue, $importedName, $data, $object, $module, $this);
             } else {
                 $targetPropertyName = isset($map[$importedName]) ? $map[$importedName] : GeneralUtility::underscoredToLowerCamelCase($importedName);
                 $this->mapPropertyValueToObject($targetPropertyName, $propertyValue, $object);

@@ -72,7 +72,7 @@ class FalMapping extends AbstractMapping
                 }
             case 'create':
                 $object = $this->downloadFileAndGetFileObject($objectId, $data, $event);
-                $this->mapPropertiesFromDataToObject($data, $object);
+                $this->mapPropertiesFromDataToObject($data, $object, $event->getModule());
                 break;
             default:
                 throw new \RuntimeException('Unknown event type: ' . $event->getEventType());
@@ -88,11 +88,12 @@ class FalMapping extends AbstractMapping
     /**
      * @param array $data
      * @param \TYPO3\CMS\Extbase\DomainObject\AbstractEntity $object
+     * @param Module $module
      * @return AbstractEntity
      */
-    protected function mapPropertiesFromDataToObject(array $data, $object)
+    protected function mapPropertiesFromDataToObject(array $data, $object, Module $module)
     {
-        parent::mapPropertiesFromDataToObject($data, $object);
+        parent::mapPropertiesFromDataToObject($data, $object, $module);
         $metadata = [];
         $map = MappingRegister::resolvePropertyMapForMapper(static::class);
 
