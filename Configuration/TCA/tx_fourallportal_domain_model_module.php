@@ -78,7 +78,7 @@ return [
         'shell_path' => [
             'exclude' => true,
             'label' => 'LLL:EXT:fourallportal/Resources/Private/Language/locallang_db.xlf:tx_fourallportal_domain_model_module.shell_path',
-            'displayCond' => 'FIELD:mapping_class:=:' . \Crossmedia\Fourallportal\Mapping\FalMapping::class,
+            //'displayCond' => 'FIELD:mapping_class:=:' . \Crossmedia\Fourallportal\Mapping\FalMapping::class,
             'config' => [
                 'type' => 'input',
                 'size' => 30,
