@@ -76,6 +76,7 @@ class FileReferenceTypeConverter extends AbstractUuidAwareObjectTypeConverter im
         // So instead we probe the DB and if a match is found, we know the existing property value is the
         // exact same relation we were asked to convert - and we return the current property value.
         $queryBuilder = (new ConnectionPool())->getConnectionForTable('sys_file')->createQueryBuilder();
+        $queryBuilder->getRestrictions()->removeAll();
         $references = $queryBuilder->select('r.uid')->from('sys_file', 'f')->from('sys_file_reference', 'r')->where(
             sprintf(
                 'r.uid_local = f.uid AND f.remote_id = \'%s\' AND r.tablenames = \'%s\' AND r.table_local = \'sys_file\' AND r.fieldname = \'%s\'',
@@ -95,6 +96,7 @@ class FileReferenceTypeConverter extends AbstractUuidAwareObjectTypeConverter im
         // invalid or impossible to resolve - and an exception is thrown, causing the importing to be
         // resumed on next run which should then have imported the target file so we can point to it.
         $queryBuilder = (new ConnectionPool())->getConnectionForTable('sys_file')->createQueryBuilder();
+        $queryBuilder->getRestrictions()->removeAll();
         $original = $queryBuilder->select('f.uid')->from('sys_file', 'f')
             ->where($queryBuilder->expr()->eq('f.remote_id', $queryBuilder->quote($source)))
             ->setMaxResults(1)
@@ -108,6 +110,7 @@ class FileReferenceTypeConverter extends AbstractUuidAwareObjectTypeConverter im
         // File reference object needs to be created with the exact composition of this array. Not
         // passing either one of these parameters causes an invalid file reference to be written.
         $reference = $resourceFactory->createFileReferenceObject([
+            'pid' => $this->parentObject->getPid(),
             'tablenames' => $dataMap->getTableName(),
             'table_local' => 'sys_file',
             'fieldname' => GeneralUtility::camelCaseToLowerCaseUnderscored($this->propertyName),
