@@ -48,7 +48,7 @@ class DynamicModelGenerator
         'l10n_diffsource mediumblob',
         'remote_id varchar(255) DEFAULT \'\' NOT NULL',
     ];
-    
+
     protected $automaticSchemaKeys = [
         'PRIMARY KEY (uid)',
         'KEY parent (pid)',
@@ -131,7 +131,7 @@ TEMPLATE;
 
         return $sqlString;
     }
-    
+
     /**
      * @return array
      */
@@ -429,13 +429,17 @@ TEMPLATE;
         $connectorConfiguration = $module->getConnectorConfiguration();
         $entityClassName = $module->getMapper()->getEntityClassName();
 
-        $fieldsAndRelations = array_replace(
+        $fieldsAndRelations = array_replace_recursive(
             array_intersect_assoc(
                 $moduleConfiguration['field_conf'],
                 $connectorConfiguration['fieldsToLoad']
             ),
-            (array) $moduleConfiguration['relation_conf']
+            $moduleConfiguration['relation_conf']
         );
+
+        uasort($fieldsAndRelations, function ($a, $b) {
+            return $a['name'] <=> $b['name'];
+        });
 
         foreach ($fieldsAndRelations as $originalName => $fieldConfiguration) {
 
@@ -445,45 +449,55 @@ TEMPLATE;
                 $fieldConfiguration['type'] = $moduleConfiguration['field_conf'][$fieldConfiguration['field']]['type'];
             }
 
+            $fieldName = $fieldConfiguration['name'];
+            $propertyName = GeneralUtility::underscoredToLowerCamelCase($fieldName);
+            echo 'Generating: ' . $module->getModuleName() . '->' . $entityClassName . '->' . $propertyName;
+
             try {
-                if (isset($map[$originalName])) {
+                if (isset($map[$fieldName])) {
                     // This property is explicitly mapped in the mapping array, indicating it is manually
                     // added to the sub-class of the abstract class we are generating, thus needs to be skipped.
+                    echo ' - skipped; has custom mapping' . PHP_EOL;
                     continue;
-                } elseif (!($map[$originalName] ?? false) && (preg_match('/[^a-z0-9_]/i', $originalName) || preg_match('/[^a-z]/i', $originalName{0}))) {
+                } elseif (!($map[$fieldName] ?? false) && (preg_match('/[^a-z0-9_]/i', $fieldName) || preg_match('/[^a-z]/i', $fieldName{0}))) {
                     // Property uses a name that is impossible to express as SQL type and it was NOT defined in
                     // the property map for the class. This must yield an exception.
+                    echo ' - skipped; field name is invalid' . PHP_EOL;
                     throw new \RuntimeException(
                         sprintf(
                             'Property "%s" should map to "%s" but the property name contains invalid characters and is ' .
                             'not configured in the manual property map. To map this property - which you must do even ' .
                             'if the property should just be ignored by mapping it to "false" as target column - please ' .
                             'add it to the property map for the model "%s"',
-                            $originalName,
-                            GeneralUtility::underscoredToLowerCamelCase($originalName),
+                            $fieldName,
+                            GeneralUtility::underscoredToLowerCamelCase($fieldName),
                             $entityClassName
                         )
                     );
-                } elseif (MappingRegister::resolvePropertyValueSetter($module->getMappingClass(), $originalName)) {
+                } elseif (MappingRegister::resolvePropertyValueSetter($module->getMappingClass(), $fieldName)) {
                     // Properties which are mapped using ValueSetter implementations must be skipped.
+                    echo ' - skipped; has custom value setter' . PHP_EOL;
                     continue;
                 }
 
                 list ($type, $schema, $tca) = $this->guessLocalTypesFromRemoteField($fieldConfiguration, $module->getModuleName());
 
-                echo 'Generating: ' . $module->getModuleName() . '->' . $entityClassName . '->' . GeneralUtility::underscoredToLowerCamelCase($originalName) . '(' . $fieldConfiguration['type'] . ', ' . $type . ', ' . $schema . ')' . PHP_EOL;
+                echo '(' . $fieldConfiguration['type'] . ', ' . $type . ', ' . $schema . ')';
 
-                $properties[GeneralUtility::underscoredToLowerCamelCase($originalName)] = [
-                    'column' => $originalName,
+                $properties[$propertyName] = [
+                    'column' => $fieldName,
                     'type' => $type,
                     'schema' => $schema,
                     'config' => $tca
                 ];
             } catch (\RuntimeException $error) {
+                echo '  xxx ' . $error->getMessage();
                 if (Bootstrap::getInstance()->getApplicationContext()->isDevelopment()) {
                     throw $error;
                 }
             }
+
+            echo PHP_EOL;
         }
 
         return $properties;
@@ -559,6 +573,7 @@ TEMPLATE;
                 $dataType = 'array';
                 $sqlType = 'text';
                 break;
+            case 'FIELD_LINK':
             case 'CEExternalIdList':
             case 'CEIdList':
             case 'MANY_TO_MANY':
@@ -577,15 +592,17 @@ TEMPLATE;
                 if (!isset($modules[$relatedModule])) {
                     throw new \RuntimeException('Property "' . $fieldConfiguration['name'] . '" points to module "' . $relatedModule . '" which is not defined');
                 }
+                $dataMapper = GeneralUtility::makeInstance(ObjectManager::class)->get(DataMapper::class);
+                $entityNameParent = $modules[$currentSideModuleName]->getMapper()->getEntityClassName();
+                $tableNameParent = $dataMapper->getDataMap($entityNameParent)->getTableName();
                 $entityClassName = $modules[$relatedModule]->getMapper()->getEntityClassName();
-                $tca = $this->determineTableConfigurationForRelation($fieldConfiguration, $currentSideModuleName);
+                $tca = $this->determineTableConfigurationForRelation($fieldConfiguration, $currentSideModuleName, $tableNameParent);
                 $dataType = '\\' . ObjectStorage::class . '<\\' . $entityClassName . '>';
                 $sqlType = 'int(11) default 0 NOT NULL';
                 break;
             case 'CEId':
             case 'CEExternalId':
             case 'ONE_TO_ONE':
-            case 'FIELD_LINK':
                 $modules = $this->getAllConfiguredModules();
                 if (!empty($fieldConfiguration['modules'])) {
                     $relatedModule = reset($fieldConfiguration['modules']);
@@ -599,8 +616,11 @@ TEMPLATE;
                 if (!isset($modules[$relatedModule])) {
                     throw new \RuntimeException('Property "' . $fieldConfiguration['name'] . '" points to module "' . $relatedModule . '" which is not defined');
                 }
+                $dataMapper = GeneralUtility::makeInstance(ObjectManager::class)->get(DataMapper::class);
+                $entityNameParent = $modules[$currentSideModuleName]->getMapper()->getEntityClassName();
+                $tableNameParent = $dataMapper->getDataMap($entityNameParent)->getTableName();
                 $entityClassName = $entityClassName ?? $modules[$relatedModule]->getMapper()->getEntityClassName();
-                $tca = $this->determineTableConfigurationForRelation($fieldConfiguration, $currentSideModuleName);
+                $tca = $this->determineTableConfigurationForRelation($fieldConfiguration, $currentSideModuleName, $tableNameParent);
                 $dataType = $dataType ?? ('\\' . $entityClassName);
                 $sqlType = 'int(11) default 0 NOT NULL';
                 break;
@@ -626,10 +646,10 @@ TEMPLATE;
             $tca = [
                 'type' => 'inline',
                 'foreign_table' => 'tx_fourallportal_domain_model_complextype',
-                //'foreign_field' => 'parent_uid',
+                'foreign_field' => 'parent_uid',
                 //'foreign_match_fields' => [
-                    //'table_name' => $tableNameParent,
-                    //'field_name' => $fieldConfiguration['name'],
+                //    'table_name' => $tableNameParent,
+                //    'field_name' => $fieldConfiguration['name'],
                 //],
                 //'foreign_table_field' => 'table_name',
                 //'foreign_table_field' => $entityShortNameParent,
@@ -662,10 +682,11 @@ TEMPLATE;
      *
      * @param array $fieldConfiguration
      * @param string $currentSideModuleName Module name for the side of the relation we are currently processing
+     * @param string $currentTableName
      * @throws \RuntimeException
      * @return array
      */
-    protected function determineTableConfigurationForRelation(array $fieldConfiguration, $currentSideModuleName)
+    protected function determineTableConfigurationForRelation(array $fieldConfiguration, $currentSideModuleName, $currentTableName)
     {
         $overriddenType = null;
         $objectManager = GeneralUtility::makeInstance(ObjectManager::class);
@@ -814,9 +835,9 @@ TEMPLATE;
                     ],
                     'maxitems' => $fieldType  === 'ONE_TO_ONE' ? 1 : 99999,
                     'foreign_match_fields' => [
-                        //'fieldname' => $fieldConfiguration['name'],
-                        //'tablenames' => 'tx_products_domain_model_product',
-                        //'table_local' => 'sys_file',
+                        'fieldname' => $fieldConfiguration['name'],
+                        'tablenames' => $currentTableName,
+                        'table_local' => 'sys_file',
                     ]
                 ]
             );
