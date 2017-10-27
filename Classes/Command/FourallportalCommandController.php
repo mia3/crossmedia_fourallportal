@@ -428,10 +428,15 @@ class FourallportalCommandController extends CommandController
      *
      * @param boolean $sync Set to "1" to trigger a full sync
      * @param string $module If passed can be used to only sync one module, using the module or connector name it has in 4AP.
+     * @param string $exclude Exclude a list of modules from processing (CSV string module names)
      */
-    public function syncCommand($sync = false, $module = null)
+    public function syncCommand($sync = false, $module = null, $exclude = null)
     {
+        $exclude = explode(',', $exclude);
         foreach ($this->getActiveModuleOrModules($module) as $module) {
+            if (in_array($module->getModuleName(), $exclude)) {
+                continue;
+            }
             $client = $module->getServer()->getClient();
             /** @var Module $configuredModule */
             if (!$sync && $module->getLastEventId() > 0) {
