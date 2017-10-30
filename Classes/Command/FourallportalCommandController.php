@@ -235,12 +235,13 @@ class FourallportalCommandController extends CommandController
      * all dynamic-model-enabled modules' entities.
      *
      * @param string $entityClassName
+     * @param bool $strict If TRUE, generates strict PHP code
      */
-    public function generateCommand($entityClassName = null)
+    public function generateCommand($entityClassName = null, $strict = false)
     {
         $this->generateSqlSchemaCommand();
         $this->generateTableConfigurationCommand($entityClassName);
-        $this->generateAbstractModelClassCommand($entityClassName);
+        $this->generateAbstractModelClassCommand($entityClassName, $strict);
     }
 
     /**
@@ -294,8 +295,9 @@ class FourallportalCommandController extends CommandController
      * the Module.
      *
      * @param string $entityClassName
+     * @param bool $strict If TRUE, generates strict PHP code
      */
-    public function generateAbstractModelClassCommand($entityClassName = null)
+    public function generateAbstractModelClassCommand($entityClassName = null, $strict = false)
     {
         $dynamicModelGenerator = $this->objectManager->get(DynamicModelGenerator::class);
 
@@ -313,7 +315,7 @@ class FourallportalCommandController extends CommandController
             }
             $extensionKey = $this->getExtensionKeyFromEntityClasName($entityClassName);
             $module = $modulesByEntityClassName[$entityClassName];
-            $sourceCode = $dynamicModelGenerator->generateAbstractModelForModule($module);
+            $sourceCode = $dynamicModelGenerator->generateAbstractModelForModule($module, $strict);
             $abstractClassName = 'Abstract' . substr($entityClassName, strrpos($entityClassName, '\\') + 1);
             $targetFileContent = '<?php' . PHP_EOL . $sourceCode . PHP_EOL;
             $targetFilePathAndFilename = ExtensionManagementUtility::extPath($extensionKey) . 'Classes/Domain/Model/' . $abstractClassName . '.php';

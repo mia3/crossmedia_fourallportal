@@ -260,7 +260,7 @@ TEMPLATE;
             if (class_exists($module->getMapper()->getEntityClassName()) || class_exists($module->getMapper()->getEntityClassName())) {
                 continue;
             }
-            $this->generateAbstractModelForModule($module, true);
+            $this->generateAbstractModelForModule($module, false, true);
         }
         if ($safeMode === false) {
             // Loop 2: generate actual classes, which require the presence of the fallback in order for the data map to work
@@ -293,9 +293,10 @@ TEMPLATE;
      *
      * @param Module $module
      * @param boolean $asFallback
+     * @param boolean $strict If TRUE, generates strict PHP code
      * @return void
      */
-    public function generateAbstractModelForModule(Module $module, $asFallback = false)
+    public function generateAbstractModelForModule(Module $module, $strict = false, $asFallback = false)
     {
         $repository = $module->getMapper()->getObjectRepository();
 
@@ -309,7 +310,7 @@ TEMPLATE;
             // This class is generated at a time in the process where errors based on remote API data
             // have not yet been raised - as long as the local code base is intact, this class can be
             // generated and trusted.
-            $sourceCode = $this->generateCachedClassFile($abstractModelClassName, AbstractEntity::class, [], sha1($abstractModelClassName) . '_fallback');
+            $sourceCode = $this->generateCachedClassFile($abstractModelClassName, AbstractEntity::class, [], $strict, sha1($abstractModelClassName) . '_fallback');
 
         } else {
             // Phase 2: the more risky dynamic model with properties read from the remote API. If any
@@ -317,7 +318,7 @@ TEMPLATE;
             // PHP/SQL representations, either errors will be raised or the remaining safe properties
             // will be written - depending on the context of the TYPO3 site (Development = errors thrown)
             $propertyConfiguration = $this->getPropertyConfigurationFromConnector($module);
-            $sourceCode = $this->generateCachedClassFile($abstractModelClassName, AbstractEntity::class, $propertyConfiguration);
+            $sourceCode = $this->generateCachedClassFile($abstractModelClassName, AbstractEntity::class, $propertyConfiguration, $strict);
         }
         return $sourceCode;
     }
@@ -878,9 +879,17 @@ TEMPLATE;
      * @param string $parentClass
      * @param array $propertyConfiguration
      * @param string $identifier
+     * @param bool $strict
      * @return string
      */
-    protected function generateCachedClassFile($className, $parentClass, array $propertyConfiguration, $identifier = null)
+    protected function generateCachedClassFile($className, $parentClass, array $propertyConfiguration, $strict = false, $identifier = null)
+    {
+        return $strict
+            ? $this->generateStrictCachedClassFile($className, $parentClass, $propertyConfiguration, $identifier)
+            : $this->generateRelaxedCachedClassFile($className, $parentClass, $propertyConfiguration, $identifier);
+    }
+
+    protected function generateRelaxedCachedClassFile($className, $parentClass, array $propertyConfiguration, $identifier = null)
     {
         $propertyTemplate = <<< TEMPLATE
 
@@ -901,6 +910,7 @@ TEMPLATE;
     {
         \$this->%s = %s;
     }
+
 
 TEMPLATE;
 
@@ -923,7 +933,7 @@ TEMPLATE;
                 '$' . $propertyName
             );
             if (strpos($property['type'], '\\Persistence\\ObjectStorage<') !== false) {
-                $objectStorageInitializations .= '$this->' . $propertyName . ' = new \\TYPO3\\CMS\\Extbase\\Persistence\\ObjectStorage();' . PHP_EOL;
+                $objectStorageInitializations .= '        $this->' . $propertyName . ' = new \\TYPO3\\CMS\\Extbase\\Persistence\\ObjectStorage();' . PHP_EOL;
             }
         }
 
@@ -932,16 +942,14 @@ namespace %s;
 
 class %s extends %s
 {
-    %s
-    
-    public function __construct()
+%s    public function __construct()
     {
         \$this->initializeStorageObjects();
     }
     
     public function initializeStorageObjects()
     {
-        %s
+%s
     }
 }
 
@@ -956,7 +964,98 @@ TEMPLATE;
             $classShortName,
             '\\' . ltrim($parentClass, '\\'),
             $functionsAndProperties,
-            $objectStorageInitializations
+            rtrim($objectStorageInitializations)
+        );
+
+        $identifier = $identifier ?: sha1($className);
+        static::getGeneratedClassCache()->set($identifier, $classSourceCode);
+        return $classSourceCode;
+    }
+
+    protected function generateStrictCachedClassFile($className, $parentClass, array $propertyConfiguration, $identifier = null)
+    {
+        $propertyTemplate = <<< TEMPLATE
+    /**
+     * @var %s
+     */
+    protected \$%s = %s;
+    
+    public function get%s()%s
+    {
+        return \$this->%s;
+    }
+
+    public function set%s(%s%s)
+    {
+        \$this->%s = %s;
+    }
+
+
+TEMPLATE;
+
+        $functionsAndProperties = '';
+        $objectStorageInitializations = '';
+        foreach ($propertyConfiguration as $propertyName => $property) {
+            if (strpos($property['type'], '\\Persistence\\ObjectStorage<') !== false) {
+                $objectStorageInitializations .= '        $this->' . $propertyName . ' = new \\TYPO3\\CMS\\Extbase\\Persistence\\ObjectStorage();' . PHP_EOL;
+                $returnType = '\\' . ObjectStorage::class;
+            } elseif (class_exists($property['type'])) {
+                $returnType = '?' . $property['type'];
+            } else {
+                $returnType = '';
+            }
+            if (in_array($property['type'], ['int', 'float', 'double', 'string', 'bool'])) {
+                settype($property['default'], $property['type']);
+                $returnType = $property['type'];
+            }
+            $defaultValueExpression = var_export($property['default'], true);
+
+            $upperCasePropertyName = ucfirst($propertyName);
+            $functionsAndProperties .= sprintf(
+                $propertyTemplate,
+                $property['type'],
+                $propertyName,
+                $defaultValueExpression,
+                $upperCasePropertyName,
+                $returnType ? ': ' . $returnType : '',
+                $propertyName,
+                $upperCasePropertyName,
+                $returnType ? $returnType . ' ' : '',
+                '$' . $propertyName,
+                $propertyName,
+                '$' . $propertyName
+            );
+        }
+
+        $classTemplate = <<< TEMPLATE
+declare(strict_types=1);
+namespace %s;
+
+class %s extends %s
+{
+%s    public function __construct()
+    {
+        \$this->initializeStorageObjects();
+    }
+    
+    public function initializeStorageObjects()
+    {
+%s
+    }
+}
+
+TEMPLATE;
+        $classNameParts = explode('\\', $className);
+        $classShortName = array_pop($classNameParts);
+        $namespace = implode('\\', $classNameParts);
+
+        $classSourceCode = sprintf(
+            $classTemplate,
+            $namespace,
+            $classShortName,
+            '\\' . ltrim($parentClass, '\\'),
+            $functionsAndProperties,
+            rtrim($objectStorageInitializations)
         );
 
         $identifier = $identifier ?: sha1($className);
