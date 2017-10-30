@@ -137,41 +137,17 @@ TEMPLATE;
      */
     public function addSchemasForAllModules(array $sqlString)
     {
-        $modulesWithoutStaticSchema = [];
         $staticSchemasFromExtensions = [];
         $schemaFromModules = [];
-        try {
-            $modules = $this->getAllConfiguredModules();
-            foreach ($modules as $name => $module) {
-                if (!$module->isEnableDynamicModel()) {
-                    continue;
-                }
-                $entityClassName = $module->getMapper()->getEntityClassName();
-                $entityClassNameParts = explode('\\', $entityClassName);
-                $entityClassNameBase = array_slice($entityClassNameParts, 0, -3);
-                $extensionName = array_pop($entityClassNameBase);
-                $extensionKey = GeneralUtility::camelCaseToLowerCaseUnderscored($extensionName);
-                if (!isset($staticSchemasFromExtensions[$extensionKey])) {
-                    $possibleSchemaFile = ExtensionManagementUtility::extPath($extensionKey) . 'Configuration/SQL/DynamicSchema.sql';
-                    if (is_file($possibleSchemaFile)) {
-                        $staticSchemasFromExtensions[$extensionKey] = file_get_contents($possibleSchemaFile);
-                    } else {
-                        $modulesWithoutStaticSchema[] = $module;
-                    }
-                }
-            }
-            $schemaFromModules = $this->generateSchemasForModules($modulesWithoutStaticSchema);
-        } catch (\Exception $error) {
-            foreach (DynamicModelRegister::getModelClassNamesRegisteredForAutomaticHandling() as $entityClassName) {
-                $entityClassNameParts = explode('\\', $entityClassName);
-                $entityClassNameBase = array_slice($entityClassNameParts, 0, -3);
-                $extensionName = array_pop($entityClassNameBase);
-                $extensionKey = GeneralUtility::camelCaseToLowerCaseUnderscored($extensionName);
-                if (!isset($staticSchemasFromExtensions[$extensionKey])) {
-                    $possibleSchemaFile = ExtensionManagementUtility::extPath($extensionKey) . 'Configuration/SQL/DynamicSchema.sql';
-                    if (is_file($possibleSchemaFile)) {
-                        $staticSchemasFromExtensions[$extensionKey] = file_get_contents($possibleSchemaFile);
-                    }
+        foreach (DynamicModelRegister::getModelClassNamesRegisteredForAutomaticHandling() as $entityClassName) {
+            $entityClassNameParts = explode('\\', $entityClassName);
+            $entityClassNameBase = array_slice($entityClassNameParts, 0, -3);
+            $extensionName = array_pop($entityClassNameBase);
+            $extensionKey = GeneralUtility::camelCaseToLowerCaseUnderscored($extensionName);
+            if (!isset($staticSchemasFromExtensions[$extensionKey])) {
+                $possibleSchemaFile = ExtensionManagementUtility::extPath($extensionKey) . 'Configuration/SQL/DynamicSchema.sql';
+                if (is_file($possibleSchemaFile)) {
+                    $staticSchemasFromExtensions[$extensionKey] = file_get_contents($possibleSchemaFile);
                 }
             }
         }
