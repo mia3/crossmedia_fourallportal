@@ -95,6 +95,28 @@ class Event extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
     protected $tstamp;
 
     /**
+     * @var array
+     * @virtual
+     */
+    protected $beanData = [];
+
+    /**
+     * @return array
+     */
+    public function getBeanData(): array
+    {
+        return $this->beanData;
+    }
+
+    /**
+     * @param array $beanData
+     */
+    public function setBeanData(array $beanData)
+    {
+        $this->beanData = $beanData;
+    }
+
+    /**
      * Returns the eventId
      *
      * @return int $eventId

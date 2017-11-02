@@ -490,14 +490,44 @@ class FourallportalCommandController extends CommandController
 
     protected function processAllPendingAndDeferredEvents()
     {
+        $pending = $this->eventRepository->findByStatus('pending')->toArray();
+        $deferred = $this->eventRepository->findByStatus('deferred')->toArray();
+
+        $this->collectPreloadDataForObjectsInEvents(array_merge_recursive($pending, $deferred));
+
         // Handle new, pending events first, which may cause some to be deferred:
-        foreach ($this->eventRepository->findByStatus('pending') as $event) {
+        foreach ($pending as $event) {
             $this->processEvent($event);
         }
 
         // Then handle any events that were deferred - which may cause some to be deferred again:
-        foreach ($this->eventRepository->findByStatus('deferred') as $event) {
+        foreach ($deferred as $event) {
             $this->processEvent($event);
+        }
+    }
+
+    /**
+     * @param Event[] $events
+     * @return array
+     */
+    protected function collectPreloadDataForObjectsInEvents(array $events)
+    {
+        if (empty($events)) {
+            return [];
+        }
+        $indexed = [];
+        $module = $events[0]->getModule();
+        $client = $module->getServer()->getClient();
+        foreach ($events as $event) {
+            if ($event->getEventType() !== 'delete') {
+                $objectId = $event->getObjectId();
+                $indexed[$objectId] = $event;
+            }
+        }
+        $data = $client->getBeans(array_keys($indexed), $module->getConnectorName());
+        foreach ($data['result'] as $result) {
+            $objectId = $result['id'];
+            $indexed[$objectId]->setBeanData($result);
         }
     }
 
@@ -509,12 +539,16 @@ class FourallportalCommandController extends CommandController
         $client = $event->getModule()->getServer()->getClient();
         try {
             $mapper = $event->getModule()->getMapper();
-            $responseData = $client->getBeans(
-                [
-                    $event->getObjectId()
-                ],
-                $event->getModule()->getConnectorName()
-            );
+            if (empty($event->getBeanData()) && $event->getEventType() !== 'delete') {
+                $responseData = $client->getBeans(
+                    [
+                        $event->getObjectId()
+                    ],
+                    $event->getModule()->getConnectorName()
+                );
+            } else {
+                $responseData = ['result' => [$event->getBeanData()]];
+            }
             $mapper->import($responseData, $event);
             $event->setStatus('claimed');
             $event->setMessage('Successfully executed - no additional output available');
