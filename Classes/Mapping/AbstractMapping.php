@@ -45,6 +45,7 @@ abstract class AbstractMapping implements MappingInterface
                     return;
                 }
                 $repository->remove($object);
+                unset($object);
                 break;
             case 'update':
                 if (!$object) {
@@ -63,6 +64,7 @@ abstract class AbstractMapping implements MappingInterface
                     $repository->update($object);
                 } else {
                     $repository->add($object);
+                    GeneralUtility::makeInstance(ObjectManager::class)->get(PersistenceManager::class)->persistAll();
                 }
                 $this->mapPropertiesFromDataToObject($data, $object, $event->getModule());
                 $repository->update($object);
@@ -71,9 +73,7 @@ abstract class AbstractMapping implements MappingInterface
                 throw new \RuntimeException('Unknown event type: ' . $event->getEventType());
         }
 
-        GeneralUtility::makeInstance(ObjectManager::class)->get(PersistenceManager::class)->persistAll();
-
-        if ($object) {
+        if (isset($object)) {
             $this->processRelationships($object, $data, $event);
         }
     }
