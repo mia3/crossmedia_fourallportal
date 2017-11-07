@@ -56,6 +56,7 @@ class ComplexTypeFactory
     public static function getPreparedComplexType($type, array $subMatch = array())
     {
         $complexType = new ComplexType();
+        $complexType->setType($type);
         $complexType->setFieldName($subMatch['name']);
         $complexType->setLabel($subMatch['metric']['defaultUnit']);
         return $complexType;
