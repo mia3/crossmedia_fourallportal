@@ -114,12 +114,12 @@ class DynamicModelGenerator
         $manyToManyTableTemplate = <<< TEMPLATE
 
 CREATE TABLE %s (
-	uid_local int(11) DEFAULT '0' NOT NULL,
-	uid_foreign int(11) DEFAULT '0' NOT NULL,
-	sorting int(11) DEFAULT '0' NOT NULL,
-	sorting_foreign int(11) DEFAULT '0' NOT NULL,
+    uid_local int(11) DEFAULT '0' NOT NULL,
+    uid_foreign int(11) DEFAULT '0' NOT NULL,
+    sorting int(11) DEFAULT '0' NOT NULL,
+    sorting_foreign int(11) DEFAULT '0' NOT NULL,
 
-	KEY uid_local_foreign (uid_local,uid_foreign)
+    KEY uid_local_foreign (uid_local,uid_foreign)
 );
 
 TEMPLATE;
@@ -898,12 +898,12 @@ TEMPLATE;
      * @var %s
      */
     protected \$%s = %s;
-    
+
     public function get%s()
     {
         return \$this->%s;
     }
-    
+
     /**
      * @param %s %s
      */
@@ -923,7 +923,7 @@ TEMPLATE;
                 $propertyTemplate,
                 $property['type'],
                 $propertyName,
-                var_export($property['default'], true),
+                ($property['default'] ?? null) === null ? 'null' : var_export($property['default'], true),
                 $upperCasePropertyName,
                 $propertyName,
                 $property['type'],
@@ -947,13 +947,12 @@ class %s extends %s
     {
         \$this->initializeStorageObjects();
     }
-    
+
     public function initializeStorageObjects()
     {
 %s
     }
 }
-
 TEMPLATE;
         $classNameParts = explode('\\', $className);
         $classShortName = array_pop($classNameParts);
@@ -980,7 +979,7 @@ TEMPLATE;
      * @var %s
      */
     protected \$%s = %s;
-    
+
     public function get%s()%s
     {
         return \$this->%s;
@@ -1009,7 +1008,7 @@ TEMPLATE;
                 settype($property['default'], $property['type']);
                 $returnType = $property['type'];
             }
-            $defaultValueExpression = var_export($property['default'], true);
+            $defaultValueExpression = ($property['default'] ?? null) === null ? 'null' : var_export($property['default'], true);
 
             $upperCasePropertyName = ucfirst($propertyName);
             $functionsAndProperties .= sprintf(
@@ -1038,13 +1037,12 @@ class %s extends %s
     {
         \$this->initializeStorageObjects();
     }
-    
+
     public function initializeStorageObjects()
     {
 %s
     }
 }
-
 TEMPLATE;
         $classNameParts = explode('\\', $className);
         $classShortName = array_pop($classNameParts);

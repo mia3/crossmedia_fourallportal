@@ -141,8 +141,17 @@ abstract class AbstractMapping implements MappingInterface
                     $typeConverter->setParentObjectAndProperty($object, $propertyName);
                 }
                 $child = $typeConverter->convertFrom($identifier, $childType, [], $configuration);
+
+                if ($child instanceof Error) {
+                    // For whatever reason, property validators will return a validation error rather than throw an exception.
+                    // We therefore need to check this, log the problem, and skip the property.
+                    echo 'Mapping error when mapping property ' . $propertyName . ' on ' . $object->getRemoteId() . ': ' . $child->getMessage() . PHP_EOL;
+                    continue;
+                }
+
                 if (!$child) {
-                    throw new \RuntimeException('Child of type ' . $childType . ' identified by ' . $identifier . ' could not be found');
+                    echo 'Child of type ' . $childType . ' identified by ' . $identifier . ' not found when mapping property ' . $propertyName . ' on ' . $object->getRemoteId() . PHP_EOL;
+                    continue;
                 }
                 $objectStorage->attach($child);
             }
@@ -159,11 +168,7 @@ abstract class AbstractMapping implements MappingInterface
                 if ($propertyValue instanceof Error) {
                     // For whatever reason, property validators will return a validation error rather than throw an exception.
                     // We therefore need to check this, log the problem, and skip the property.
-                    GeneralUtility::sysLog(
-                        'Error mapping ' . get_class($object) . '->' . $propertyName . ': ' . $propertyValue->getMessage(),
-                        'fourallportal',
-                        GeneralUtility::SYSLOG_SEVERITY_WARNING
-                    );
+                    echo 'Mapping error when mapping property ' . $propertyName . ' on ' . $object->getRemoteId() . ': ' . $child->getMessage() . PHP_EOL;
                     return;
                 }
 
@@ -196,6 +201,14 @@ abstract class AbstractMapping implements MappingInterface
      */
     protected function determineDataTypeForProperty($propertyName, $object)
     {
+        if (property_exists(get_class($object), $propertyName)) {
+            $property = new PropertyReflection($object, $propertyName);
+            $varTags = $property->getTagValues('var');
+            if (!empty($varTags)) {
+                return $varTags[0];
+            }
+        }
+
         if (method_exists(get_class($object), 'set' . ucfirst($propertyName))) {
             $method = new MethodReflection($object, 'set' . ucfirst($propertyName));
             $parameters = $method->getParameters();
@@ -206,14 +219,6 @@ abstract class AbstractMapping implements MappingInterface
             $varTags = $method->getTagValues('param');
             if (!empty($varTags)) {
                 return reset(explode(' ', $varTags[0]));
-            }
-        }
-
-        if (property_exists(get_class($object), $propertyName)) {
-            $property = new PropertyReflection($object, $propertyName);
-            $varTags = $property->getTagValues('var');
-            if (!empty($varTags)) {
-                return $varTags[0];
             }
         }
 
