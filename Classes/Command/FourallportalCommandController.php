@@ -504,6 +504,8 @@ class FourallportalCommandController extends CommandController
         foreach ($deferred as $event) {
             $this->processEvent($event);
         }
+
+        $this->objectManager->get(PersistenceManagerInterface::class)->persistAll();
     }
 
     /**
@@ -575,7 +577,6 @@ class FourallportalCommandController extends CommandController
         $event->setResponse($responseMetadata['response']);
         $event->setPayload($responseMetadata['payload']);
         $this->eventRepository->update($event);
-        $this->objectManager->get(PersistenceManagerInterface::class)->persistAll();
     }
 
     /**
