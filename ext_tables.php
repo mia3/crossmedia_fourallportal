@@ -14,8 +14,8 @@ call_user_func(
                 '', // Position
                 [
                     'Event' => 'index, check',
-                    'Server' => 'index, check, disable, enable, delete, restartSynchronisation',
-                    
+                    'Server' => 'index, check, disable, enable, delete, restartSynchronisation, module',
+
                 ],
                 [
                     'access' => 'user,group',

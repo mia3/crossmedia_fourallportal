@@ -1,8 +1,12 @@
 <?php
 namespace Crossmedia\Fourallportal\Controller;
 
+use Crossmedia\Fourallportal\Domain\Model\Module;
+use Crossmedia\Fourallportal\Domain\Repository\ModuleRepository;
 use Crossmedia\Fourallportal\Error\ApiException;
 use Crossmedia\Fourallportal\Service\ApiClient;
+use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Extbase\Object\ObjectManager;
 
 /***
  *
@@ -45,6 +49,23 @@ class ServerController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
     }
 
     /**
+     * @param Module $module
+     * @param string $uuid
+     */
+    public function moduleAction(Module $module = null, $uuid = null)
+    {
+        if ($module) {
+            $response = $module->getServer()->getClient()->getBeans($uuid, $module->getConnectorName());
+            $pretty = json_encode($response, JSON_PRETTY_PRINT);
+            $this->view->assign('prettyResponse', $pretty);
+            $this->view->assign('response', $response);
+            $this->view->assign('uuid', $uuid);
+            $this->view->assign('module', $module);
+        }
+        $this->view->assign('modules', GeneralUtility::makeInstance(ObjectManager::class)->get(ModuleRepository::class)->findAll(true));
+    }
+
+    /**
      * action check
      *
      * @param \Crossmedia\Fourallportal\Domain\Model\Server $server
@@ -53,7 +74,7 @@ class ServerController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
     public function checkAction(\Crossmedia\Fourallportal\Domain\Model\Server $server)
     {
         $status = [];
-        $client = $this->objectManager->get(ApiClient::class, $server);
+        $client = $server->getClient();
         try {
             $loginSuccessfull = $client->login();
             $status[] = [

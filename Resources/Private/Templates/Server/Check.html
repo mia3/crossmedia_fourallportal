@@ -11,6 +11,11 @@
 
 <f:section name="Content">
     <f:flashMessages/>
+    <f:form action="module">
+        <f:form.select name="module" options="{server.modules}" optionLabelField="moduleName" />
+        <f:form.textfield name="uuid" placeholder="Enter object UUID" size="40" />
+        <f:form.submit value="Check data response" />
+    </f:form>
     <table class="table table-striped table-hover">
         <tbody>
         <f:for each="{status}" as="statusRow">
