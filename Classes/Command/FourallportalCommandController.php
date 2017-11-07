@@ -451,12 +451,20 @@ class FourallportalCommandController extends CommandController
                 $this->objectManager->get(PersistenceManagerInterface::class)->persistAll();
                 $results = $client->synchronize($module->getConnectorName());
             }
+            $queuedEventsForModule = [];
             foreach ($results as $result) {
                 $this->response->setContent('Receiving event ID "' . $result['id'] . '" from connector "' . $module->getConnectorName() . '"' . PHP_EOL);
                 if (!$result['id']) {
                     $this->response->appendContent(var_export($result, true) . PHP_EOL);
                 }
                 $this->response->send();
+                if (isset($queuedEventsForModule[$result['object_id']])) {
+                    $this->response->setContent('** Ignoring duplicate older event: ' . $queuedEventsForModule[$result['object_id']]['id'] . PHP_EOL);
+                    $this->response->send();
+                }
+                $queuedEventsForModule[$result['object_id']] = $result;
+            }
+            foreach ($queuedEventsForModule as $result) {
                 $this->queueEvent($module, $result);
             }
             $this->moduleRepository->update($module);
