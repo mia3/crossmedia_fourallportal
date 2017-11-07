@@ -624,10 +624,10 @@ TEMPLATE;
                 'type' => 'inline',
                 'foreign_table' => 'tx_fourallportal_domain_model_complextype',
                 'foreign_field' => 'parent_uid',
-                //'foreign_match_fields' => [
+                'foreign_match_fields' => [
                 //    'table_name' => $tableNameParent,
-                //    'field_name' => $fieldConfiguration['name'],
-                //],
+                    'field_name' => $fieldConfiguration['name'],
+                ],
                 //'foreign_table_field' => 'table_name',
                 //'foreign_table_field' => $entityShortNameParent,
                 'maxitems' => 1
