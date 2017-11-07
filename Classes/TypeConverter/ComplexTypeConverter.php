@@ -87,9 +87,12 @@ class ComplexTypeConverter extends AbstractUuidAwareObjectTypeConverter implemen
 
         $templateComplexType->setNormalizedValue($source['normalized']);
         $templateComplexType->setActualValue($source['value']);
+        $templateComplexType->setFieldName($originalFieldName);
 
         $existingComplexType = ObjectAccess::getProperty($this->parentObject, $this->propertyName);
         if ($existingComplexType && $existingComplexType->equals($templateComplexType)) {
+            $existingComplexType->setActualValue($source['value']);
+            $existingComplexType->setNormalizedValue($source['normalized']);
             return $existingComplexType;
         }
 
