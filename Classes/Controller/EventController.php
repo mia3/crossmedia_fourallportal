@@ -85,6 +85,8 @@ class EventController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionController
             $query->matching($query->logicalAnd($constraints));
         }
 
+        $query->setOrderings(['tstamp' => 'DESC']);
+
         return $query->execute();
     }
 
