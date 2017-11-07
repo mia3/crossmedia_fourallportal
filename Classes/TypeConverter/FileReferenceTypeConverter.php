@@ -75,6 +75,7 @@ class FileReferenceTypeConverter extends AbstractUuidAwareObjectTypeConverter im
         // there is no Repository which we could use to load an Extbase file reference base on criteria.
         // So instead we probe the DB and if a match is found, we know the existing property value is the
         // exact same relation we were asked to convert - and we return the current property value.
+        /*
         $queryBuilder = (new ConnectionPool())->getConnectionForTable('sys_file')->createQueryBuilder();
         $queryBuilder->getRestrictions()->removeAll();
         $references = $queryBuilder->select('r.uid')->from('sys_file', 'f')->from('sys_file_reference', 'r')->where(
@@ -85,11 +86,7 @@ class FileReferenceTypeConverter extends AbstractUuidAwareObjectTypeConverter im
                 GeneralUtility::camelCaseToLowerCaseUnderscored($this->propertyName)
             )
         )->setMaxResults(1)->execute()->fetchAll();
-
-        if (isset($references[0]['uid'])) {
-            // One reference with exact match to the current file was found. Return the existing property value.
-            return ObjectAccess::getProperty($this->parentObject, $this->propertyName);
-        }
+        */
 
         // Lookup no. 2: try to find a sys_file with remote ID=$source and use it as target for a new
         // file relation. If the original file cannot be found this way the relation is considered
