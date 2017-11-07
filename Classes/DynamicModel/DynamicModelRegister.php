@@ -11,6 +11,11 @@ class DynamicModelRegister
     protected static $handledModelClasses = [];
 
     /**
+     * @var array
+     */
+    protected static $overriddenSqlTypes = [];
+
+    /**
      * @param string $modelClassName
      */
     public static function registerModelForAutomaticHandling($modelClassName)
@@ -42,5 +47,26 @@ class DynamicModelRegister
     public static function isModelRegisteredForAutomaticHandling($modelClassName)
     {
         return in_array($modelClassName, static::$handledModelClasses);
+    }
+
+    /**
+     * @param string $table
+     * @param string $column
+     * @param string $type
+     */
+    public static function overrideSqlType($table, $column, $type)
+    {
+        static::$overriddenSqlTypes[$table][$column] = $type;
+    }
+
+    /**
+     * @param string $table
+     * @param string $column
+     * @param string $originalType
+     * @return mixed
+     */
+    public static function getOverriddenOrOriginalSqlType($table, $column, $originalType)
+    {
+        return static::$overriddenSqlTypes[$table][$column] ?? $originalType;
     }
 }

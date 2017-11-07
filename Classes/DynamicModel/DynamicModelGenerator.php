@@ -89,7 +89,8 @@ class DynamicModelGenerator
             }
 
             foreach ($propertyConfigurations as $propertyConfiguration) {
-                $lines[] = $propertyConfiguration['column'] . ' ' . $propertyConfiguration['schema'];
+                $dataType = DynamicModelRegister::getOverriddenOrOriginalSqlType($tableName, $propertyConfiguration['column'], $propertyConfiguration['schema']);
+                $lines[] = $propertyConfiguration['column'] . ' ' . $dataType;
                 if (isset($propertyConfiguration['config']['MM'])) {
                     $manyToManyRelations[] = $propertyConfiguration['config']['MM'];
                 }
