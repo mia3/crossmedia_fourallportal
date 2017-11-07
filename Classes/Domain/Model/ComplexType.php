@@ -195,7 +195,11 @@ class ComplexType extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
      */
     public function equals(ComplexType $other)
     {
-        return ObjectAccess::getGettableProperties($this) == ObjectAccess::getGettableProperties($other);
+        return (
+            $this->getType() === $other->getType()
+            && $this->getName() === $other->getName()
+            && $this->getFieldName() === $other->getFieldName()
+        );
     }
 
     /**
