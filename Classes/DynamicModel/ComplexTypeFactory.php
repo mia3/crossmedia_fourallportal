@@ -55,20 +55,11 @@ class ComplexTypeFactory
      */
     public static function getPreparedComplexType($type, array $subMatch = array())
     {
-        foreach (static::$templates as $templateEntry) {
-            /** @var ComplexType $instance */
-            list ($instance, $matchProperties) = $templateEntry;
-            if ($instance->getType() === $type && array_replace_recursive($subMatch, $matchProperties) == $subMatch) {
-                return clone $instance;
-            }
-        }
-        throw new \RuntimeException(
-            sprintf(
-                'ComplexType "%s" with match requirements "%s" not found - if the type must be supported, add it to the system',
-                $type,
-                json_encode($subMatch)
-            )
-        );
+        $complexType = new ComplexType();
+        $complexType->setFieldName($subMatch['name']);
+        $complexType->setLabel($subMatch['metric']['defaultUnit']);
+        return $complexType;
+
     }
 
     /**

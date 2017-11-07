@@ -12,8 +12,6 @@ namespace Crossmedia\Fourallportal\Domain\Model;
  *
  ***/
 
-use TYPO3\CMS\Extbase\Reflection\ObjectAccess;
-
 /**
  * ComplexType
  */
@@ -187,19 +185,6 @@ class ComplexType extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
     public function setParentUid($parentUid)
     {
         $this->parentUid = $parentUid;
-    }
-
-    /**
-     * @param ComplexType $other
-     * @return boolean
-     */
-    public function equals(ComplexType $other)
-    {
-        return (
-            $this->getType() === $other->getType()
-            && $this->getName() === $other->getName()
-            && $this->getFieldName() === $other->getFieldName()
-        );
     }
 
     /**

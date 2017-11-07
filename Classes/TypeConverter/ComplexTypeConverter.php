@@ -80,6 +80,13 @@ class ComplexTypeConverter extends AbstractUuidAwareObjectTypeConverter implemen
         $moduleConfiguration = $module->getModuleConfiguration();
         $fieldConfiguration = $moduleConfiguration['field_conf'][$originalFieldName];
 
+        $existingComplexType = ObjectAccess::getProperty($this->parentObject, $this->propertyName);
+        if ($existingComplexType) {
+            $existingComplexType->setActualValue($source['value']);
+            $existingComplexType->setNormalizedValue($source['normalized']);
+            return $existingComplexType;
+        }
+
         $templateComplexType = ComplexTypeFactory::getPreparedComplexType(
             $fieldConfiguration['type'],
             $fieldConfiguration
@@ -88,13 +95,6 @@ class ComplexTypeConverter extends AbstractUuidAwareObjectTypeConverter implemen
         $templateComplexType->setNormalizedValue($source['normalized']);
         $templateComplexType->setActualValue($source['value']);
         $templateComplexType->setFieldName($originalFieldName);
-
-        $existingComplexType = ObjectAccess::getProperty($this->parentObject, $this->propertyName);
-        if ($existingComplexType && $existingComplexType->equals($templateComplexType)) {
-            $existingComplexType->setActualValue($source['value']);
-            $existingComplexType->setNormalizedValue($source['normalized']);
-            return $existingComplexType;
-        }
 
         return $templateComplexType;
     }

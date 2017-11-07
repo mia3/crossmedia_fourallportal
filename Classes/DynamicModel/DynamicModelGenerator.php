@@ -607,12 +607,7 @@ TEMPLATE;
         }
 
         if (!$dataType && !$sqlType) {
-            // The field was not of a standard type and is most likely a "ComplexType". Make sure the necessary
-            // ComplexType template exists, purely as validation. ComplexType is always saved as a 1:1 relation
-            // so the data- and SQL types are always the same. If the ComplexType cannot be found, this fact is
-            // either thrown as Exception (Development context) or silently ignored (Production context). When
-            // ignored, the field does not get added to SQL, TCA or model properties.
-            $this->validatePresenceOfComplexType($fieldConfiguration);
+            // The field was not of a standard type and is most likely a "ComplexType".
 
             $dataMapper = GeneralUtility::makeInstance(ObjectManager::class)->get(DataMapper::class);
             $modules = $this->getAllConfiguredModules();
@@ -844,19 +839,6 @@ TEMPLATE;
         if (empty($this->getAllConfiguredModules()[$moduleName])) {
             throw new \RuntimeException(sprintf('Module "%s" is unknown to TYPO3, make sure it is configured!', $moduleName));
         }
-    }
-
-    /**
-     * Validate that a ComplexType exists in the system and can
-     * be requested via the API. If the type cannot be found an
-     * exception gets thrown.
-     *
-     * @param array $fieldConfiguration
-     * @return void
-     */
-    protected function validatePresenceOfComplexType(array $fieldConfiguration)
-    {
-        ComplexTypeFactory::getPreparedComplexType($fieldConfiguration['type'], $fieldConfiguration);
     }
 
     /**
