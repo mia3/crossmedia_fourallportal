@@ -524,10 +524,14 @@ class FourallportalCommandController extends CommandController
                 $indexed[$objectId] = $event;
             }
         }
-        $data = $client->getBeans(array_keys($indexed), $module->getConnectorName());
-        foreach ($data['result'] as $result) {
-            $objectId = $result['id'];
-            $indexed[$objectId]->setBeanData($result);
+        try {
+            $data = $client->getBeans(array_keys($indexed), $module->getConnectorName());
+            foreach ($data['result'] as $result) {
+                $objectId = $result['id'];
+                $indexed[$objectId]->setBeanData($result);
+            }
+        } catch (\Exception $error) {
+            return [];
         }
     }
 
