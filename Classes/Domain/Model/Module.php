@@ -76,6 +76,11 @@ class Module extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
     protected $falStorage = 0;
 
     /**
+     * @var string
+     */
+    protected $testObjectUuid = '';
+
+    /**
      * @var bool
      */
     protected $enableDynamicModel = true;
@@ -272,6 +277,22 @@ class Module extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
     public function setMappingClass($mappingClass)
     {
         $this->mappingClass = $mappingClass;
+    }
+
+    /**
+     * @return string
+     */
+    public function getTestObjectUuid(): string
+    {
+        return $this->testObjectUuid;
+    }
+
+    /**
+     * @param string $testObjectUuid
+     */
+    public function setTestObjectUuid(string $testObjectUuid)
+    {
+        $this->testObjectUuid = $testObjectUuid;
     }
 
     /**

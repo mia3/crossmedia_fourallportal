@@ -47,6 +47,171 @@ class FourallportalCommandController extends CommandController
     }
 
     /**
+     * Run tests
+     *
+     * Runs tests on schema and response consistency and performs tracking
+     * of basic response changes, i.e. simple diffs of which properties
+     * are included in the response.
+     *
+     * Outputs streaming YAML.
+     *
+     * @param bool $onlyFailed If TRUE, only outputs failed properties.
+     * @param bool $withHistory If TRUE, includes a tracking history of schema/response consistency for each module.
+     */
+    public function testCommand($onlyFailed = false, $withHistory = true)
+    {
+        foreach ($this->getActiveModuleOrModules() as $module) {
+            $testObjectUuid = $module->getTestObjectUuid();
+            $this->response->setContent($module->getModuleName() . ':');
+            if (empty($testObjectUuid)) {
+                $this->response->appendContent(' false');
+                continue;
+            }
+            $this->response->appendContent(PHP_EOL);
+            $this->response->appendContent('  fields:' . PHP_EOL);
+            $this->response->send();
+            $bean = $module->getServer()->getClient()->getBeans($testObjectUuid, $module->getConnectorName());
+            $fieldsToLoad = $module->getConnectorConfiguration()['fieldsToLoad'];
+            foreach ($fieldsToLoad as $fieldName => $configuration) {
+                $this->response->setContent('    ' . $fieldName . ':');
+                if (array_key_exists($fieldName, $bean['result'][0]['properties'])) {
+                    if (!$onlyFailed) {
+                        $this->response->appendContent(' true' . PHP_EOL);
+                        $this->response->send();
+                    }
+                } else {
+                    $this->response->appendContent(' false' . PHP_EOL);
+                    $this->response->send();
+                }
+            }
+            if ($withHistory) {
+                $this->trackHistory($module, $bean['result'][0]['properties']);
+                $history = $this->getModuleHistory($module);
+                #array_shift($history);
+                $this->response->setContent('  history:');
+                if (empty($history)) {
+                    $this->response->appendContent(' false' . PHP_EOL);
+                    $this->response->send();
+                    continue;
+                }
+                $this->response->appendContent(PHP_EOL);
+                $this->response->send();
+                foreach ($history as $date => list (, $addedLoad, $removedLoad, , $addedProperties, $removedProperties)) {
+                    $touched = false;
+                    $this->response->setContent('    ' . $date . ':' . PHP_EOL);
+                    if (!empty($addedLoad)) {
+                        $this->response->appendContent('      - addedFieldsToLoad: ["' . implode('", "', $addedLoad) . '"]' . PHP_EOL);
+                        $touched = true;
+                    }
+                    if (!empty($removedLoad)) {
+                        $this->response->appendContent('      - removedFieldsToLoad: ["' . implode('", "', $removedLoad) . '"]' . PHP_EOL);
+                        $touched = true;
+                    }
+                    if (!empty($addedProperties)) {
+                        $this->response->appendContent('      - addedProperties: ["' . implode('", "', $addedProperties) . '"]' . PHP_EOL);
+                        $touched = true;
+                    }
+                    if (!empty($removedProperties)) {
+                        $this->response->appendContent('      - removedProperties: ["' . implode('", "', $removedProperties) . '"]' . PHP_EOL);
+                        $touched = true;
+                    }
+                    if ($touched) {
+                        $this->response->send();
+                    }
+                    $this->response->setContent('');
+                }
+            }
+        }
+        $this->response->appendContent(PHP_EOL);
+        $this->response->send();
+    }
+
+    protected function trackHistory(Module $module, array $properties)
+    {
+        $history = $this->getModuleHistory($module);
+        $fieldsToLoad = $module->getConnectorConfiguration()['fieldsToLoad'];
+        $currentFieldsToLoad = array_keys($fieldsToLoad);
+        $currentProperties = array_keys($properties);
+        $mostRecent = end($history);
+        reset($history);
+        if (!$mostRecent) {
+            $history[date('Ymd_Hi')] = [
+                $currentFieldsToLoad,
+                [],
+                [],
+                $currentProperties,
+                [],
+                []
+            ];
+        } else {
+            list ($mostRecentFieldsToLoad, , , $mostRecentProperties, , ) = $mostRecent;
+            if ($mostRecentFieldsToLoad != $currentFieldsToLoad || $mostRecentProperties != $currentProperties) {
+                $diffFieldsToLoad = array_diff($mostRecentFieldsToLoad, $currentFieldsToLoad);
+                $diffProperties = array_diff($mostRecentProperties, $currentProperties);
+                $addedFieldsToLoad = [];
+                $removedFieldsToLoad = [];
+                foreach ($diffFieldsToLoad as $diffPropertyName) {
+                    if (!array_key_exists($diffPropertyName, $currentFieldsToLoad)) {
+                        $addedFieldsToLoad[] = $diffPropertyName;
+                    } else {
+                        $removedFieldsToLoad[] = $diffPropertyName;
+                    }
+                }
+                $addedProperties = [];
+                $removedProperties = [];
+                foreach ($diffProperties as $diffPropertyName) {
+                    if (!array_key_exists($diffPropertyName, $currentProperties)) {
+                        $addedProperties[] = $diffPropertyName;
+                    } else {
+                        $removedProperties[] = $diffPropertyName;
+                    }
+                }
+                $history[date('Ymd_Hi')] = [
+                    $currentFieldsToLoad,
+                    $addedFieldsToLoad,
+                    $removedFieldsToLoad,
+                    $currentProperties,
+                    $addedProperties,
+                    $removedProperties
+                ];
+            }
+        }
+
+        $historyFile = $this->getHistoryFilename($module);
+        file_put_contents($historyFile, json_encode($history, JSON_PRETTY_PRINT));
+    }
+
+    /**
+     * Returns an array of arrays each containing exactly six properties:
+     *
+     * - a list of all field names in fieldsToLoad at time of sample
+     * - a list of field names *added* to fieldsToLoad
+     * - a list of field names *removed* from fieldsToLoad
+     * - a list of all field names in response at time of sample
+     * - a list of field names *added* to the response for the testing object
+     * - a list of field names *removed* from the response for the testing object
+     *
+     * The key on the first level array is the time the sample was taken.
+     *
+     * @param Module $module
+     * @return array[]
+     */
+    protected function getModuleHistory(Module $module)
+    {
+        $historyFile = $this->getHistoryFilename($module);
+        if (!file_exists($historyFile)) {
+            return [];
+        }
+        return json_decode(file_get_contents($historyFile), true);
+    }
+
+    protected function getHistoryFilename(Module $module)
+    {
+        $historyFilesFolder = 'fileadmin/api_samples/';
+        return GeneralUtility::getFileAbsFileName($historyFilesFolder) . $module->getModuleName() . '.json';
+    }
+
+    /**
      * Initialize system
      *
      * Creates Server and Module configuration if configured in

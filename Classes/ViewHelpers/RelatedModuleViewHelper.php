@@ -90,7 +90,6 @@ class RelatedModuleViewHelper extends AbstractViewHelper
         } elseif (!empty($relationConfiguration[$field]['child']) && $relationConfiguration[$field]['child'] !== $currentModuleName) {
             return $relationConfiguration[$field]['child'];
         }
-        #return $field . ':::' . var_export(array_keys($relationConfiguration[$field] ?? []), true);
     }
 
     protected static function getModuleByName($moduleName)

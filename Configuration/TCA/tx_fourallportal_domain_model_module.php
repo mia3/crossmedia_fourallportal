@@ -17,10 +17,10 @@ return [
         'iconfile' => 'EXT:fourallportal/Resources/Public/Icons/tx_fourallportal_domain_model_module.gif'
     ],
     'interface' => [
-        'showRecordFieldList' => 'connector_name, module_name, mapping_class, enable_dynamic_model, config_hash, last_event_id, shell_path, storage_pid, fal_storage, server',
+        'showRecordFieldList' => 'connector_name, module_name, mapping_class, enable_dynamic_model, config_hash, last_event_id, shell_path, storage_pid, fal_storage, test_object_uuid, server',
     ],
     'types' => [
-        '1' => ['showitem' => 'connector_name, module_name, mapping_class, enable_dynamic_model, config_hash, last_event_id, shell_path, storage_pid, fal_storage, server'],
+        '1' => ['showitem' => 'connector_name, module_name, mapping_class, enable_dynamic_model, config_hash, last_event_id, shell_path, storage_pid, fal_storage, test_object_uuid, server'],
     ],
     'columns' => [
         'connector_name' => [
@@ -79,6 +79,15 @@ return [
             'exclude' => true,
             'label' => 'LLL:EXT:fourallportal/Resources/Private/Language/locallang_db.xlf:tx_fourallportal_domain_model_module.shell_path',
             //'displayCond' => 'FIELD:mapping_class:=:' . \Crossmedia\Fourallportal\Mapping\FalMapping::class,
+            'config' => [
+                'type' => 'input',
+                'size' => 30,
+                'eval' => 'trim'
+            ],
+        ],
+        'test_object_uuid' => [
+            'exclude' => true,
+            'label' => 'LLL:EXT:fourallportal/Resources/Private/Language/locallang_db.xlf:tx_fourallportal_domain_model_module.test_object_uuid',
             'config' => [
                 'type' => 'input',
                 'size' => 30,

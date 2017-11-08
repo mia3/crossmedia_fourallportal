@@ -36,6 +36,9 @@
 			<trans-unit id="tx_fourallportal_domain_model_module.mapping_class">
 				<source>Mapping Class</source>
 			</trans-unit>
+            <trans-unit id="tx_fourallportal_domain_model_module.test_object_uuid">
+                <source>Test object UUID (used as candidate in automated tests and schema tracking)</source>
+            </trans-unit>
 			<trans-unit id="tx_fourallportal_domain_model_module.enable_dynamic_model">
 				<source>Enable dynamic model? (does not disable property mapping!)</source>
 			</trans-unit>
