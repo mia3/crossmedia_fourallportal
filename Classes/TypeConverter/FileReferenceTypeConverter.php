@@ -11,6 +11,7 @@ use TYPO3\CMS\Extbase\DomainObject\AbstractEntity;
 use TYPO3\CMS\Extbase\Object\ObjectManager;
 use TYPO3\CMS\Extbase\Persistence\Generic\Mapper\DataMapFactory;
 use TYPO3\CMS\Extbase\Persistence\Generic\PersistenceManager;
+use TYPO3\CMS\Extbase\Persistence\ObjectStorage;
 use TYPO3\CMS\Extbase\Persistence\RepositoryInterface;
 use TYPO3\CMS\Extbase\Property\PropertyMappingConfigurationInterface;
 use TYPO3\CMS\Extbase\Reflection\ObjectAccess;
@@ -75,7 +76,6 @@ class FileReferenceTypeConverter extends AbstractUuidAwareObjectTypeConverter im
         // there is no Repository which we could use to load an Extbase file reference base on criteria.
         // So instead we probe the DB and if a match is found, we know the existing property value is the
         // exact same relation we were asked to convert - and we return the current property value.
-        /*
         $queryBuilder = (new ConnectionPool())->getConnectionForTable('sys_file')->createQueryBuilder();
         $queryBuilder->getRestrictions()->removeAll();
         $references = $queryBuilder->select('r.uid')->from('sys_file', 'f')->from('sys_file_reference', 'r')->where(
@@ -86,7 +86,23 @@ class FileReferenceTypeConverter extends AbstractUuidAwareObjectTypeConverter im
                 GeneralUtility::camelCaseToLowerCaseUnderscored($this->propertyName)
             )
         )->setMaxResults(1)->execute()->fetchAll();
-        */
+        if (isset($references[0]['uid'])) {
+            // File reference already exists - find the reference to re-use
+            $propertyValue = ObjectAccess::getProperty($this->parentObject, $this->propertyName);
+            if ($propertyValue instanceof ObjectStorage) {
+                // The property is a collection of references - iterate and find the right one to use:
+                foreach ($propertyValue as $candidate) {
+                    /** @var FileReference $candidate */
+                    if ($candidate->getOriginalResource()->getUid() === $references[0]['uid']) {
+                        return $candidate;
+                    }
+                }
+                // If we reach this point, a reference existed but was either hidden or deleted; so we allow
+                // a new one to be created.
+            } else {
+                return $propertyValue;
+            }
+        }
 
         // Lookup no. 2: try to find a sys_file with remote ID=$source and use it as target for a new
         // file relation. If the original file cannot be found this way the relation is considered
