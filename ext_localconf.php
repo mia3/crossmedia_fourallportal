@@ -6,7 +6,7 @@ if (!defined('TYPO3_MODE')) {
 \TYPO3\CMS\Extbase\Utility\ExtensionUtility::registerTypeConverter(\Crossmedia\Fourallportal\TypeConverter\FileReferenceTypeConverter::class);
 \TYPO3\CMS\Extbase\Utility\ExtensionUtility::registerTypeConverter(\Crossmedia\Fourallportal\TypeConverter\ComplexTypeConverter::class);
 
-$GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['t3lib/class.t3lib_tcemain.php']['clearCachePostProc'][] = \Crossmedia\Fourallportal\DynamicModel\DynamicModelGenerator::class . '->regenerateModelsAfterCacheFlush';
+//$GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['t3lib/class.t3lib_tcemain.php']['clearCachePostProc'][] = \Crossmedia\Fourallportal\DynamicModel\DynamicModelGenerator::class . '->regenerateModelsAfterCacheFlush';
 $GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['extbase']['commandControllers'][$_EXTKEY] = \Crossmedia\Fourallportal\Command\FourallportalCommandController::class;
 
 \Crossmedia\Fourallportal\Mapping\MappingRegister::registerMapping(
