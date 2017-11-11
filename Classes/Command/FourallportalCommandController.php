@@ -74,7 +74,10 @@ class FourallportalCommandController extends CommandController
             $fieldsToLoad = $module->getConnectorConfiguration()['fieldsToLoad'];
             foreach ($fieldsToLoad as $fieldName => $configuration) {
                 $this->response->setContent('    ' . $fieldName . ':');
-                if (array_key_exists($fieldName, $bean['result'][0]['properties'])) {
+                if (isset($bean['info']['not_accessible_ids'])) {
+                    $this->response->appendContent(' "Not found: ' . $testObjectUuid . '"' . PHP_EOL);
+                    $this->response->send();
+                } elseif (array_key_exists($fieldName, $bean['result'][0]['properties'] ?? [])) {
                     if (!$onlyFailed) {
                         $this->response->appendContent(' true' . PHP_EOL);
                         $this->response->send();
@@ -84,10 +87,9 @@ class FourallportalCommandController extends CommandController
                     $this->response->send();
                 }
             }
-            if ($withHistory) {
+            if ($withHistory && isset($bean['result'][0]['properties'])) {
                 $this->trackHistory($module, $bean['result'][0]['properties']);
                 $history = $this->getModuleHistory($module);
-                #array_shift($history);
                 $this->response->setContent('  history:');
                 if (empty($history)) {
                     $this->response->appendContent(' false' . PHP_EOL);

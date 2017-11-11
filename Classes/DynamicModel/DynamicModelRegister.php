@@ -16,6 +16,11 @@ class DynamicModelRegister
     protected static $overriddenSqlTypes = [];
 
     /**
+     * @var array
+     */
+    protected static $lazyProperties = [];
+
+    /**
      * @param string $modelClassName
      */
     public static function registerModelForAutomaticHandling($modelClassName)
@@ -68,5 +73,24 @@ class DynamicModelRegister
     public static function getOverriddenOrOriginalSqlType($table, $column, $originalType)
     {
         return static::$overriddenSqlTypes[$table][$column] ?? $originalType;
+    }
+
+    /**
+     * @param string $modelClassName
+     * @param string $propertyName
+     */
+    public static function registerLazyModelProperty($modelClassName, $propertyName)
+    {
+        static::$lazyProperties[$modelClassName][$propertyName] = $propertyName;
+    }
+
+    /**
+     * @param string $modelClassName
+     * @param string $propertyName
+     * @return bool
+     */
+    public static function isLazyProperty($modelClassName, $propertyName)
+    {
+        return isset(static::$lazyProperties[$modelClassName][$propertyName]);
     }
 }

@@ -877,7 +877,7 @@ TEMPLATE;
         $propertyTemplate = <<< TEMPLATE
 
     /**
-     * @var %s
+     * @var %s%s
      */
     protected \$%s = %s;
 
@@ -904,6 +904,7 @@ TEMPLATE;
             $functionsAndProperties .= sprintf(
                 $propertyTemplate,
                 $property['type'],
+                DynamicModelRegister::isLazyProperty($className, $propertyName) ? PHP_EOL . '     * @lazy' : '',
                 $propertyName,
                 ($property['default'] ?? null) === null ? 'null' : var_export($property['default'], true),
                 $upperCasePropertyName,
@@ -958,7 +959,7 @@ TEMPLATE;
     {
         $propertyTemplate = <<< TEMPLATE
     /**
-     * @var %s
+     * @var %s%s
      */
     protected \$%s = %s;
 
@@ -996,6 +997,7 @@ TEMPLATE;
             $functionsAndProperties .= sprintf(
                 $propertyTemplate,
                 $property['type'],
+                DynamicModelRegister::isLazyProperty($className, $propertyName) ? PHP_EOL . '     * @lazy' : '',
                 $propertyName,
                 $defaultValueExpression,
                 $upperCasePropertyName,
