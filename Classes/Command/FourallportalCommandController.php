@@ -11,6 +11,7 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Mvc\Controller\CommandController;
 use TYPO3\CMS\Extbase\Object\ObjectManager;
 use TYPO3\CMS\Extbase\Persistence\Generic\Mapper\DataMapper;
+use TYPO3\CMS\Extbase\Persistence\Generic\PersistenceManager;
 use TYPO3\CMS\Extbase\Persistence\PersistenceManagerInterface;
 
 class FourallportalCommandController extends CommandController
@@ -278,7 +279,7 @@ class FourallportalCommandController extends CommandController
                 $this->response->appendContent('* Active: ' . $server['active'] . PHP_EOL);
 
                 $currentServer->setCustomerName($server['customerName']);
-                $this->response->appendContent('* Username: ' . $server['customerName'] . PHP_EOL);
+                $this->response->appendContent('* Customer name: ' . $server['customerName'] . PHP_EOL);
 
                 $this->response->appendContent('* Testing connectivity... ');
                 $this->response->send();
@@ -315,6 +316,7 @@ class FourallportalCommandController extends CommandController
                 }
             }
         }
+        $this->objectManager->get(PersistenceManager::class)->persistAll();
     }
 
     /**
