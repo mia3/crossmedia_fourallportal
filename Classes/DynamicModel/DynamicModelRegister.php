@@ -77,10 +77,11 @@ class DynamicModelRegister
 
     /**
      * @param string $modelClassName
-     * @param string $propertyName
+     * @param string|null $propertyName
      */
-    public static function registerLazyModelProperty($modelClassName, $propertyName)
+    public static function registerLazyModelProperty($modelClassName, $propertyName = null)
     {
+        $propertyName = $propertyName ?? '_all';
         static::$lazyProperties[$modelClassName][$propertyName] = $propertyName;
     }
 
@@ -89,8 +90,9 @@ class DynamicModelRegister
      * @param string $propertyName
      * @return bool
      */
-    public static function isLazyProperty($modelClassName, $propertyName)
+    public static function isLazyProperty($modelClassName, $propertyName = null)
     {
-        return isset(static::$lazyProperties[$modelClassName][$propertyName]);
+        $propertyName = $propertyName ?? '_all';
+        return isset(static::$lazyProperties[$modelClassName][$propertyName]) || isset(static::$lazyProperties[$modelClassName]['_all']);
     }
 }

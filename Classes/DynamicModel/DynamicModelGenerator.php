@@ -11,6 +11,7 @@ use TYPO3\CMS\Core\Cache\Frontend\PhpFrontend;
 use TYPO3\CMS\Core\Core\Bootstrap;
 use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Extbase\DomainObject\AbstractDomainObject;
 use TYPO3\CMS\Extbase\DomainObject\AbstractEntity;
 use TYPO3\CMS\Extbase\Object\ObjectManager;
 use TYPO3\CMS\Extbase\Persistence\Generic\Mapper\DataMapper;
@@ -924,6 +925,8 @@ TEMPLATE;
         $classTemplate = <<< TEMPLATE
 namespace %s;
 
+use TYPO3\CMS\Extbase\Persistence\Generic\LazyLoadingProxy;
+
 class %s extends %s
 {
 %s    public function __construct()
@@ -992,17 +995,19 @@ TEMPLATE;
                 $returnType = $property['type'];
             }
             $defaultValueExpression = ($property['default'] ?? null) === null ? 'null' : var_export($property['default'], true);
+            $isLazyProperty = DynamicModelRegister::isLazyProperty($className, $propertyName);
+            $isLazySingleObjectRelation = $isLazyProperty && is_a($property['type'], AbstractDomainObject::class, true);
 
             $upperCasePropertyName = ucfirst($propertyName);
             $functionsAndProperties .= sprintf(
                 $propertyTemplate,
                 $property['type'],
-                DynamicModelRegister::isLazyProperty($className, $propertyName) ? PHP_EOL . '     * @lazy' : '',
+                $isLazyProperty ? PHP_EOL . '     * @lazy' : '',
                 $propertyName,
                 $defaultValueExpression,
                 $upperCasePropertyName,
                 $returnType ? ': ' . $returnType : '',
-                $propertyName,
+                $propertyName . ($isLazySingleObjectRelation ? ' instanceof LazyLoadingProxy ? $this->' . $propertyName . '->_loadRealInstance() : $this->' . $propertyName : ''),
                 $upperCasePropertyName,
                 $returnType ? $returnType . ' ' : '',
                 '$' . $propertyName,
@@ -1014,6 +1019,8 @@ TEMPLATE;
         $classTemplate = <<< TEMPLATE
 declare(strict_types=1);
 namespace %s;
+
+use TYPO3\CMS\Extbase\Persistence\Generic\LazyLoadingProxy;
 
 class %s extends %s
 {
