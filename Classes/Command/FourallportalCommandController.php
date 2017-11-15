@@ -281,6 +281,8 @@ class FourallportalCommandController extends CommandController
                 $currentServer->setCustomerName($server['customerName']);
                 $this->response->appendContent('* Customer name: ' . $server['customerName'] . PHP_EOL);
 
+                $currentServer->setDomain($server['domain']);
+
                 $this->response->appendContent('* Testing connectivity... ');
                 $this->response->send();
                 $this->response->setContent('');
@@ -298,6 +300,7 @@ class FourallportalCommandController extends CommandController
 
                 foreach ($server['modules'] as $moduleName => $moduleProperties) {
                     $module = $this->ensureServerHasModule($currentServer, $moduleName, $moduleProperties);
+                    $module->setServer($currentServer);
 
                     $this->response->appendContent('* Testing connectivity... ');
                     $this->response->send();
