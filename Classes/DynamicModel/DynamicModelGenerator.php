@@ -723,6 +723,7 @@ TEMPLATE;
 
         $tca = [
             'type' => 'select',
+            'renderType' => 'selectSingle',
             'foreign_table' => $tableNameChild ?? $tableNameParent
         ];
 
@@ -740,6 +741,7 @@ TEMPLATE;
                 $tca['internal_type'] = 'db';
                 $tca['allowed'] = $tableNameChild ?? $tableNameParent;
                 $tca['MM'] = 'tx_fourallportal_' . $fieldConfiguration['name'] . '_mm';
+                unset($tca['renderType']);
 
                 // Set "MM_opposite_field" to indicate this M:N is mirrored by other TCA. To do so, we must determine if
                 // we are currently on the child side of the relation, in which case our field name comes from the child
