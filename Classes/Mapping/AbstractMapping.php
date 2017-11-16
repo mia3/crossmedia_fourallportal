@@ -168,7 +168,7 @@ abstract class AbstractMapping implements MappingInterface
                 if ($propertyValue instanceof Error) {
                     // For whatever reason, property validators will return a validation error rather than throw an exception.
                     // We therefore need to check this, log the problem, and skip the property.
-                    echo 'Mapping error when mapping property ' . $propertyName . ' on ' . $object->getRemoteId() . ': ' . $child->getMessage() . PHP_EOL;
+                    echo 'Mapping error when mapping property ' . $propertyName . ' on ' . $object->getRemoteId() . ': ' . $propertyValue->getMessage() . PHP_EOL;
                     return;
                 }
 
