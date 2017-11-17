@@ -576,14 +576,24 @@ class FourallportalCommandController extends CommandController
      *
      * @param int $events
      * @param string $module
+     * @param string $objectId
      */
-    public function replayCommand($events = 1, $module = null)
+    public function replayCommand($events = 1, $module = null, $objectId = null)
     {
-        foreach ($this->getActiveModuleOrModules($module) as $module) {
+        foreach ($this->getActiveModuleOrModules($module) as $moduleObject) {
             $eventQuery = $this->eventRepository->createQuery();
-            $eventQuery->matching(
-                $eventQuery->equals('module', $module->getUid())
-            );
+            if (!$objectId) {
+                $eventQuery->matching(
+                    $eventQuery->equals('module', $moduleObject->getUid())
+                );
+            } else {
+                $eventQuery->matching(
+                    $eventQuery->logicalAnd(
+                        $eventQuery->equals('module', $moduleObject->getUid()),
+                        $eventQuery->equals('object_id', $objectId)
+                    )
+                );
+            }
             $eventQuery->setLimit($events);
             $eventQuery->setOrderings(['event_id' => 'DESC']);
             foreach ($eventQuery->execute() as $event) {
