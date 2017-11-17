@@ -80,10 +80,11 @@ class FileReferenceTypeConverter extends AbstractUuidAwareObjectTypeConverter im
         $queryBuilder->getRestrictions()->removeAll();
         $references = $queryBuilder->select('r.uid')->from('sys_file', 'f')->from('sys_file_reference', 'r')->where(
             sprintf(
-                'r.uid_local = f.uid AND f.remote_id = \'%s\' AND r.tablenames = \'%s\' AND r.table_local = \'sys_file\' AND r.fieldname = \'%s\'',
+                'r.uid_local = f.uid AND f.remote_id = \'%s\' AND r.tablenames = \'%s\' AND r.table_local = \'sys_file\' AND r.fieldname = \'%s\' AND r.uid_foreign = %d',
                 $source,
                 $dataMap->getTableName(),
-                GeneralUtility::camelCaseToLowerCaseUnderscored($this->propertyName)
+                GeneralUtility::camelCaseToLowerCaseUnderscored($this->propertyName),
+                $this->parentObject->getUid()
             )
         )->setMaxResults(1)->execute()->fetchAll();
         if (isset($references[0]['uid'])) {
