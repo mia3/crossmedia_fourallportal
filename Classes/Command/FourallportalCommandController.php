@@ -732,6 +732,11 @@ class FourallportalCommandController extends CommandController
      */
     public function processEvent($event)
     {
+        $this->response->setContent(
+            'Processing event "' . $event->getModule()->getModuleName() . ':' . $event->getEventId() . '" - ' .
+            $event->getEventType() . ' ' . $event->getObjectId() . PHP_EOL
+        );
+        $this->response->send();
         $client = $event->getModule()->getServer()->getClient();
         try {
             $mapper = $event->getModule()->getMapper();
