@@ -71,6 +71,8 @@ class FileReferenceTypeConverter extends AbstractUuidAwareObjectTypeConverter im
         $resourceFactory = ResourceFactory::getInstance();
         $model = new FileReference();
 
+        $fieldName = $dataMap->getColumnMap($this->propertyName)->getColumnName(); // GeneralUtility::camelCaseToLowerCaseUnderscored($this->propertyName);
+
         // Lookup no. 1: try to find a sys_file_reference pointing to the sys_file with remote ID=$source
         // and matching relation values to $this->parentObject and $this->propertyName. We do this because
         // there is no Repository which we could use to load an Extbase file reference base on criteria.
@@ -78,15 +80,16 @@ class FileReferenceTypeConverter extends AbstractUuidAwareObjectTypeConverter im
         // exact same relation we were asked to convert - and we return the current property value.
         $queryBuilder = (new ConnectionPool())->getConnectionForTable('sys_file')->createQueryBuilder();
         $queryBuilder->getRestrictions()->removeAll();
-        $references = $queryBuilder->select('r.uid')->from('sys_file', 'f')->from('sys_file_reference', 'r')->where(
+        $query = $queryBuilder->select('r.uid')->from('sys_file', 'f')->from('sys_file_reference', 'r')->where(
             sprintf(
                 'r.uid_local = f.uid AND f.remote_id = \'%s\' AND r.tablenames = \'%s\' AND r.table_local = \'sys_file\' AND r.fieldname = \'%s\' AND r.uid_foreign = %d',
                 $source,
                 $dataMap->getTableName(),
-                GeneralUtility::camelCaseToLowerCaseUnderscored($this->propertyName),
+                $fieldName,
                 $this->parentObject->getUid()
             )
-        )->setMaxResults(1)->execute()->fetchAll();
+        )->setMaxResults(1);
+        $references = $query->execute()->fetchAll();
         if (isset($references[0]['uid'])) {
             // File reference already exists - find the reference to re-use
             $propertyValue = ObjectAccess::getProperty($this->parentObject, $this->propertyName);
@@ -127,7 +130,7 @@ class FileReferenceTypeConverter extends AbstractUuidAwareObjectTypeConverter im
             'pid' => $this->parentObject->getPid(),
             'tablenames' => $dataMap->getTableName(),
             'table_local' => 'sys_file',
-            'fieldname' => GeneralUtility::camelCaseToLowerCaseUnderscored($this->propertyName),
+            'fieldname' => $fieldName,
             'uid_local' => $original[0]['uid'],
             'uid_foreign' => $this->parentObject->getUid()
         ]);

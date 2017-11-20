@@ -153,7 +153,9 @@ abstract class AbstractMapping implements MappingInterface
                     echo 'Child of type ' . $childType . ' identified by ' . $identifier . ' not found when mapping property ' . $propertyName . ' on ' . $object->getRemoteId() . PHP_EOL;
                     continue;
                 }
-                $objectStorage->attach($child);
+                if (!$objectStorage->contains($child)) {
+                    $objectStorage->attach($child);
+                }
             }
             $propertyValue = $objectStorage;
         } else {
