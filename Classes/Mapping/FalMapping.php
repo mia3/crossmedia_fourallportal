@@ -65,11 +65,6 @@ class FalMapping extends AbstractMapping
                 $repository->remove($object);
                 break;
             case 'update':
-                if (!$object) {
-                    // push back event.
-
-                    return;
-                }
             case 'create':
                 $object = $this->downloadFileAndGetFileObject($objectId, $data, $event);
                 $this->mapPropertiesFromDataToObject($data, $object, $event->getModule());
