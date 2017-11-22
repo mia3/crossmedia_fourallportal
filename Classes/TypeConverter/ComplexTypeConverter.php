@@ -80,10 +80,13 @@ class ComplexTypeConverter extends AbstractUuidAwareObjectTypeConverter implemen
         $moduleConfiguration = $module->getModuleConfiguration();
         $fieldConfiguration = $moduleConfiguration['field_conf'][$originalFieldName];
 
+        /** @var ComplexType $existingComplexType */
         $existingComplexType = ObjectAccess::getProperty($this->parentObject, $this->propertyName);
         if ($existingComplexType) {
             $existingComplexType->setActualValue($source['value']);
             $existingComplexType->setNormalizedValue($source['normalized']);
+            $existingComplexType->setLabel($source['unit']);
+            $existingComplexType->setName($fieldConfiguration['metric']['name']);
             return $existingComplexType;
         }
 

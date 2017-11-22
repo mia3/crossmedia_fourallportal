@@ -59,8 +59,8 @@ class ComplexTypeFactory
         $complexType->setType($type);
         $complexType->setFieldName($subMatch['name']);
         $complexType->setLabel($subMatch['metric']['defaultUnit']);
+        $complexType->setName($subMatch['metric']['name']);
         return $complexType;
-
     }
 
     /**
