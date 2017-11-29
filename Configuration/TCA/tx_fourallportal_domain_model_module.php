@@ -17,10 +17,10 @@ return [
         'iconfile' => 'EXT:fourallportal/Resources/Public/Icons/tx_fourallportal_domain_model_module.gif'
     ],
     'interface' => [
-        'showRecordFieldList' => 'connector_name, module_name, mapping_class, enable_dynamic_model, config_hash, last_event_id, shell_path, storage_pid, fal_storage, test_object_uuid, server',
+        'showRecordFieldList' => 'connector_name, module_name, mapping_class, enable_dynamic_model, config_hash, last_event_id, shell_path, storage_pid, fal_storage, usage_flag, test_object_uuid, server',
     ],
     'types' => [
-        '1' => ['showitem' => 'connector_name, module_name, mapping_class, enable_dynamic_model, config_hash, last_event_id, shell_path, storage_pid, fal_storage, test_object_uuid, server'],
+        '1' => ['showitem' => 'connector_name, module_name, mapping_class, enable_dynamic_model, config_hash, last_event_id, shell_path, storage_pid, fal_storage, usage_flag, test_object_uuid, server'],
     ],
     'columns' => [
         'connector_name' => [
@@ -114,6 +114,21 @@ return [
                 'type' => 'select',
                 'renderType' => 'selectSingle',
                 'foreign_table' => 'sys_file_storage',
+                'minitems' => 1,
+                'maxitems' => 1,
+            ],
+        ],
+        'usage_flag' => [
+            'exclude' => true,
+            'displayCond' => 'FIELD:mapping_class:=:' . \Crossmedia\Fourallportal\Mapping\FalMapping::class,
+            'label' => 'LLL:EXT:fourallportal/Resources/Private/Language/locallang_db.xlf:tx_fourallportal_domain_model_module.usage_flag',
+            'config' => [
+                'type' => 'select',
+                'renderType' => 'selectSingle',
+                'items' => [
+                    ['Original', 'Original'],
+                    ['WebALL', 'WebALL']
+                ],
                 'minitems' => 1,
                 'maxitems' => 1,
             ],

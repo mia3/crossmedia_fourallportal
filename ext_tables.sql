@@ -43,6 +43,7 @@ CREATE TABLE tx_fourallportal_domain_model_module (
 	shell_path varchar(255) DEFAULT '' NOT NULL,
 	storage_pid int(11) DEFAULT '0' NOT NULL,
 	fal_storage int(11) DEFAULT '0' NOT NULL,
+	usage_flag varchar(32) DEFAULT '' NOT NULL,
 	test_object_uuid varchar(255) DEFAULT '' NOT NULL,
 
 	tstamp int(11) unsigned DEFAULT '0' NOT NULL,

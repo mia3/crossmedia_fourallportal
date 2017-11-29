@@ -144,7 +144,7 @@ class FalMapping extends AbstractMapping
 
         if ($download) {
             echo 'Downloading: ' . $targetFolder . $targetFilename . PHP_EOL;
-            $client->saveDerivate($tempPathAndFilename, $event->getObjectId());
+            $client->saveDerivate($tempPathAndFilename, $event->getObjectId(), $event->getModule()->getUsageFlag());
             $contents = file_get_contents($tempPathAndFilename);
 
             try {

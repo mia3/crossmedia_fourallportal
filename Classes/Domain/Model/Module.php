@@ -78,6 +78,11 @@ class Module extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
     /**
      * @var string
      */
+    protected $usageFlag = '';
+
+    /**
+     * @var string
+     */
     protected $testObjectUuid = '';
 
     /**
@@ -248,6 +253,22 @@ class Module extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
     public function setFalStorage($falStorage)
     {
         $this->falStorage = $falStorage;
+    }
+
+    /**
+     * @return string
+     */
+    public function getUsageFlag()
+    {
+        return $this->usageFlag;
+    }
+
+    /**
+     * @param string $usageFlag
+     */
+    public function setUsageFlag($usageFlag)
+    {
+        $this->usageFlag = $usageFlag;
     }
 
     /**

@@ -48,6 +48,12 @@
 			<trans-unit id="tx_fourallportal_domain_model_module.storage_pid">
 				<source>Storage Pid</source>
 			</trans-unit>
+			<trans-unit id="tx_fourallportal_domain_model_module.fal_storage">
+				<source>FAL storage</source>
+			</trans-unit>
+			<trans-unit id="tx_fourallportal_domain_model_module.usage_flag">
+				<source>Asset connector "usage" flag (see 4AP documentation re: assets!)</source>
+			</trans-unit>
 			<trans-unit id="tx_fourallportal_domain_model_module.test_object_uuid">
 				<source>Test object UUID (used as candidate in automated tests and schema tracking)</source>
 			</trans-unit>

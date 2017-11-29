@@ -143,12 +143,8 @@ class ApiClient
     /**
      * Fetches a specific derivate from MAM
      *
-     * @apiparam connector_name - Name des Connectors
-     * @apiparam id - Id des Datensatzes für das jeweilige Derivat
-     * @apiparam derivate - web, print etc.
-     *
      * @param string $objectId id of the object to get a derivate for
-     * @return ???
+     * @return array
      */
     public function getDerivate($objectId, $usage = null)
     {
@@ -170,15 +166,17 @@ class ApiClient
     /**
      * @param string $filename
      * @param string $objectId
+     * @param string|null $usage
      * @return bool|string
+     * @throws ApiException
      */
-    public function saveDerivate($filename, $objectId)
+    public function saveDerivate($filename, $objectId, $usage = null)
     {
         $query = array(
             'session' => $this->sessionId,
             'apptype' => 'MAM',
             'clientType' => 'Web',
-            'usage' => 'Original',
+            'usage' => $usage ?: 'Original',
             'id' => $objectId,
         );
         $uri = $this->server->getDataUrl() . '?' . http_build_query($query);
