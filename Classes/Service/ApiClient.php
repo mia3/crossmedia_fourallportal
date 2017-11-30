@@ -206,6 +206,11 @@ class ApiClient
         fclose($headerBuff);
         unlink($temporaryHeaderbufferName);
 
+        $info = curl_getinfo($ch);
+        if (preg_match('/filename="([^"]+)/', $headers, $matches)) {
+            $filename = substr($filename, 0, strrpos($filename, '/') + 1) . $matches[1];
+        }
+
         if (preg_match('/Content-Length:[^0-9]*([0-9]+)/', $headers, $matches)) {
             $expectedFileSize = $matches[1];
         }
