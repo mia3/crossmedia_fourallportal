@@ -127,7 +127,7 @@ return [
                 'renderType' => 'selectSingle',
                 'items' => [
                     ['Original', 'Original'],
-                    ['WebALL', 'WebALL']
+                    ['WebALL', 'WebAll']
                 ],
                 'minitems' => 1,
                 'maxitems' => 1,
