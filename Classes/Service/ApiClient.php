@@ -183,7 +183,6 @@ class ApiClient
 
         $temporaryFilename = tempnam(sys_get_temp_dir(), 'fal_mam-' . $objectId);
 
-        ob_start();
         if (!file_exists(dirname($temporaryFilename))) {
             $oldUmask = umask(0);
             mkdir(dirname($temporaryFilename), $this - $this->folderCreateMask, true);
@@ -217,8 +216,6 @@ class ApiClient
 
         curl_close($ch);
         fclose($fp);
-        $output = ob_end_clean();
-        ob_end_flush();
 
         if ($expectedFileSize > 0 && $expectedFileSize != filesize($temporaryFilename)) {
             unlink($temporaryFilename);
