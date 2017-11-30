@@ -772,6 +772,7 @@ class FourallportalCommandController extends CommandController
         $event->setResponse($responseMetadata['response']);
         $event->setPayload($responseMetadata['payload']);
         $this->eventRepository->update($event);
+        GeneralUtility::makeInstance(ObjectManager::class)->get(PersistenceManager::class)->persistAll();
     }
 
     /**
