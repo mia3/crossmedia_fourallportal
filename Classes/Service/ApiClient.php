@@ -219,6 +219,12 @@ class ApiClient
             throw new ApiException('CURL Failed with the Error: ' . $curlError);
         }
 
+        if ($info['http_code'] !== 200) {
+            $errorMessage = sprintf('CURL response code was %d when fetching "%s": ', $info['http_code'], $uri);
+            echo '  ' . $errorMessage . PHP_EOL;
+            throw new \RuntimeException($errorMessage);
+        }
+
         curl_close($ch);
         fclose($fp);
 
