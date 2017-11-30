@@ -181,6 +181,8 @@ class ApiClient
         );
         $uri = $this->server->getDataUrl() . '?' . http_build_query($query);
 
+        echo '  fetching: ' . $uri . PHP_EOL;
+
         $temporaryFilename = tempnam(sys_get_temp_dir(), 'fal_mam-' . $objectId);
 
         if (!file_exists(dirname($temporaryFilename))) {
@@ -199,6 +201,9 @@ class ApiClient
         curl_setopt($ch, CURLOPT_FILE, $fp);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
         curl_setopt($ch, CURLOPT_WRITEHEADER, $headerBuff);
+
+        echo '  sending request...' . PHP_EOL;
+
         curl_exec($ch);
 
         rewind($headerBuff);
@@ -210,6 +215,8 @@ class ApiClient
         if (preg_match('/filename="([^"]+)/', $headers, $matches)) {
             $filename = substr($filename, 0, strrpos($filename, '/') + 1) . $matches[1];
         }
+
+        echo '  data received (' . filesize($temporaryFilename) . ' bytes, code: ' . $info['http_code']  . ')' . PHP_EOL;
 
         if (preg_match('/Content-Length:[^0-9]*([0-9]+)/', $headers, $matches)) {
             $expectedFileSize = $matches[1];
@@ -240,6 +247,8 @@ class ApiClient
         }
         rename($temporaryFilename, $filename);
         chmod($filename, $this->fileCreateMask);
+
+        return $filename;
     }
 
     /**
