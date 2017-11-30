@@ -4,6 +4,7 @@ namespace Crossmedia\Fourallportal\Mapping;
 use Crossmedia\Fourallportal\Domain\Model\Event;
 use Crossmedia\Fourallportal\Domain\Model\Module;
 use Crossmedia\Fourallportal\Domain\Model\Server;
+use Crossmedia\Fourallportal\Error\ApiException;
 use Crossmedia\Fourallportal\Service\ApiClient;
 use TYPO3\CMS\Core\Charset\CharsetConverter;
 use TYPO3\CMS\Core\Database\ConnectionPool;
@@ -144,13 +145,17 @@ class FalMapping extends AbstractMapping
 
         if ($download) {
             echo 'Downloading: ' . $targetFolder . $targetFilename . PHP_EOL;
-            $client->saveDerivate($tempPathAndFilename, $event->getObjectId(), $event->getModule()->getUsageFlag());
-            $contents = file_get_contents($tempPathAndFilename);
-
             try {
+                $tempPathAndFilename = $client->saveDerivate($tempPathAndFilename, $event->getObjectId(), $event->getModule()->getUsageFlag());
+                $contents = file_get_contents($tempPathAndFilename);
+                if (pathinfo($targetFilename, PATHINFO_EXTENSION) !== pathinfo($tempPathAndFilename, PATHINFO_EXTENSION)) {
+                    $targetFilename = $this->sanitizeFileName(pathinfo($tempPathAndFilename, PATHINFO_BASENAME));
+                }
                 $file = $folder->createFile($targetFilename);
             } catch (ExistingTargetFileNameException $error) {
                 $file = reset($this->getObjectRepository()->searchByName($folder, $targetFilename));
+            } catch (ApiException $error) {
+                throw new \RuntimeException($error->getMessage(), $error->getCode());
             }
 
             if (!$file) {
