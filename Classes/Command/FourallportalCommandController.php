@@ -618,6 +618,10 @@ class FourallportalCommandController extends CommandController
     public function syncCommand($sync = false, $module = null, $exclude = null)
     {
         $exclude = explode(',', $exclude);
+
+        $this->processAllPendingAndDeferredEvents();
+        $this->objectManager->get(PersistenceManagerInterface::class)->persistAll();
+
         foreach ($this->getActiveModuleOrModules($module) as $module) {
             if (in_array($module->getModuleName(), $exclude)) {
                 continue;
@@ -668,8 +672,6 @@ class FourallportalCommandController extends CommandController
         $done = false;
         $allEvents = [];
         while (($events = $client->getEvents($connectorName, $lastEventId)) && count($events) && !$done) {
-            #var_dump($events);
-            #var_dump($lastEventId);
             foreach ($events as $event) {
                 echo 'Read: ' . $event['id'] . PHP_EOL;
                 $lastEventId = $event['id'];
@@ -677,7 +679,6 @@ class FourallportalCommandController extends CommandController
                     $done = true;
                     break;
                 }
-                #$lastEventId = $event['id'];
                 $allEvents[$lastEventId] = $event;
             }
         }
