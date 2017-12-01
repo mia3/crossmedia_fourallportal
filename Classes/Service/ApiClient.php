@@ -283,7 +283,7 @@ class ApiClient
             [
                 $this->sessionId,
                 $connectorName,
-                $eventId + 1,
+                $eventId ? $eventId + 1 : 0,
                 $connectorConfig['config_hash']
             ],
             false

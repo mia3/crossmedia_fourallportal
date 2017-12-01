@@ -6,6 +6,7 @@ use Crossmedia\Fourallportal\Domain\Model\Module;
 use Crossmedia\Fourallportal\Domain\Model\Server;
 use Crossmedia\Fourallportal\DynamicModel\DynamicModelGenerator;
 use Crossmedia\Fourallportal\DynamicModel\DynamicModelRegister;
+use Crossmedia\Fourallportal\Service\ApiClient;
 use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Mvc\Controller\CommandController;
@@ -623,16 +624,16 @@ class FourallportalCommandController extends CommandController
             }
             $client = $module->getServer()->getClient();
             /** @var Module $configuredModule */
-            if (!$sync && $module->getLastEventId() > 0) {
-                $results = $client->getEvents($module->getConnectorName(), $module->getLastEventId());
+            if ($sync && $module->getLastEventId() > 0) {
+                $module->setLastEventId(0);
             } else {
                 $moduleEvents = $this->eventRepository->findByModule($module->getUid());
                 foreach ($moduleEvents as $moduleEvent) {
                     $this->eventRepository->remove($moduleEvent);
                 }
                 $this->objectManager->get(PersistenceManagerInterface::class)->persistAll();
-                $results = $client->synchronize($module->getConnectorName());
             }
+            $results = $this->readAllPendingEvents($client, $module->getConnectorName(), $module->getLastEventId());
             $queuedEventsForModule = [];
             foreach ($results as $result) {
                 $this->response->setContent('Receiving event ID "' . $result['id'] . '" from connector "' . $module->getConnectorName() . '"' . PHP_EOL);
@@ -654,6 +655,33 @@ class FourallportalCommandController extends CommandController
 
         $this->objectManager->get(PersistenceManagerInterface::class)->persistAll();
         $this->processAllPendingAndDeferredEvents();
+    }
+
+    /**
+     * @param ApiClient $client
+     * @param string $connectorName
+     * @param int $lastEventId
+     * @return array
+     */
+    protected function readAllPendingEvents(ApiClient $client, $connectorName, $lastEventId = 0)
+    {
+        $done = false;
+        $allEvents = [];
+        while (($events = $client->getEvents($connectorName, $lastEventId)) && count($events) && !$done) {
+            #var_dump($events);
+            #var_dump($lastEventId);
+            foreach ($events as $event) {
+                echo 'Read: ' . $event['id'] . PHP_EOL;
+                $lastEventId = $event['id'];
+                if (isset($allEvents[$lastEventId])) {
+                    $done = true;
+                    break;
+                }
+                #$lastEventId = $event['id'];
+                $allEvents[$lastEventId] = $event;
+            }
+        }
+        return $allEvents;
     }
 
     /**
