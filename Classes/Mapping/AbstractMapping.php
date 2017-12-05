@@ -48,11 +48,6 @@ abstract class AbstractMapping implements MappingInterface
                 unset($object);
                 break;
             case 'update':
-                if (!$object) {
-                    // push back event.
-
-                    return;
-                }
             case 'create':
                 if (!$object) {
                     $class = $this->getEntityClassName();
