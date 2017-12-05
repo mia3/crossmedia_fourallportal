@@ -712,7 +712,8 @@ class FourallportalCommandController extends CommandController
         $pending = $this->eventRepository->findByStatus('pending')->toArray();
         $deferred = $this->eventRepository->findByStatus('deferred')->toArray();
 
-        $this->collectPreloadDataForObjectsInEvents(array_merge_recursive($pending, $deferred));
+        // CD 5/12/17 Disabled: causes responses for full set of entries to be logged in database.
+        //$this->collectPreloadDataForObjectsInEvents(array_merge_recursive($pending, $deferred));
 
         // Handle new, pending events first, which may cause some to be deferred:
         foreach ($pending as $event) {
