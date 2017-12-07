@@ -875,6 +875,31 @@ TEMPLATE;
             : $this->generateRelaxedCachedClassFile($className, $parentClass, $propertyConfiguration, $identifier);
     }
 
+    protected function generateVirtualArrayGetter($propertyName, $strict = false)
+    {
+        $getterTemplate = <<< TEMPLATE
+    /**
+     * @return array
+     */
+    public function get%sArray()%s
+    {
+        return (array) json_decode(\$this->%s, true);
+    }
+
+
+TEMPLATE;
+        $strictReturn = '';
+        if ($strict) {
+            $strictReturn = ': array';
+        }
+        return sprintf(
+            $getterTemplate,
+            ucfirst($propertyName),
+            $strictReturn,
+            $propertyName
+        );
+    }
+
     protected function generateRelaxedCachedClassFile($className, $parentClass, array $propertyConfiguration, $identifier = null)
     {
         $propertyTemplate = <<< TEMPLATE
@@ -897,29 +922,39 @@ TEMPLATE;
         \$this->%s = %s;
     }
 
-
+%s
 TEMPLATE;
 
         $functionsAndProperties = '';
         $objectStorageInitializations = '';
         foreach ($propertyConfiguration as $propertyName => $property) {
+
+            $returnType = $property['type'];
+            $virtualArrayGetter = '';
+            if ($property['type'] === 'array') {
+                // Arrays will be stored as strings and are, technically, strings in the model property,
+                // but will have a virtual getter method that returns a json_decode()'d value.
+                $virtualArrayGetter = $this->generateVirtualArrayGetter($propertyName);
+            }
+
             $upperCasePropertyName = ucfirst($propertyName);
             $functionsAndProperties .= sprintf(
                 $propertyTemplate,
-                $property['type'],
+                $returnType,
                 DynamicModelRegister::isLazyProperty($className, $propertyName) ? PHP_EOL . '     * @lazy' : '',
                 $propertyName,
                 ($property['default'] ?? null) === null ? 'null' : var_export($property['default'], true),
                 $upperCasePropertyName,
                 $propertyName,
-                $property['type'],
+                $returnType,
                 '$' . $propertyName,
                 $upperCasePropertyName,
                 '$' . $propertyName,
                 $propertyName,
-                '$' . $propertyName
+                '$' . $propertyName,
+                $virtualArrayGetter
             );
-            if (strpos($property['type'], '\\Persistence\\ObjectStorage<') !== false) {
+            if (strpos($returnType, '\\Persistence\\ObjectStorage<') !== false) {
                 $objectStorageInitializations .= '        $this->' . $propertyName . ' = new \\TYPO3\\CMS\\Extbase\\Persistence\\ObjectStorage();' . PHP_EOL;
             }
         }
@@ -978,12 +1013,13 @@ TEMPLATE;
         \$this->%s = %s;
     }
 
-
+%s
 TEMPLATE;
 
         $functionsAndProperties = '';
         $objectStorageInitializations = '';
         foreach ($propertyConfiguration as $propertyName => $property) {
+
             if (strpos($property['type'], '\\Persistence\\ObjectStorage<') !== false) {
                 $objectStorageInitializations .= '        $this->' . $propertyName . ' = new \\TYPO3\\CMS\\Extbase\\Persistence\\ObjectStorage();' . PHP_EOL;
                 $returnType = '\\' . ObjectStorage::class;
@@ -996,6 +1032,15 @@ TEMPLATE;
                 settype($property['default'], $property['type']);
                 $returnType = $property['type'];
             }
+
+            $virtualArrayGetter = '';
+            if ($property['type'] === 'array') {
+                // Arrays will be stored as strings and are, technically, strings in the model property,
+                // but will have a virtual getter method that returns a json_decode()'d value.
+                $virtualArrayGetter = $this->generateVirtualArrayGetter($propertyName, true);
+                $returnType = 'string';
+            }
+
             $defaultValueExpression = ($property['default'] ?? null) === null ? 'null' : var_export($property['default'], true);
             $isLazyProperty = DynamicModelRegister::isLazyProperty($className, $propertyName);
             $isLazySingleObjectRelation = $isLazyProperty && is_a($property['type'], AbstractDomainObject::class, true);
@@ -1014,7 +1059,8 @@ TEMPLATE;
                 $returnType ? $returnType . ' ' : '',
                 '$' . $propertyName,
                 $propertyName,
-                '$' . $propertyName
+                '$' . $propertyName,
+                $virtualArrayGetter
             );
         }
 

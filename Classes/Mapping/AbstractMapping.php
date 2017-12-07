@@ -154,6 +154,10 @@ abstract class AbstractMapping implements MappingInterface
             }
             $propertyValue = $objectStorage;
         } else {
+            if ($targetType === 'array') {
+                $targetType = 'string';
+                $propertyValue = json_encode($propertyValue, JSON_HEX_QUOT | JSON_HEX_AMP | JSON_HEX_TAG);
+            }
             if ($targetType !== $propertyMapper->determineSourceType($propertyValue)) {
                 $targetType = trim($targetType, '\\');
                 $typeConverter = $propertyMapper->findTypeConverter($propertyValue, $targetType, $configuration);
