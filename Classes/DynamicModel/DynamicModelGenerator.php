@@ -935,6 +935,7 @@ TEMPLATE;
                 // Arrays will be stored as strings and are, technically, strings in the model property,
                 // but will have a virtual getter method that returns a json_decode()'d value.
                 $virtualArrayGetter = $this->generateVirtualArrayGetter($propertyName);
+                $returnType = 'string';
             }
 
             $upperCasePropertyName = ucfirst($propertyName);
@@ -1020,6 +1021,7 @@ TEMPLATE;
         $objectStorageInitializations = '';
         foreach ($propertyConfiguration as $propertyName => $property) {
 
+            $variableType = $property['type'];
             if (strpos($property['type'], '\\Persistence\\ObjectStorage<') !== false) {
                 $objectStorageInitializations .= '        $this->' . $propertyName . ' = new \\TYPO3\\CMS\\Extbase\\Persistence\\ObjectStorage();' . PHP_EOL;
                 $returnType = '\\' . ObjectStorage::class;
@@ -1039,6 +1041,7 @@ TEMPLATE;
                 // but will have a virtual getter method that returns a json_decode()'d value.
                 $virtualArrayGetter = $this->generateVirtualArrayGetter($propertyName, true);
                 $returnType = 'string';
+                $variableType = 'string';
             }
 
             $defaultValueExpression = ($property['default'] ?? null) === null ? 'null' : var_export($property['default'], true);
@@ -1048,7 +1051,7 @@ TEMPLATE;
             $upperCasePropertyName = ucfirst($propertyName);
             $functionsAndProperties .= sprintf(
                 $propertyTemplate,
-                $property['type'],
+                $variableType,
                 $isLazyProperty ? PHP_EOL . '     * @lazy' : '',
                 $propertyName,
                 $defaultValueExpression,
