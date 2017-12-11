@@ -154,17 +154,18 @@ abstract class AbstractMapping implements MappingInterface
             }
             $propertyValue = $objectStorage;
         } else {
-            if ($targetType === 'array') {
-                $targetType = 'string';
-                $propertyValue = json_encode($propertyValue, JSON_HEX_QUOT | JSON_HEX_AMP | JSON_HEX_TAG);
-            }
-            if ($targetType !== $propertyMapper->determineSourceType($propertyValue)) {
-                $targetType = trim($targetType, '\\');
-                $typeConverter = $propertyMapper->findTypeConverter($propertyValue, $targetType, $configuration);
-                if ($typeConverter instanceof PimBasedTypeConverterInterface) {
-                    $typeConverter->setParentObjectAndProperty($object, $propertyName);
+            $sourceType = $propertyMapper->determineSourceType($propertyValue);
+            if ($targetType !== $sourceType) {
+                if ($targetType === 'string' && $sourceType === 'array') {
+                    $propertyValue = json_encode($propertyValue, JSON_HEX_QUOT | JSON_HEX_AMP | JSON_HEX_TAG);
+                } else {
+                    $targetType = trim($targetType, '\\');
+                    $typeConverter = $propertyMapper->findTypeConverter($propertyValue, $targetType, $configuration);
+                    if ($typeConverter instanceof PimBasedTypeConverterInterface) {
+                        $typeConverter->setParentObjectAndProperty($object, $propertyName);
+                    }
+                    $propertyValue = $typeConverter->convertFrom($propertyValue, $targetType, [], $configuration);
                 }
-                $propertyValue = $typeConverter->convertFrom($propertyValue, $targetType, [], $configuration);
 
                 if ($propertyValue instanceof Error) {
                     // For whatever reason, property validators will return a validation error rather than throw an exception.
