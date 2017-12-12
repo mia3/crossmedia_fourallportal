@@ -619,8 +619,10 @@ class FourallportalCommandController extends CommandController
     {
         $exclude = explode(',', $exclude);
 
-        $this->processAllPendingAndDeferredEvents();
-        $this->objectManager->get(PersistenceManagerInterface::class)->persistAll();
+        if (!$sync) {
+            $this->processAllPendingAndDeferredEvents();
+            $this->objectManager->get(PersistenceManagerInterface::class)->persistAll();
+        }
 
         foreach ($this->getActiveModuleOrModules($module) as $module) {
             if (in_array($module->getModuleName(), $exclude)) {
