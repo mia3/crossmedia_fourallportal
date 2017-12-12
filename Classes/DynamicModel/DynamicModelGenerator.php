@@ -883,7 +883,7 @@ TEMPLATE;
      */
     public function get%sArray()%s
     {
-        return (array) json_decode(\$this->%s, true);
+        return (array) json_decode(\$this->%s ?? '', true);
     }
 
 
