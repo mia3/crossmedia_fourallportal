@@ -135,8 +135,18 @@ class FalMapping extends AbstractMapping
         }
 
         $download = !empty($targetFolder . $targetFilename);
-
         $file = null;
+
+        // Temporary filename patching because DAM still won't transmit whether a PSD/EPS is converted to PNG or JPG.
+        $targetBaseFilename = pathinfo($targetFilename, PATHINFO_FILENAME);
+        if (in_array(strtolower(pathinfo($targetFilename, PATHINFO_EXTENSION)), ['psd', 'eps', 'tif', 'tiff'])) {
+            if ($folder->hasFile($targetBaseFilename . '.png')) {
+                $targetFilename = $targetBaseFilename . '.png';
+            } elseif ($folder->hasFile($targetBaseFilename . '.jpg')) {
+                $targetFilename = $targetBaseFilename . '.jpg';
+            }
+        }
+
         if ($folder->hasFile($targetFilename)) {
             /** @var FileInterface $file */
             $file = reset($this->getObjectRepository()->searchByName($folder, $targetFilename)) ?: null;
@@ -148,6 +158,7 @@ class FalMapping extends AbstractMapping
             try {
                 $tempPathAndFilename = $client->saveDerivate($tempPathAndFilename, $event->getObjectId(), $event->getModule()->getUsageFlag());
                 $contents = file_get_contents($tempPathAndFilename);
+                unlink($tempPathAndFilename);
                 if (pathinfo($targetFilename, PATHINFO_EXTENSION) !== pathinfo($tempPathAndFilename, PATHINFO_EXTENSION)) {
                     $targetFilename = $this->sanitizeFileName(pathinfo($tempPathAndFilename, PATHINFO_BASENAME));
                 }
@@ -208,6 +219,15 @@ class FalMapping extends AbstractMapping
                 'File name ' . $fileName . ' is invalid.',
                 1320288991
             );
+        }
+        $extension = pathinfo($cleanFileName, PATHINFO_EXTENSION);
+        $lowercaseExtension = strtolower($extension);
+        if ($lowercaseExtension === 'jpeg') {
+            // Force renamed file extension as it will be processed by FAL
+            $lowercaseExtension = 'jpg';
+        }
+        if ($extension !== $lowercaseExtension) {
+            $cleanFileName = pathinfo($cleanFileName, PATHINFO_FILENAME) . '.' . $lowercaseExtension;
         }
         return $cleanFileName;
     }
