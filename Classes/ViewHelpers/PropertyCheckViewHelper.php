@@ -38,7 +38,7 @@ class PropertyCheckViewHelper extends AbstractViewHelper
         $module = $arguments['module'];
         $response = $arguments['response'];
         $field = $arguments['field'];
-        if (!array_key_exists($field, $response['result'][0]['properties'])) {
+        if (!array_key_exists($field, (array) ($response['result'][0]['properties'] ?? []))) {
             return '<span class="text-danger"><i class="icon fa fa-exclamation"></i> Not in response!</span>';
         }
 
