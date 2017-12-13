@@ -603,7 +603,7 @@ class FourallportalCommandController extends CommandController
             }
         }
         $this->objectManager->get(PersistenceManagerInterface::class)->persistAll();
-        $this->processAllPendingAndDeferredEvents();
+        $this->processAllPendingAndDeferredEvents(false);
     }
 
     /**
@@ -709,7 +709,7 @@ class FourallportalCommandController extends CommandController
         return $activeModules;
     }
 
-    protected function processAllPendingAndDeferredEvents()
+    protected function processAllPendingAndDeferredEvents($updateEventId = true)
     {
         $pending = $this->eventRepository->findByStatus('pending')->toArray();
         $deferred = $this->eventRepository->findByStatus('deferred')->toArray();
@@ -719,12 +719,12 @@ class FourallportalCommandController extends CommandController
 
         // Handle new, pending events first, which may cause some to be deferred:
         foreach ($pending as $event) {
-            $this->processEvent($event);
+            $this->processEvent($event, $updateEventId);
         }
 
         // Then handle any events that were deferred - which may cause some to be deferred again:
         foreach ($deferred as $event) {
-            $this->processEvent($event);
+            $this->processEvent($event, $updateEventId);
         }
 
         $this->objectManager->get(PersistenceManagerInterface::class)->persistAll();
@@ -761,8 +761,9 @@ class FourallportalCommandController extends CommandController
 
     /**
      * @param Event $event
+     * @param bool $updateEventId
      */
-    public function processEvent($event)
+    public function processEvent($event, $updateEventId = true)
     {
         $this->response->setContent(
             'Processing event "' . $event->getModule()->getModuleName() . ':' . $event->getEventId() . '" - ' .
@@ -788,7 +789,9 @@ class FourallportalCommandController extends CommandController
             // Update the Module's last recorded event ID, but only if the event ID was higher. This allows
             // deferred events to execute without lowering the last recorded event ID which would cause
             // duplicate event processing on the next run.
-            $event->getModule()->setLastEventId(max($event->getEventId(), $event->getModule()->getLastEventId()));
+            if ($updateEventId) {
+                $event->getModule()->setLastEventId(max($event->getEventId(), $event->getModule()->getLastEventId()));
+            }
         } catch (\InvalidArgumentException $error) {
             // The system was unable to map properties, most likely because of an unresolvable relation.
             // Skip the event for now; process it later.
@@ -797,7 +800,9 @@ class FourallportalCommandController extends CommandController
         } catch(\Exception $exception) {
             $event->setStatus('failed');
             $event->setMessage($exception->getMessage() . ' (code: ' . $exception->getCode() . ')');
-            $event->getModule()->setLastEventId(max($event->getEventId(), $event->getModule()->getLastEventId()));
+            if ($updateEventId) {
+                $event->getModule()->setLastEventId(max($event->getEventId(), $event->getModule()->getLastEventId()));
+            }
         }
         $responseMetadata = $client->getLastResponse();
         $event->setHeaders($responseMetadata['headers']);
