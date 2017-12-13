@@ -140,12 +140,12 @@ abstract class AbstractMapping implements MappingInterface
                 if ($child instanceof Error) {
                     // For whatever reason, property validators will return a validation error rather than throw an exception.
                     // We therefore need to check this, log the problem, and skip the property.
-                    echo 'Mapping error when mapping property ' . $propertyName . ' on ' . $object->getRemoteId() . ': ' . $child->getMessage() . PHP_EOL;
+                    echo 'Mapping error when mapping property ' . $propertyName . ' on ' . get_class($object) . ':' .  $object->getRemoteId() . ': ' . $child->getMessage() . PHP_EOL;
                     continue;
                 }
 
                 if (!$child) {
-                    echo 'Child of type ' . $childType . ' identified by ' . $identifier . ' not found when mapping property ' . $propertyName . ' on ' . $object->getRemoteId() . PHP_EOL;
+                    echo 'Child of type ' . $childType . ' identified by ' . $identifier . ' not found when mapping property ' . $propertyName . ' on ' . get_class($object) . ':' .  $object->getRemoteId() . PHP_EOL;
                     continue;
                 }
                 if (!$objectStorage->contains($child)) {
@@ -170,7 +170,7 @@ abstract class AbstractMapping implements MappingInterface
                 if ($propertyValue instanceof Error) {
                     // For whatever reason, property validators will return a validation error rather than throw an exception.
                     // We therefore need to check this, log the problem, and skip the property.
-                    echo 'Mapping error when mapping property ' . $propertyName . ' on ' . $object->getRemoteId() . ': ' . $propertyValue->getMessage() . PHP_EOL;
+                    echo 'Mapping error when mapping property ' . $propertyName . ' on ' . get_class($object) . ':' .  $object->getRemoteId() . ': ' . $propertyValue->getMessage() . PHP_EOL;
                     return;
                 }
 
