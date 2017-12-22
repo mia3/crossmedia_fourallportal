@@ -40,12 +40,27 @@ class ComplexType extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
     /**
      * @var string
      */
+    protected $labelMax;
+
+    /**
+     * @var string
+     */
     protected $normalizedValue;
 
     /**
      * @var string
      */
     protected $actualValue;
+
+    /**
+     * @var string
+     */
+    protected $normalizedValueMax;
+
+    /**
+     * @var string
+     */
+    protected $actualValueMax;
 
     /**
      * @var string
@@ -153,6 +168,54 @@ class ComplexType extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
     {
         $this->castType = gettype($actualValue);
         $this->actualValue = $actualValue;
+    }
+
+    /**
+     * @return string
+     */
+    public function getLabelMax(): string
+    {
+        return $this->labelMax;
+    }
+
+    /**
+     * @param string $labelMax
+     */
+    public function setLabelMax(string $labelMax): void
+    {
+        $this->labelMax = $labelMax;
+    }
+
+    /**
+     * @return string
+     */
+    public function getNormalizedValueMax()
+    {
+        return $this->normalizedValueMax;
+    }
+
+    /**
+     * @param string $normalizedValueMax
+     */
+    public function setNormalizedValueMax($normalizedValueMax)
+    {
+        $this->normalizedValueMax = $normalizedValueMax;
+    }
+
+    /**
+     * @return string
+     */
+    public function getActualValueMax()
+    {
+        return $this->actualValueMax;
+    }
+
+    /**
+     * @param string $actualValueMax
+     */
+    public function setActualValueMax($actualValueMax)
+    {
+        $this->actualValueMax = $actualValueMax;
     }
 
     /**

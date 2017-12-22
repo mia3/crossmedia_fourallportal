@@ -69,8 +69,11 @@ CREATE TABLE tx_fourallportal_domain_model_complextype (
 	parent_uid int(11) DEFAULT '0' NOT NULL,
 	type varchar(255) DEFAULT '' NOT NULL,
 	label varchar(255) DEFAULT '' NOT NULL,
+	label_max varchar(255) DEFAULT '' NOT NULL,
 	normalized_value varchar(255) DEFAULT '' NOT NULL,
 	actual_value varchar(255) DEFAULT '' NOT NULL,
+	normalized_value_max varchar(255) DEFAULT '' NOT NULL,
+	actual_value_max varchar(255) DEFAULT '' NOT NULL,
 	cast_type varchar(16) DEFAULT '' NOT NULL,
 
 	tstamp int(11) unsigned DEFAULT '0' NOT NULL,

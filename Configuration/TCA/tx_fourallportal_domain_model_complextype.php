@@ -52,6 +52,13 @@ return [
                 'type' => 'passthrough',
             ]
         ],
+        'label_max' => [
+            'exclude' => true,
+            'label' => 'LLL:EXT:fourallportal/Resources/Private/Language/locallang_db.xlf:tx_fourallportal_domain_model_complextype.label_max',
+            'config' => [
+                'type' => 'passthrough',
+            ]
+        ],
         'field_name' => [
             'exclude' => true,
             'label' => 'LLL:EXT:fourallportal/Resources/Private/Language/locallang_db.xlf:tx_fourallportal_domain_model_complextype.field_name',
@@ -69,6 +76,20 @@ return [
         'normalized_value' => [
             'exclude' => true,
             'label' => 'LLL:EXT:fourallportal/Resources/Private/Language/locallang_db.xlf:tx_fourallportal_domain_model_complextype.normalized_value',
+            'config' => [
+                'type' => 'passthrough',
+            ]
+        ],
+        'actual_value_max' => [
+            'exclude' => true,
+            'label' => 'LLL:EXT:fourallportal/Resources/Private/Language/locallang_db.xlf:tx_fourallportal_domain_model_complextype.actual_value_max',
+            'config' => [
+                'type' => 'passthrough',
+            ]
+        ],
+        'normalized_value_max' => [
+            'exclude' => true,
+            'label' => 'LLL:EXT:fourallportal/Resources/Private/Language/locallang_db.xlf:tx_fourallportal_domain_model_complextype.normalized_value_max',
             'config' => [
                 'type' => 'passthrough',
             ]

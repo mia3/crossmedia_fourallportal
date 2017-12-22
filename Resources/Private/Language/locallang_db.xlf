@@ -111,6 +111,9 @@
 			<trans-unit id="tx_fourallportal_domain_model_complextype.label">
 				<source>Type label/unit</source>
 			</trans-unit>
+			<trans-unit id="tx_fourallportal_domain_model_complextype.label_max">
+				<source>Type label/unit, max</source>
+			</trans-unit>
 			<trans-unit id="tx_fourallportal_domain_model_complextype.field_name">
 				<source>Field name this ComplexType is used in</source>
 			</trans-unit>
@@ -120,8 +123,17 @@
 			<trans-unit id="tx_fourallportal_domain_model_complextype.normalized_value">
 				<source>The value of this ComplexType, normalized</source>
 			</trans-unit>
+			<trans-unit id="tx_fourallportal_domain_model_complextype.actual_value_max">
+				<source>The value of this ComplexType, max</source>
+			</trans-unit>
+			<trans-unit id="tx_fourallportal_domain_model_complextype.normalized_value_max">
+				<source>The value of this ComplexType, normalized, max</source>
+			</trans-unit>
 			<trans-unit id="tx_fourallportal_domain_model_complextype.cast_type">
 				<source>PHP data type this value gets cast to</source>
+			</trans-unit>
+			<trans-unit id="tx_fourallportal_domain_model_complextype.parent_uid">
+				<source>Parent object</source>
 			</trans-unit>
 		</body>
 	</file>
