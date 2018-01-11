@@ -7,6 +7,10 @@ use Crossmedia\Fourallportal\Domain\Model\Server;
 use Crossmedia\Fourallportal\DynamicModel\DynamicModelGenerator;
 use Crossmedia\Fourallportal\DynamicModel\DynamicModelRegister;
 use Crossmedia\Fourallportal\Service\ApiClient;
+use TYPO3\CMS\Core\Locking\Exception\LockCreateException;
+use TYPO3\CMS\Core\Locking\FileLockStrategy;
+use TYPO3\CMS\Core\Locking\LockFactory;
+use TYPO3\CMS\Core\Locking\LockingStrategyInterface;
 use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Mvc\Controller\CommandController;
@@ -568,6 +572,16 @@ class FourallportalCommandController extends CommandController
     }
 
     /**
+     * Unlock sync
+     *
+     * Removes a (stale) lock.
+     */
+    public function unlockCommand()
+    {
+        $this->unlockSync();
+    }
+
+    /**
      * Replay events
      *
      * Replays the specified number of events, optionally only
@@ -581,6 +595,7 @@ class FourallportalCommandController extends CommandController
      */
     public function replayCommand($events = 1, $module = null, $objectId = null)
     {
+        $this->lockSync();
         foreach ($this->getActiveModuleOrModules($module) as $moduleObject) {
             $eventQuery = $this->eventRepository->createQuery();
             if (!$objectId) {
@@ -604,6 +619,7 @@ class FourallportalCommandController extends CommandController
         }
         $this->objectManager->get(PersistenceManagerInterface::class)->persistAll();
         $this->processAllPendingAndDeferredEvents(false);
+        $this->unlockSync();
     }
 
     /**
@@ -617,6 +633,7 @@ class FourallportalCommandController extends CommandController
      */
     public function syncCommand($sync = false, $module = null, $exclude = null)
     {
+        $this->lockSync();
         $exclude = explode(',', $exclude);
 
         if (!$sync) {
@@ -661,6 +678,7 @@ class FourallportalCommandController extends CommandController
 
         $this->objectManager->get(PersistenceManagerInterface::class)->persistAll();
         $this->processAllPendingAndDeferredEvents();
+        $this->unlockSync();
     }
 
     /**
@@ -830,5 +848,41 @@ class FourallportalCommandController extends CommandController
         $this->eventRepository->add($event);
 
         return $event;
+    }
+
+    /**
+     * Locks the sync to avoid multiple processes
+     *
+     * NB: Cannot use TYPO3 LockFactory here, will not consistently create locks
+     * on docker setups.
+     *
+     * @return bool
+     * @throws LockCreateException
+     */
+    protected function lockSync()
+    {
+        $path = $this->getLockFilePath();
+        if (file_exists($path)) {
+            throw new LockCreateException('Cannot acquire lock for 4AP sync');
+        }
+        return touch($path);
+    }
+
+    /**
+     * Unlock the sync after process is complete
+     *
+     * NB: Cannot use TYPO3 LockFactory here, will not consistently create locks
+     * on docker setups.
+     *
+     * @return bool
+     */
+    protected function unlockSync()
+    {
+        return unlink($this->getLockFilePath());
+    }
+
+    protected function getLockFilePath()
+    {
+        return GeneralUtility::getFileAbsFileName('typo3temp/var/transient/') . 'lock_4ap_sync.lock';
     }
 }
