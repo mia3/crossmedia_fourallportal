@@ -139,11 +139,16 @@ class FalMapping extends AbstractMapping
 
         // Temporary filename patching because DAM still won't transmit whether a PSD/EPS is converted to PNG or JPG.
         $targetBaseFilename = pathinfo($targetFilename, PATHINFO_FILENAME);
-        if (in_array(strtolower(pathinfo($targetFilename, PATHINFO_EXTENSION)), ['psd', 'eps', 'tif', 'tiff'])) {
+        $extension = strtolower(pathinfo($targetFilename, PATHINFO_EXTENSION));
+        if (in_array($extension, ['psd', 'eps', 'tif', 'tiff'])) {
             if ($folder->hasFile($targetBaseFilename . '.png')) {
                 $targetFilename = $targetBaseFilename . '.png';
             } elseif ($folder->hasFile($targetBaseFilename . '.jpg')) {
                 $targetFilename = $targetBaseFilename . '.jpg';
+            } elseif ($extension === 'tif' || $extension === 'tiff') {
+                $targetFilename = $targetBaseFilename . '.jpg';
+            } else {
+                $targetFilename = $targetBaseFilename . '.png';
             }
         }
 
