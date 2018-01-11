@@ -155,7 +155,8 @@ class FalMapping extends AbstractMapping
         if ($folder->hasFile($targetFilename)) {
             /** @var FileInterface $file */
             $file = reset($this->getObjectRepository()->searchByName($folder, $targetFilename)) ?: null;
-            $download = $file && $file->getModificationTime() < (new \DateTime($data['result'][0]['mod_time']))->format('U');
+            $remoteModificationTime = (new \DateTime($data['result'][0]['properties']['mod_time_img'] ?? $data['result'][0]['mod_time']))->format('U');
+            $download = $file && $file->getModificationTime() < $remoteModificationTime;
         }
 
         if ($download) {
@@ -179,6 +180,9 @@ class FalMapping extends AbstractMapping
             }
 
             $file->setContents($contents);
+            $file->updateProperties([
+                'modification_date' => $remoteModificationTime
+            ]);
         } else {
             //echo 'Skipping: ' . $targetFolder . $targetFilename . PHP_EOL;
         }
