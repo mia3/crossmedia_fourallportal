@@ -154,7 +154,7 @@ class FalMapping extends AbstractMapping
         }
 
         if ($download) {
-            echo 'Downloading: ' . $targetFolder . $targetFilename . PHP_EOL;
+            //echo 'Downloading: ' . $targetFolder . $targetFilename . PHP_EOL;
             try {
                 $tempPathAndFilename = $client->saveDerivate($tempPathAndFilename, $event->getObjectId(), $event->getModule()->getUsageFlag());
                 $contents = file_get_contents($tempPathAndFilename);
@@ -175,7 +175,7 @@ class FalMapping extends AbstractMapping
 
             $file->setContents($contents);
         } else {
-            echo 'Skipping: ' . $targetFolder . $targetFilename . PHP_EOL;
+            //echo 'Skipping: ' . $targetFolder . $targetFilename . PHP_EOL;
         }
 
         if (!$file) {

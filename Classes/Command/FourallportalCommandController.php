@@ -675,7 +675,7 @@ class FourallportalCommandController extends CommandController
         $allEvents = [];
         while (($events = $client->getEvents($connectorName, $lastEventId)) && count($events) && !$done) {
             foreach ($events as $event) {
-                echo 'Read: ' . $event['id'] . PHP_EOL;
+                //echo 'Read: ' . $connectorName . ':' . $event['id'] . PHP_EOL;
                 $lastEventId = $event['id'];
                 if (isset($allEvents[$lastEventId])) {
                     $done = true;
@@ -765,10 +765,12 @@ class FourallportalCommandController extends CommandController
      */
     public function processEvent($event, $updateEventId = true)
     {
+        /*
         $this->response->setContent(
             'Processing event "' . $event->getModule()->getModuleName() . ':' . $event->getEventId() . '" - ' .
             $event->getEventType() . ' ' . $event->getObjectId() . PHP_EOL
         );
+        */
         $this->response->send();
         $client = $event->getModule()->getServer()->getClient();
         try {
