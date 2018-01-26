@@ -883,7 +883,7 @@ TEMPLATE;
      */
     public function get%sArray()%s
     {
-        return (array) json_decode(\$this->%s ?? '', true);
+        return (array)json_decode(\$this->%s ?? '', true);
     }
 
 
@@ -938,11 +938,16 @@ TEMPLATE;
                 $returnType = 'string';
             }
 
+            $lazy = false;
+            if (class_exists($returnType) || strpos($returnType, 'ObjectStorage') !== false) {
+                $lazy = DynamicModelRegister::isLazyProperty($className, $propertyName);
+            }
+
             $upperCasePropertyName = ucfirst($propertyName);
             $functionsAndProperties .= sprintf(
                 $propertyTemplate,
                 $returnType,
-                DynamicModelRegister::isLazyProperty($className, $propertyName) ? PHP_EOL . '     * @lazy' : '',
+                $lazy ? PHP_EOL . '     * @lazy' : '',
                 $propertyName,
                 ($property['default'] ?? null) === null ? 'null' : var_export($property['default'], true),
                 $upperCasePropertyName,
@@ -1045,8 +1050,12 @@ TEMPLATE;
             }
 
             $defaultValueExpression = ($property['default'] ?? null) === null ? 'null' : var_export($property['default'], true);
-            $isLazyProperty = DynamicModelRegister::isLazyProperty($className, $propertyName);
-            $isLazySingleObjectRelation = $isLazyProperty && is_a($property['type'], AbstractDomainObject::class, true);
+
+            $isLazyProperty = false;
+            if (class_exists(trim($returnType, '?\\'))) {
+                $isLazyProperty = DynamicModelRegister::isLazyProperty($className, $propertyName);
+            }
+            $isLazySingleObjectRelation = $isLazyProperty && is_a(trim($property['type'], '?'), AbstractDomainObject::class, true);
 
             $upperCasePropertyName = ucfirst($propertyName);
             $functionsAndProperties .= sprintf(
