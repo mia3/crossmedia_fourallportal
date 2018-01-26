@@ -8,6 +8,7 @@ use Crossmedia\Fourallportal\TypeConverter\PimBasedTypeConverterInterface;
 use Crossmedia\Products\Domain\Repository\ProductRepository;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\DomainObject\AbstractEntity;
+use TYPO3\CMS\Extbase\DomainObject\DomainObjectInterface;
 use TYPO3\CMS\Extbase\Object\ObjectManager;
 use TYPO3\CMS\Extbase\Persistence\Generic\PersistenceManager;
 use TYPO3\CMS\Extbase\Persistence\ObjectStorage;
@@ -44,7 +45,7 @@ abstract class AbstractMapping implements MappingInterface
 
                     return;
                 }
-                $repository->remove($object);
+                $this->removeObjectFromRepository($object);
                 unset($object);
                 break;
             case 'update':
@@ -71,6 +72,11 @@ abstract class AbstractMapping implements MappingInterface
         if (isset($object)) {
             $this->processRelationships($object, $data, $event);
         }
+    }
+
+    protected function removeObjectFromRepository(DomainObjectInterface $object)
+    {
+        $this->getObjectRepository()->remove($object);
     }
 
     /**
