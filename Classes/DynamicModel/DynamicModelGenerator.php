@@ -185,16 +185,17 @@ TEMPLATE;
 
     /**
      * @param string $modelClassName
+     * @param bool $readOnly If TRUE, generates TCA fields as read-only
      * @return array
      */
-    public static function generateAutomaticTableConfigurationForModelClassName($modelClassName)
+    public static function generateAutomaticTableConfigurationForModelClassName($modelClassName, $readOnly = false)
     {
         $modelClassNameParts = explode('\\', substr($modelClassName, 0, strpos($modelClassName, '\\Domain\\Model\\')));
         $extensionName = array_pop($modelClassNameParts);
         $extensionKey = GeneralUtility::camelCaseToLowerCaseUnderscored($extensionName);
         $tableName = GeneralUtility::makeInstance(ObjectManager::class)->get(DataMapper::class)->getDataMap($modelClassName)->getTableName();
         $tca = include ExtensionManagementUtility::extPath('fourallportal', 'Configuration/TCA/BoilerPlate/AutomaticTableConfiguration.php');
-        $additionalColumns = \Crossmedia\Fourallportal\DynamicModel\DynamicModelGenerator::generateTableConfigurationForModuleIdentifiedByModelClassName($modelClassName);
+        $additionalColumns = \Crossmedia\Fourallportal\DynamicModel\DynamicModelGenerator::generateTableConfigurationForModuleIdentifiedByModelClassName($modelClassName, $readOnly);
         $additionalColumnNames = implode(',', array_keys($additionalColumns));
         $detectedIconFile = static::findIconFile($extensionKey, $tableName);
         $tca['columns'] = array_replace($additionalColumns, $tca['columns']);
@@ -214,9 +215,10 @@ TEMPLATE;
 
     /**
      * @param string $modelClassName
+     * @param bool $readOnly If TRUE, generates TCA fields as read-only
      * @return array
      */
-    public static function generateTableConfigurationForModuleIdentifiedByModelClassName($modelClassName)
+    public static function generateTableConfigurationForModuleIdentifiedByModelClassName($modelClassName, $readOnly = false)
     {
         $cacheManager = GeneralUtility::makeInstance(CacheManager::class);
         $cacheManager->setCacheConfigurations($GLOBALS['TYPO3_CONF_VARS']['SYS']['caching']['cacheConfigurations']);
@@ -226,6 +228,9 @@ TEMPLATE;
             if ($module->getMapper()->getEntityClassName() === $modelClassName) {
                 $propertyConfigurations = (new static())->getPropertyConfigurationFromConnector($module);
                 foreach ($propertyConfigurations as $propertyConfiguration) {
+                    if ($readOnly) {
+                        $propertyConfiguration['config']['readOnly'] = true;
+                    }
                     $columns[$propertyConfiguration['column']] = [
                         'label' => 'Automatic model field: ' . $propertyConfiguration['column'],
                         'exclude' => true,
