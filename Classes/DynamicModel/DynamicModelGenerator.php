@@ -540,7 +540,7 @@ TEMPLATE;
             case 'CEInteger':
             case 'MAMNumber':
             case 'XMPNumber':
-                $dataType = 'integer';
+                $dataType = 'int';
                 $sqlType = 'int(11) default 0 NOT NULL';
                 $tca = [
                     'type' => 'input',
