@@ -35,7 +35,10 @@ abstract class AbstractMapping implements MappingInterface
     {
         $repository = $this->getObjectRepository();
         $objectId = $event->getObjectId();
-        $object = $repository->findOneByRemoteId($objectId);
+        $query = $repository->createQuery();
+        $query->getQuerySettings()->setRespectStoragePage(false);
+        $query->matching($query->equals('remoteId', $objectId));
+        $object = $query->execute()->current();
 
         switch ($event->getEventType()) {
             case 'delete':
