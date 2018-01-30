@@ -88,6 +88,7 @@ abstract class AbstractMapping implements MappingInterface
         }
         $map = MappingRegister::resolvePropertyMapForMapper(static::class);
         $properties = $data['result'][0]['properties'];
+        $properties = $this->addMissingNullProperties($properties, $module->getConnectorConfiguration());
         foreach ($properties as $importedName => $propertyValue) {
             if (($map[$importedName] ?? null) === false) {
                 continue;
@@ -329,5 +330,21 @@ abstract class AbstractMapping implements MappingInterface
 
         $status['description'] .= implode(chr(10), $messages);
         return $status;
+    }
+
+    /**
+     * @param $properties
+     * @param $connectorConfiguration
+     * @return mixed
+     */
+    protected function addMissingNullProperties($properties, $connectorConfiguration)
+    {
+        foreach($connectorConfiguration['fields'] as $fieldName) {
+            if (!isset($properties[$fieldName])) {
+                $properties[$fieldName] = '';
+            }
+        }
+
+        return $properties;
     }
 }
