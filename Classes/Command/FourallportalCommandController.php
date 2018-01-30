@@ -651,7 +651,6 @@ class FourallportalCommandController extends CommandController
             /** @var Module $configuredModule */
             if ($sync && $module->getLastEventId() > 0) {
                 $module->setLastEventId(0);
-            } else {
                 $moduleEvents = $this->eventRepository->findByModule($module->getUid());
                 foreach ($moduleEvents as $moduleEvent) {
                     $this->eventRepository->remove($moduleEvent);
