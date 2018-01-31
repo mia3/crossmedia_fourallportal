@@ -88,7 +88,7 @@ abstract class AbstractMapping implements MappingInterface
         }
         $map = MappingRegister::resolvePropertyMapForMapper(static::class);
         $properties = $data['result'][0]['properties'];
-        $properties = $this->addMissingNullProperties($properties, $module->getConnectorConfiguration());
+        $properties = $this->addMissingNullProperties($properties, $module);
         foreach ($properties as $importedName => $propertyValue) {
             if (($map[$importedName] ?? null) === false) {
                 continue;
@@ -334,14 +334,54 @@ abstract class AbstractMapping implements MappingInterface
 
     /**
      * @param $properties
-     * @param $connectorConfiguration
+     * @param Module $module
      * @return mixed
      */
-    protected function addMissingNullProperties($properties, $connectorConfiguration)
+    protected function addMissingNullProperties($properties, Module $module)
     {
-        foreach($connectorConfiguration['fields'] as $fieldName) {
-            if (!isset($properties[$fieldName])) {
-                $properties[$fieldName] = '';
+        $moduleConfiguration = $module->getModuleConfiguration();
+        foreach ($moduleConfiguration['field_conf'] as $field) {
+            if (!isset($properties[$field['name']])) {
+                $value = '';
+                if (isset($field['defaultValue'])) {
+                    switch ($field['type']) {
+                        case 'CEVarchar':
+                            $value = trim($field['defaultValue'], '\'');
+                            break;
+                        case 'MAMDate':
+                        case 'CEDate':
+                            break;
+                        case 'MAMBoolean';
+                        case 'CEBoolean':
+                            $value = strtolower($field['defaultValue']) == 'true';
+                            break;
+                        case 'CEDouble':
+                            break;
+                        case 'CETimestamp':
+                        case 'CEInteger':
+                        case 'MAMNumber':
+                        case 'XMPNumber':
+                            break;
+                        case 'MAMList':
+                        case 'CEVarcharList':
+                            break;
+                        case 'FIELD_LINK':
+                        case 'CEExternalIdList':
+                        case 'CEIdList':
+                        case 'MANY_TO_MANY':
+                        case 'ONE_TO_MANY':
+                        case 'MANY_TO_ONE':
+                            break;
+                        case 'CEId':
+                        case 'CEExternalId':
+                        case 'ONE_TO_ONE':
+                            break;
+                        default:
+                            break;
+                    }
+                    dump($field['name'] . ':' . $field['type'], $value);
+                }
+                $properties[$field['name']] = $value;
             }
         }
 
