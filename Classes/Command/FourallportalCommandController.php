@@ -820,6 +820,7 @@ class FourallportalCommandController extends CommandController
         } catch(\Exception $exception) {
             $event->setStatus('failed');
             $event->setMessage($exception->getMessage() . ' (code: ' . $exception->getCode() . ')' . $exception->getFile() . ':' . $exception->getLine());
+            $this->response->appendContent($exception->getMessage() . ' (code: ' . $exception->getCode() . ')' . $exception->getFile() . ':' . $exception->getLine() . PHP_EOL);
             if ($updateEventId) {
                 $event->getModule()->setLastEventId(max($event->getEventId(), $event->getModule()->getLastEventId()));
             }

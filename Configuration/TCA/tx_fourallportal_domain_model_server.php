@@ -15,10 +15,10 @@ return [
         'iconfile' => 'EXT:fourallportal/Resources/Public/Icons/tx_fourallportal_domain_model_server.gif'
     ],
     'interface' => [
-        'showRecordFieldList' => 'domain, customer_name, username, password, active, modules',
+        'showRecordFieldList' => 'domain, customer_name, username, password, active, modules, dimension_mappings',
     ],
     'types' => [
-        '1' => ['showitem' => 'active, domain, customer_name, username, password, modules'],
+        '1' => ['showitem' => 'active, domain, customer_name, username, password, modules, dimension_mappings'],
     ],
     'columns' => [
         'domain' => [
@@ -79,7 +79,25 @@ return [
                 'foreign_field' => 'server',
                 'maxitems' => 9999,
                 'appearance' => [
-                    'collapseAll' => 0,
+                    'collapseAll' => 1,
+                    'levelLinksPosition' => 'top',
+                    'showSynchronizationLink' => 1,
+                    'showPossibleLocalizationRecords' => 1,
+                    'showAllLocalizationLink' => 1
+                ],
+            ],
+
+        ],
+        'dimension_mappings' => [
+            'exclude' => true,
+            'label' => 'LLL:EXT:fourallportal/Resources/Private/Language/locallang_db.xlf:tx_fourallportal_domain_model_server.dimensionmappings',
+            'config' => [
+                'type' => 'inline',
+                'foreign_table' => 'tx_fourallportal_domain_model_dimensionmapping',
+                'foreign_field' => 'server',
+                'maxitems' => 9999,
+                'appearance' => [
+                    'collapseAll' => 1,
                     'levelLinksPosition' => 'top',
                     'showSynchronizationLink' => 1,
                     'showPossibleLocalizationRecords' => 1,
