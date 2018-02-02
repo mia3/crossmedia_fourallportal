@@ -36,7 +36,10 @@ abstract class AbstractMapping implements MappingInterface
     {
         $repository = $this->getObjectRepository();
         $objectId = $event->getObjectId();
-        $object = $repository->findOneByRemoteId($objectId);
+        $query = $repository->createQuery();
+        $query->getQuerySettings()->setRespectStoragePage(false);
+        $query->matching($query->equals('remoteId', $objectId));
+        $object = $query->execute()->current();
 
         switch ($event->getEventType()) {
             case 'delete':
@@ -91,6 +94,7 @@ abstract class AbstractMapping implements MappingInterface
         }
         $map = MappingRegister::resolvePropertyMapForMapper(static::class);
         $properties = $data['result'][0]['properties'];
+        $properties = $this->addMissingNullProperties($properties, $module);
         foreach ($properties as $importedName => $propertyValue) {
             if (($map[$importedName] ?? null) === false) {
                 continue;
@@ -332,5 +336,66 @@ abstract class AbstractMapping implements MappingInterface
 
         $status['description'] .= implode(chr(10), $messages);
         return $status;
+    }
+
+    /**
+     * @param $properties
+     * @param Module $module
+     * @return mixed
+     */
+    protected function addMissingNullProperties($properties, Module $module)
+    {
+        $moduleConfiguration = $module->getModuleConfiguration();
+        foreach ($moduleConfiguration['field_conf'] as $field) {
+            if (!isset($properties[$field['name']])) {
+                $value = '';
+                if (isset($field['defaultValue'])) {
+                    switch ($field['type']) {
+                        case 'CEVarchar':
+                            $value = '';
+                            break;
+                        case 'MAMDate':
+                        case 'CEDate':
+                            $value = null;
+                            break;
+                        case 'MAMBoolean';
+                        case 'CEBoolean':
+                            $value = false;
+                            break;
+                        case 'CEDouble':
+                            $value = 0.0;
+                            break;
+                        case 'CETimestamp':
+                        case 'CEInteger':
+                        case 'MAMNumber':
+                        case 'XMPNumber':
+                            $value = 0;
+                            break;
+                        case 'MAMList':
+                        case 'CEVarcharList':
+                            $value = [];
+                            break;
+                        case 'FIELD_LINK':
+                        case 'CEExternalIdList':
+                        case 'CEIdList':
+                        case 'MANY_TO_MANY':
+                        case 'ONE_TO_MANY':
+                        case 'MANY_TO_ONE':
+                            $value = null;
+                            break;
+                        case 'CEId':
+                        case 'CEExternalId':
+                        case 'ONE_TO_ONE':
+                            $value = null;
+                            break;
+                        default:
+                            break;
+                    }
+                }
+                $properties[$field['name']] = $value;
+            }
+        }
+
+        return $properties;
     }
 }

@@ -1029,6 +1029,15 @@ TEMPLATE;
 
         $functionsAndProperties = '';
         $objectStorageInitializations = '';
+        $propertyConfiguration['remoteId'] = [
+            "column"=> "remote_id",
+            "type"=> "string",
+            "schema" => "varchar(255) default ''",
+            "config" => [
+                "type"=> "input",
+                "size" => 255
+            ]
+        ];
         foreach ($propertyConfiguration as $propertyName => $property) {
 
             $variableType = $property['type'];
