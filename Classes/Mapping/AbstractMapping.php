@@ -346,24 +346,28 @@ abstract class AbstractMapping implements MappingInterface
                 if (isset($field['defaultValue'])) {
                     switch ($field['type']) {
                         case 'CEVarchar':
-                            $value = trim($field['defaultValue'], '\'');
+                            $value = '';
                             break;
                         case 'MAMDate':
                         case 'CEDate':
+                            $value = null;
                             break;
                         case 'MAMBoolean';
                         case 'CEBoolean':
-                            $value = strtolower($field['defaultValue']) == 'true';
+                            $value = false;
                             break;
                         case 'CEDouble':
+                            $value = 0.0;
                             break;
                         case 'CETimestamp':
                         case 'CEInteger':
                         case 'MAMNumber':
                         case 'XMPNumber':
+                            $value = 0;
                             break;
                         case 'MAMList':
                         case 'CEVarcharList':
+                            $value = [];
                             break;
                         case 'FIELD_LINK':
                         case 'CEExternalIdList':
@@ -371,15 +375,16 @@ abstract class AbstractMapping implements MappingInterface
                         case 'MANY_TO_MANY':
                         case 'ONE_TO_MANY':
                         case 'MANY_TO_ONE':
+                            $value = null;
                             break;
                         case 'CEId':
                         case 'CEExternalId':
                         case 'ONE_TO_ONE':
+                            $value = null;
                             break;
                         default:
                             break;
                     }
-                    dump($field['name'] . ':' . $field['type'], $value);
                 }
                 $properties[$field['name']] = $value;
             }
