@@ -684,6 +684,13 @@ The second way is to flush the TYPO3 system caches. This also triggers a model r
 and is intended as a way to let developers quickly trigger the rebuild on demand. Note
 that the rebuild only happens if you flush the "all" or "system" caches.
 
+##### Dimension Handling
+
+This extension supports the import of Fields that contain differents dimension values.
+To map Dimension Values to specific TYPO3 Languages you need to configure Mappings in the 
+Backend of TYPO3 in the Server Configuration. For each Language you want to map a Dimension
+to you need to create an Inline DimensionMapping Record that specifies the Language this
+Dimension should be mapped to and the Name/Value pairs to identify a specific Dimension.
 
 Adding a scheduled task
 -----------------------
