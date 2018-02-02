@@ -12,6 +12,7 @@ CREATE TABLE tx_fourallportal_domain_model_server (
 	password varchar(255) DEFAULT '' NOT NULL,
 	active smallint(5) unsigned DEFAULT '0' NOT NULL,
 	modules int(11) unsigned DEFAULT '0' NOT NULL,
+	dimension_mappings int(11) unsigned DEFAULT '0' NOT NULL,
 
 	tstamp int(11) unsigned DEFAULT '0' NOT NULL,
 	crdate int(11) unsigned DEFAULT '0' NOT NULL,
@@ -133,4 +134,48 @@ CREATE TABLE tx_fourallportal_domain_model_module (
 CREATE TABLE sys_file (
     remote_id varchar(255) DEFAULT '' NOT NULL,
     KEY remote_id (remote_id)
+);
+
+#
+# Table structure for table 'tx_fourallportal_domain_model_dimension_mapping'
+#
+CREATE TABLE tx_fourallportal_domain_model_dimensionmapping (
+
+	uid int(11) NOT NULL auto_increment,
+	pid int(11) DEFAULT '0' NOT NULL,
+
+	server int(11) unsigned DEFAULT '0' NOT NULL,
+	dimensions int(11) unsigned DEFAULT '0' NOT NULL,
+
+	language varchar(255) DEFAULT '' NOT NULL,
+
+	tstamp int(11) unsigned DEFAULT '0' NOT NULL,
+	crdate int(11) unsigned DEFAULT '0' NOT NULL,
+	cruser_id int(11) unsigned DEFAULT '0' NOT NULL,
+
+	PRIMARY KEY (uid),
+	KEY parent (pid),
+
+);
+
+#
+# Table structure for table 'tx_fourallportal_domain_model_dimension'
+#
+CREATE TABLE tx_fourallportal_domain_model_dimension (
+
+	uid int(11) NOT NULL auto_increment,
+	pid int(11) DEFAULT '0' NOT NULL,
+
+	dimension_mapping int(11) unsigned DEFAULT '0' NOT NULL,
+
+	name varchar(255) DEFAULT '' NOT NULL,
+	value varchar(255) DEFAULT '' NOT NULL,
+
+	tstamp int(11) unsigned DEFAULT '0' NOT NULL,
+	crdate int(11) unsigned DEFAULT '0' NOT NULL,
+	cruser_id int(11) unsigned DEFAULT '0' NOT NULL,
+
+	PRIMARY KEY (uid),
+	KEY parent (pid),
+
 );

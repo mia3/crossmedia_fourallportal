@@ -1,6 +1,7 @@
 <?php
 namespace Crossmedia\Fourallportal\Mapping;
 
+use Crossmedia\Fourallportal\Domain\Model\DimensionMapping;
 use Crossmedia\Fourallportal\Domain\Model\Event;
 use Crossmedia\Fourallportal\Domain\Model\Module;
 use Crossmedia\Fourallportal\Service\ApiClient;
@@ -10,6 +11,7 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\DomainObject\AbstractEntity;
 use TYPO3\CMS\Extbase\DomainObject\DomainObjectInterface;
 use TYPO3\CMS\Extbase\Object\ObjectManager;
+use TYPO3\CMS\Extbase\Persistence\Generic\Mapper\DataMapper;
 use TYPO3\CMS\Extbase\Persistence\Generic\PersistenceManager;
 use TYPO3\CMS\Extbase\Persistence\ObjectStorage;
 use TYPO3\CMS\Extbase\Persistence\RepositoryInterface;
@@ -53,20 +55,7 @@ abstract class AbstractMapping implements MappingInterface
                 break;
             case 'update':
             case 'create':
-                if (!$object) {
-                    $class = $this->getEntityClassName();
-                    $object = new $class();
-                    ObjectAccess::setProperty($object, 'remoteId', $objectId);
-                }
-                $object->setPid($event->getModule()->getStoragePid());
-                if ($object->getUid()) {
-                    $repository->update($object);
-                } else {
-                    $repository->add($object);
-                    GeneralUtility::makeInstance(ObjectManager::class)->get(PersistenceManager::class)->persistAll();
-                }
-                $this->mapPropertiesFromDataToObject($data, $object, $event->getModule());
-                $repository->update($object);
+                $this->importObjectWithDimensionMappings($data, $object, $event);
                 break;
             default:
                 throw new \RuntimeException('Unknown event type: ' . $event->getEventType());
@@ -86,14 +75,27 @@ abstract class AbstractMapping implements MappingInterface
      * @param array $data
      * @param AbstractEntity $object
      * @param Module $module
+     * @param DimensionMapping|null $dimensionMapping
      */
-    protected function mapPropertiesFromDataToObject(array $data, $object, Module $module)
+    protected function mapPropertiesFromDataToObject(array $data, $object, Module $module, DimensionMapping $dimensionMapping = null)
     {
         if (!$data['result']) {
             return;
         }
         $map = MappingRegister::resolvePropertyMapForMapper(static::class);
         $properties = $data['result'][0]['properties'];
+        $properties = $this->addMissingNullProperties($properties, $module);
+        if ($dimensionMapping !== null) {
+            foreach ($properties as $propertyName => $value) {
+                if (is_array($value) && isset($value[0]['dimensions'])) {
+                    foreach ($value as $dimensionValue) {
+                        if ($dimensionMapping->matches($dimensionValue['dimensions'])) {
+                            $properties[$propertyName] = $dimensionValue['value'];
+                        }
+                    }
+                }
+            }
+        }
         $properties = $this->addMissingNullProperties($properties, $module);
         foreach ($properties as $importedName => $propertyValue) {
             if (($map[$importedName] ?? null) === false) {
@@ -397,5 +399,81 @@ abstract class AbstractMapping implements MappingInterface
         }
 
         return $properties;
+    }
+
+    /**
+     * @param Event $event
+     * @param null $existingRow
+     * @return mixed
+     */
+    protected function createObject(Event $event, $existingRow = null)
+    {
+        $class = $this->getEntityClassName();
+        $object = new $class();
+        ObjectAccess::setProperty($object, 'remoteId', $event->getObjectId());
+        ObjectAccess::setProperty($object, 'pid', $event->getModule()->getStoragePid());
+        if (isset($existingRow['uid'])) {
+            ObjectAccess::setProperty($object, 'uid', $existingRow['uid']);
+        }
+        $this->getObjectRepository()->add($object);
+        GeneralUtility::makeInstance(ObjectManager::class)->get(PersistenceManager::class)->persistAll();
+        return $object;
+    }
+
+    public function getTableName() {
+
+        $dataMapper = \TYPO3\CMS\Core\Utility\GeneralUtility::makeInstance(\TYPO3\CMS\Extbase\Persistence\Generic\Mapper\DataMapper::class);
+        return $dataMapper->getDataMap($this->getEntityClassName())->getTableName();
+    }
+
+    /**
+     * @param array $data
+     * @param $object
+     * @param Event $event
+     * @throws \Exception
+     */
+    protected function importObjectWithDimensionMappings(array $data, $object, Event $event)
+    {
+        $dimensionMappings = $event->getModule()->getServer()->getDimensionMappings();
+
+        $sysLanguageUids = [];
+        $defaultDimensionMapping = null;
+        $translationDimensionMappings = [];
+        foreach ($dimensionMappings as $dimensionMapping) {
+            if ($dimensionMapping->getLanguage() === 0) {
+                $defaultDimensionMapping = $dimensionMapping;
+            } else {
+                $sysLanguageUids[] = $dimensionMapping->getLanguage();
+                $translationDimensionMappings[] = $dimensionMapping;
+            }
+        }
+
+        if ($defaultDimensionMapping === null) {
+            throw new \Exception('No DimensionMapping found for Default Language!');
+        }
+
+        if (!$object) {
+            $object = $this->createObject($event);
+        }
+
+        $this->mapPropertiesFromDataToObject($data, $object, $event->getModule(), $defaultDimensionMapping);
+        $this->getObjectRepository()->update($object);
+
+        $dataMapper = GeneralUtility::makeInstance(DataMapper::class);
+        foreach ($translationDimensionMappings as $translationDimensionMapping) {
+            $existingRow = $GLOBALS['TYPO3_DB']->exec_SELECTgetSingleRow('*', $this->getTableName(), 'sys_language_uid = ' . $translationDimensionMapping->getLanguage() . ' AND l10n_parent = ' . $object->getUid());
+            if (is_array($existingRow)) {
+                $translationObjects = $dataMapper->map($this->getEntityClassName(), [$existingRow]);
+                $translationObject = current($translationObjects);
+            } else {
+                $translationObject = $this->createObject($event, $existingRow);
+            }
+            $translationObject->_setProperty('_languageUid', $translationDimensionMapping->getLanguage());
+            $translationObject->setL10nParent($object);
+            $this->mapPropertiesFromDataToObject($data, $translationObject, $event->getModule(), $translationDimensionMapping);
+            $this->getObjectRepository()->update($translationObject);
+        }
+
+        $GLOBALS['TYPO3_DB']->exec_DELETEquery($this->getTableName(), 'sys_language_uid NOT IN (' . implode(', ', $sysLanguageUids) . ') AND l10n_parent = ' . $object->getUid());
     }
 }

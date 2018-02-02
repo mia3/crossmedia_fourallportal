@@ -325,6 +325,25 @@ TEMPLATE;
             // PHP/SQL representations, either errors will be raised or the remaining safe properties
             // will be written - depending on the context of the TYPO3 site (Development = errors thrown)
             $propertyConfiguration = $this->getPropertyConfigurationFromConnector($module);
+
+            $propertyConfiguration['remoteId'] = [
+                "column"=> "remote_id",
+                "type"=> "string",
+                "schema" => "varchar(255) default ''",
+                "config" => [
+                    "type"=> "input",
+                    "size" => 255
+                ]
+            ];
+            $propertyConfiguration['l10nParent'] = [
+                "column"=> 'l10n_parent',
+                "type"=> '\\' . $entityClassName,
+                "schema" => "INT(11) DEFAULT '0' NOT NULL",
+                "config" => [
+                    "type"=> "passthrough"
+                ]
+            ];
+
             $sourceCode = $this->generateCachedClassFile($abstractModelClassName, AbstractEntity::class, $propertyConfiguration, $strict);
         }
         return $sourceCode;
@@ -1029,15 +1048,6 @@ TEMPLATE;
 
         $functionsAndProperties = '';
         $objectStorageInitializations = '';
-        $propertyConfiguration['remoteId'] = [
-            "column"=> "remote_id",
-            "type"=> "string",
-            "schema" => "varchar(255) default ''",
-            "config" => [
-                "type"=> "input",
-                "size" => 255
-            ]
-        ];
         foreach ($propertyConfiguration as $propertyName => $property) {
 
             $variableType = $property['type'];

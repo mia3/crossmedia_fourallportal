@@ -65,6 +65,14 @@ class Server extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
     protected $modules = null;
 
     /**
+     * modules
+     *
+     * @var \TYPO3\CMS\Extbase\Persistence\ObjectStorage<\Crossmedia\Fourallportal\Domain\Model\DimensionMapping>
+     * @cascade remove
+     */
+    protected $dimensionMappings = null;
+
+    /**
      * __construct
      */
     public function __construct()
@@ -283,4 +291,21 @@ class Server extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
         $client->login();
         return $client;
     }
+
+    /**
+     * @return \TYPO3\CMS\Extbase\Persistence\ObjectStorage
+     */
+    public function getDimensionMappings()
+    {
+        return $this->dimensionMappings;
+    }
+
+    /**
+     * @param \TYPO3\CMS\Extbase\Persistence\ObjectStorage $dimensionMappings
+     */
+    public function setDimensionMappings($dimensionMappings)
+    {
+        $this->dimensionMappings = $dimensionMappings;
+    }
+
 }
