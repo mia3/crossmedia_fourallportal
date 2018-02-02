@@ -185,16 +185,17 @@ TEMPLATE;
 
     /**
      * @param string $modelClassName
+     * @param bool $readOnly If TRUE, generates TCA fields as read-only
      * @return array
      */
-    public static function generateAutomaticTableConfigurationForModelClassName($modelClassName)
+    public static function generateAutomaticTableConfigurationForModelClassName($modelClassName, $readOnly = false)
     {
         $modelClassNameParts = explode('\\', substr($modelClassName, 0, strpos($modelClassName, '\\Domain\\Model\\')));
         $extensionName = array_pop($modelClassNameParts);
         $extensionKey = GeneralUtility::camelCaseToLowerCaseUnderscored($extensionName);
         $tableName = GeneralUtility::makeInstance(ObjectManager::class)->get(DataMapper::class)->getDataMap($modelClassName)->getTableName();
         $tca = include ExtensionManagementUtility::extPath('fourallportal', 'Configuration/TCA/BoilerPlate/AutomaticTableConfiguration.php');
-        $additionalColumns = \Crossmedia\Fourallportal\DynamicModel\DynamicModelGenerator::generateTableConfigurationForModuleIdentifiedByModelClassName($modelClassName);
+        $additionalColumns = \Crossmedia\Fourallportal\DynamicModel\DynamicModelGenerator::generateTableConfigurationForModuleIdentifiedByModelClassName($modelClassName, $readOnly);
         $additionalColumnNames = implode(',', array_keys($additionalColumns));
         $detectedIconFile = static::findIconFile($extensionKey, $tableName);
         $tca['columns'] = array_replace($additionalColumns, $tca['columns']);
@@ -214,9 +215,10 @@ TEMPLATE;
 
     /**
      * @param string $modelClassName
+     * @param bool $readOnly If TRUE, generates TCA fields as read-only
      * @return array
      */
-    public static function generateTableConfigurationForModuleIdentifiedByModelClassName($modelClassName)
+    public static function generateTableConfigurationForModuleIdentifiedByModelClassName($modelClassName, $readOnly = false)
     {
         $cacheManager = GeneralUtility::makeInstance(CacheManager::class);
         $cacheManager->setCacheConfigurations($GLOBALS['TYPO3_CONF_VARS']['SYS']['caching']['cacheConfigurations']);
@@ -226,6 +228,9 @@ TEMPLATE;
             if ($module->getMapper()->getEntityClassName() === $modelClassName) {
                 $propertyConfigurations = (new static())->getPropertyConfigurationFromConnector($module);
                 foreach ($propertyConfigurations as $propertyConfiguration) {
+                    if ($readOnly) {
+                        $propertyConfiguration['config']['readOnly'] = true;
+                    }
                     $columns[$propertyConfiguration['column']] = [
                         'label' => 'Automatic model field: ' . $propertyConfiguration['column'],
                         'exclude' => true,
@@ -559,7 +564,7 @@ TEMPLATE;
             case 'CEInteger':
             case 'MAMNumber':
             case 'XMPNumber':
-                $dataType = 'integer';
+                $dataType = 'int';
                 $sqlType = 'int(11) default 0 NOT NULL';
                 $tca = [
                     'type' => 'input',
@@ -902,7 +907,7 @@ TEMPLATE;
      */
     public function get%sArray()%s
     {
-        return (array) json_decode(\$this->%s ?? '', true);
+        return (array)json_decode(\$this->%s ?? '', true);
     }
 
 
@@ -957,11 +962,16 @@ TEMPLATE;
                 $returnType = 'string';
             }
 
+            $lazy = false;
+            if (class_exists($returnType) || strpos($returnType, 'ObjectStorage') !== false) {
+                $lazy = DynamicModelRegister::isLazyProperty($className, $propertyName);
+            }
+
             $upperCasePropertyName = ucfirst($propertyName);
             $functionsAndProperties .= sprintf(
                 $propertyTemplate,
                 $returnType,
-                DynamicModelRegister::isLazyProperty($className, $propertyName) ? PHP_EOL . '     * @lazy' : '',
+                $lazy ? PHP_EOL . '     * @lazy' : '',
                 $propertyName,
                 ($property['default'] ?? null) === null ? 'null' : var_export($property['default'], true),
                 $upperCasePropertyName,
@@ -1064,8 +1074,12 @@ TEMPLATE;
             }
 
             $defaultValueExpression = ($property['default'] ?? null) === null ? 'null' : var_export($property['default'], true);
-            $isLazyProperty = DynamicModelRegister::isLazyProperty($className, $propertyName);
-            $isLazySingleObjectRelation = $isLazyProperty && is_a($property['type'], AbstractDomainObject::class, true);
+
+            $isLazyProperty = false;
+            if (class_exists(trim($returnType, '?\\'))) {
+                $isLazyProperty = DynamicModelRegister::isLazyProperty($className, $propertyName);
+            }
+            $isLazySingleObjectRelation = $isLazyProperty && is_a(trim($property['type'], '?'), AbstractDomainObject::class, true);
 
             $upperCasePropertyName = ucfirst($propertyName);
             $functionsAndProperties .= sprintf(

@@ -413,11 +413,12 @@ class FourallportalCommandController extends CommandController
      *
      * @param string $entityClassName
      * @param bool $strict If TRUE, generates strict PHP code
+     * @param bool $readOnly If TRUE, generates TCA fields as read-only
      */
-    public function generateCommand($entityClassName = null, $strict = false)
+    public function generateCommand($entityClassName = null, $strict = false, $readOnly = false)
     {
         $this->generateSqlSchemaCommand();
-        $this->generateTableConfigurationCommand($entityClassName);
+        $this->generateTableConfigurationCommand($entityClassName, $readOnly);
         $this->generateAbstractModelClassCommand($entityClassName, $strict);
     }
 
@@ -439,11 +440,12 @@ class FourallportalCommandController extends CommandController
      * Configuration/TCA/Overrides/$tableName.php file instead.
      *
      * @param string $entityClassName
+     * @param bool $readOnly If TRUE, generates TCA fields as read-only
      */
-    public function generateTableConfigurationCommand($entityClassName = null)
+    public function generateTableConfigurationCommand($entityClassName = null, $readOnly = false)
     {
         foreach ($this->getEntityClassNames($entityClassName) as $entityClassName) {
-            $tca = DynamicModelGenerator::generateAutomaticTableConfigurationForModelClassName($entityClassName);
+            $tca = DynamicModelGenerator::generateAutomaticTableConfigurationForModelClassName($entityClassName, $readOnly);
             $table = $this->objectManager->get(DataMapper::class)->getDataMap($entityClassName)->getTableName();
             $extensionKey = $this->getExtensionKeyFromEntityClasName($entityClassName);
 
@@ -649,7 +651,6 @@ class FourallportalCommandController extends CommandController
             /** @var Module $configuredModule */
             if ($sync && $module->getLastEventId() > 0) {
                 $module->setLastEventId(0);
-            } else {
                 $moduleEvents = $this->eventRepository->findByModule($module->getUid());
                 foreach ($moduleEvents as $moduleEvent) {
                     $this->eventRepository->remove($moduleEvent);

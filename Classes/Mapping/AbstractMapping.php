@@ -9,6 +9,7 @@ use Crossmedia\Fourallportal\TypeConverter\PimBasedTypeConverterInterface;
 use Crossmedia\Products\Domain\Repository\ProductRepository;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\DomainObject\AbstractEntity;
+use TYPO3\CMS\Extbase\DomainObject\DomainObjectInterface;
 use TYPO3\CMS\Extbase\Object\ObjectManager;
 use TYPO3\CMS\Extbase\Persistence\Generic\Mapper\DataMapper;
 use TYPO3\CMS\Extbase\Persistence\Generic\PersistenceManager;
@@ -49,7 +50,7 @@ abstract class AbstractMapping implements MappingInterface
 
                     return;
                 }
-                $repository->remove($object);
+                $this->removeObjectFromRepository($object);
                 unset($object);
                 break;
             case 'update':
@@ -63,6 +64,11 @@ abstract class AbstractMapping implements MappingInterface
         if (isset($object)) {
             $this->processRelationships($object, $data, $event);
         }
+    }
+
+    protected function removeObjectFromRepository(DomainObjectInterface $object)
+    {
+        $this->getObjectRepository()->remove($object);
     }
 
     /**
@@ -348,24 +354,28 @@ abstract class AbstractMapping implements MappingInterface
                 if (isset($field['defaultValue'])) {
                     switch ($field['type']) {
                         case 'CEVarchar':
-                            $value = trim($field['defaultValue'], '\'');
+                            $value = '';
                             break;
                         case 'MAMDate':
                         case 'CEDate':
+                            $value = null;
                             break;
                         case 'MAMBoolean';
                         case 'CEBoolean':
-                            $value = strtolower($field['defaultValue']) == 'true';
+                            $value = false;
                             break;
                         case 'CEDouble':
+                            $value = 0.0;
                             break;
                         case 'CETimestamp':
                         case 'CEInteger':
                         case 'MAMNumber':
                         case 'XMPNumber':
+                            $value = 0;
                             break;
                         case 'MAMList':
                         case 'CEVarcharList':
+                            $value = [];
                             break;
                         case 'FIELD_LINK':
                         case 'CEExternalIdList':
@@ -373,15 +383,16 @@ abstract class AbstractMapping implements MappingInterface
                         case 'MANY_TO_MANY':
                         case 'ONE_TO_MANY':
                         case 'MANY_TO_ONE':
+                            $value = null;
                             break;
                         case 'CEId':
                         case 'CEExternalId':
                         case 'ONE_TO_ONE':
+                            $value = null;
                             break;
                         default:
                             break;
                     }
-//                    dump($field['name'] . ':' . $field['type'], $value);
                 }
                 $properties[$field['name']] = $value;
             }
