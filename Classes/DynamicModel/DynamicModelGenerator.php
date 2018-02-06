@@ -562,6 +562,7 @@ TEMPLATE;
                 break;
             case 'CETimestamp':
             case 'CEInteger':
+            case 'CELong':
             case 'MAMNumber':
             case 'XMPNumber':
                 $dataType = 'int';
