@@ -92,6 +92,7 @@ class Server extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
     protected function initStorageObjects()
     {
         $this->modules = new \TYPO3\CMS\Extbase\Persistence\ObjectStorage();
+        $this->dimensionMappings = new \TYPO3\CMS\Extbase\Persistence\ObjectStorage();
     }
 
     /**

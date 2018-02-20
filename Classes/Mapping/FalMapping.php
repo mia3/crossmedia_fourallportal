@@ -1,6 +1,7 @@
 <?php
 namespace Crossmedia\Fourallportal\Mapping;
 
+use Crossmedia\Fourallportal\Domain\Model\DimensionMapping;
 use Crossmedia\Fourallportal\Domain\Model\Event;
 use Crossmedia\Fourallportal\Domain\Model\Module;
 use Crossmedia\Fourallportal\Domain\Model\Server;
@@ -85,11 +86,12 @@ class FalMapping extends AbstractMapping
      * @param array $data
      * @param \TYPO3\CMS\Extbase\DomainObject\AbstractEntity $object
      * @param Module $module
+     * @param DimensionMapping|null $dimensionMapping
      * @return AbstractEntity
      */
-    protected function mapPropertiesFromDataToObject(array $data, $object, Module $module)
+    protected function mapPropertiesFromDataToObject(array $data, $object, Module $module, DimensionMapping $dimensionMapping = null)
     {
-        parent::mapPropertiesFromDataToObject($data, $object, $module);
+        parent::mapPropertiesFromDataToObject($data, $object, $module, $dimensionMapping);
         $metadata = [];
         $map = MappingRegister::resolvePropertyMapForMapper(static::class);
 

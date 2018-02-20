@@ -219,7 +219,7 @@ abstract class AbstractMapping implements MappingInterface
             $property = new PropertyReflection($object, $propertyName);
             $varTags = $property->getTagValues('var');
             if (!empty($varTags)) {
-                return $varTags[0];
+                return strpos($varTags[0], ' ') !== false ? substr($varTags[0], 0, strpos($varTags[0], ' ')) : $varTags[0];
             }
         }
 
@@ -448,16 +448,16 @@ abstract class AbstractMapping implements MappingInterface
             }
         }
 
-        if ($defaultDimensionMapping === null) {
-            throw new \Exception('No DimensionMapping found for Default Language!');
-        }
-
         if (!$object) {
             $object = $this->createObject($event);
         }
 
         $this->mapPropertiesFromDataToObject($data, $object, $event->getModule(), $defaultDimensionMapping);
         $this->getObjectRepository()->update($object);
+
+        if ($defaultDimensionMapping === null) {
+            return;
+        }
 
         $dataMapper = GeneralUtility::makeInstance(DataMapper::class);
         foreach ($translationDimensionMappings as $translationDimensionMapping) {
