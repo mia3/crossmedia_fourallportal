@@ -165,7 +165,7 @@ abstract class AbstractMapping implements MappingInterface
                 }
             }
             $propertyValue = $objectStorage;
-        } else {
+        } elseif ($propertyValue !== null) {
             $sourceType = $propertyMapper->determineSourceType($propertyValue);
             if ($targetType !== $sourceType) {
                 if ($targetType === 'string' && $sourceType === 'array') {
@@ -352,6 +352,8 @@ abstract class AbstractMapping implements MappingInterface
             if (!isset($properties[$field['name']])) {
                 $value = '';
                 if (isset($field['defaultValue'])) {
+                    $value = $field['defaultValue'];
+                } else {
                     switch ($field['type']) {
                         case 'CEVarchar':
                             $value = '';
@@ -369,21 +371,20 @@ abstract class AbstractMapping implements MappingInterface
                             break;
                         case 'CETimestamp':
                         case 'CEInteger':
+                        case 'CELong':
                         case 'MAMNumber':
                         case 'XMPNumber':
                             $value = 0;
                             break;
                         case 'MAMList':
                         case 'CEVarcharList':
-                            $value = [];
-                            break;
                         case 'FIELD_LINK':
                         case 'CEExternalIdList':
                         case 'CEIdList':
                         case 'MANY_TO_MANY':
                         case 'ONE_TO_MANY':
                         case 'MANY_TO_ONE':
-                            $value = null;
+                            $value = [];
                             break;
                         case 'CEId':
                         case 'CEExternalId':
