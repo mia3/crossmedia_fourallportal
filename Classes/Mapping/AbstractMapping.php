@@ -139,6 +139,13 @@ abstract class AbstractMapping implements MappingInterface
             $childType = substr($targetType, strpos($targetType, '<') + 1, -1);
             $childType = trim($childType, '\\');
             $objectStorage = ObjectAccess::getProperty($object, $propertyName) ?? new ObjectStorage();
+            // Step one is to detach all currently related objects. Please note that $objectStorage->removeAll($objectStorage)
+            // does not work due to array pointer reset issues with Iterators. The only functioning way is to iterate and
+            // detach all, one by one, as below.
+            foreach ($objectStorage->toArray() as $item) {
+                $objectStorage->detach($item);
+            }
+
             foreach ((array) $propertyValue as $identifier) {
                 if (!$identifier) {
                     continue;
