@@ -154,6 +154,13 @@ class FalMapping extends AbstractMapping
             }
         }
 
+        $queryBuilder = (new ConnectionPool())->getConnectionForTable('sys_file')->createQueryBuilder();
+        $query = $queryBuilder->select('*')
+            ->from('sys_file')
+            ->where('remote_id = :objectId')
+            ->setParameter('objectId', $objectId);
+        $existingFileRows = $query->execute()->fetchAll();
+
         if ($folder->hasFile($targetFilename)) {
             /** @var FileInterface $file */
             $file = reset($this->getObjectRepository()->searchByName($folder, $targetFilename)) ?: null;
@@ -162,15 +169,23 @@ class FalMapping extends AbstractMapping
         }
 
         if ($download) {
-            //echo 'Downloading: ' . $targetFolder . $targetFilename . PHP_EOL;
+//            echo 'Downloading: ' . $targetFolder . $targetFilename . PHP_EOL;
             try {
                 $tempPathAndFilename = $client->saveDerivate($tempPathAndFilename, $event->getObjectId(), $event->getModule()->getUsageFlag());
                 $contents = file_get_contents($tempPathAndFilename);
                 unlink($tempPathAndFilename);
-                if (pathinfo($targetFilename, PATHINFO_EXTENSION) !== pathinfo($tempPathAndFilename, PATHINFO_EXTENSION)) {
-                    $targetFilename = $this->sanitizeFileName(pathinfo($tempPathAndFilename, PATHINFO_BASENAME));
-                }
+                $targetFilename = $this->sanitizeFileName(pathinfo($tempPathAndFilename, PATHINFO_BASENAME));
                 $file = $folder->createFile($targetFilename);
+                foreach($existingFileRows as $existingFileRow) {
+                    if($existingFileRow['name'] !== $targetFilename) {
+                        $existingFile = $storage->getFile($existingFileRow['identifier']);
+                        try {
+                            $storage->deleteFile($existingFile);
+                        } catch(\Exception $e) {
+
+                        }
+                    }
+                }
             } catch (ExistingTargetFileNameException $error) {
                 $file = reset($this->getObjectRepository()->searchByName($folder, $targetFilename));
             } catch (ApiException $error) {
@@ -193,7 +208,6 @@ class FalMapping extends AbstractMapping
             throw new \RuntimeException('Unable to either create or re-use existing file: ' . $targetFolder . $targetFilename, 1508242161);
         }
 
-        $queryBuilder = (new ConnectionPool())->getConnectionForTable('sys_file')->createQueryBuilder();
         $query = $queryBuilder->update('sys_file', 'f')
             ->set('f.remote_id', $objectId)
             ->where($queryBuilder->expr()->eq('f.uid', $file->getUid()))
@@ -271,6 +285,9 @@ class FalMapping extends AbstractMapping
         $events = $client->getEvents($module->getConnectorName(), 0);
         $ids = [];
         foreach($events as $event) {
+            if ($event['event_type'] === 0) {
+                continue;
+            }
             $ids[] = $event['object_id'];
             if (count($ids) == 3) {
                 break;
@@ -320,8 +337,7 @@ class FalMapping extends AbstractMapping
             ';
         }
         if (count($files)) {
-            $temporaryFile = GeneralUtility::tempnam('derivative_');
-            $client->saveDerivate($temporaryFile, $ids[0]);
+            $temporaryFile = $client->saveDerivate(GeneralUtility::tempnam('derivative_'), $ids[0]);
             if (!file_exists($temporaryFile) || !filesize($temporaryFile)) {
                 $status['class'] = 'danger';
                 $messages['derivative_download_failed'] = sprintf('
