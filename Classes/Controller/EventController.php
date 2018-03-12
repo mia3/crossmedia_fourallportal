@@ -12,6 +12,8 @@ namespace Crossmedia\Fourallportal\Controller;
  *
  ***/
 
+use TYPO3\CMS\Extbase\Persistence\Generic\PersistenceManager;
+
 /**
  * EventController
  */
@@ -93,11 +95,25 @@ class EventController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionController
     /**
      * action index
      *
-     * @param Crossmedia\Fourallportal\Domain\Model\Event $event
+     * @param \Crossmedia\Fourallportal\Domain\Model\Event $event
      * @return void
      */
     public function checkAction($event)
     {
         $this->view->assign('event', $event);
+    }
+
+    /**
+     * action index
+     *
+     * @param \Crossmedia\Fourallportal\Domain\Model\Event $event
+     * @return void
+     */
+    public function resetAction($event)
+    {
+        $event->setStatus('pending');
+        $this->eventRepository->update($event);
+        #$this->objectManager->get(PersistenceManager::class)->persistAll());
+        $this->redirect('index', null, null, ['status' => 'pending']);
     }
 }

@@ -59,9 +59,18 @@
 
                         <div class="btn-group" role="group">
                             <f:link.action
+                                action="reset"
+                                arguments="{event: event}"
+                                class="btn btn-default" title="Reset event">
+                                <span class="text-danger">
+                                    <core:icon identifier="actions-refresh"
+                                               alternativeMarkupIdentifier="inline"/>
+                                </span>
+                            </f:link.action>
+                            <f:link.action
                                 action="check"
                                 arguments="{event: event}"
-                                class="btn btn-default" title="Check Server Configuration">
+                                class="btn btn-default" title="View event details">
                                 <core:icon identifier="actions-document-info"
                                            alternativeMarkupIdentifier="inline"/>
                             </f:link.action>
