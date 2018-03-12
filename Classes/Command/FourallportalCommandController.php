@@ -636,7 +636,11 @@ class FourallportalCommandController extends CommandController
     public function syncCommand($sync = false, $module = null, $exclude = null)
     {
         $this->lockSync();
-        $exclude = explode(',', $exclude);
+        if (!empty($exclude)) {
+            $exclude = explode(',', $exclude);
+        } else {
+            $exclude = [];
+        }
 
         if (!$sync) {
             $this->processAllPendingAndDeferredEvents();
@@ -648,6 +652,10 @@ class FourallportalCommandController extends CommandController
                 continue;
             }
             $client = $module->getServer()->getClient();
+            if (empty($module->getModuleName())) {
+                $connectorConfig = $client->getConnectorConfig($module->getConnectorName());
+                $module->setModuleName($connectorConfig['moduleConfig']['module_name']);
+            }
             /** @var Module $configuredModule */
             if ($sync && $module->getLastEventId() > 0) {
                 $module->setLastEventId(0);
