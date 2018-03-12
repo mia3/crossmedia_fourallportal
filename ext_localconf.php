@@ -3,6 +3,13 @@ if (!defined('TYPO3_MODE')) {
     die ('Access denied.');
 }
 
+if (!isset($GLOBALS['TYPO3_CONF_VARS']['EXT']['extConf']['fourallportal'])) {
+    $GLOBALS['TYPO3_CONF_VARS']['EXT']['extConf']['fourallportal'] = [
+        'clientConnectTimeout' => 10,
+        'clientTransferTimeout' => 60,
+    ];
+}
+
 \TYPO3\CMS\Extbase\Utility\ExtensionUtility::registerTypeConverter(\Crossmedia\Fourallportal\TypeConverter\FileReferenceTypeConverter::class);
 \TYPO3\CMS\Extbase\Utility\ExtensionUtility::registerTypeConverter(\Crossmedia\Fourallportal\TypeConverter\ComplexTypeConverter::class);
 

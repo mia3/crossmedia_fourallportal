@@ -43,6 +43,11 @@ class ApiClient
     protected static $lastResponse = [];
 
     /**
+     * @var array
+     */
+    protected $extensionConfiguration = [];
+
+    /**
      * @param Server $server
      */
     public function __construct($server)
@@ -57,6 +62,7 @@ class ApiClient
         }
         self::$sessionPool[] = $this;
         $this->initializeCreateMasks();
+        $this->extensionConfiguration = unserialize($GLOBALS['TYPO3_CONF_VARS']['EXT']['extConf']['fourallportal']);
     }
 
     public function login()
@@ -196,8 +202,8 @@ class ApiClient
         $temporaryHeaderbufferName = tempnam(sys_get_temp_dir(), 'header-buff' . $objectId);
         $headerBuff = fopen($temporaryHeaderbufferName, 'w+');
 
-        curl_setopt($ch, CURLOPT_TIMEOUT, 0);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 60);
+        curl_setopt($ch, CURLOPT_TIMEOUT, (int)$this->extensionConfiguration['clientConnectTimeout']);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, (int)$this->extensionConfiguration['clientTransferTimeout']);
         curl_setopt($ch, CURLOPT_FILE, $fp);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
         curl_setopt($ch, CURLOPT_WRITEHEADER, $headerBuff);
