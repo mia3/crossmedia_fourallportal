@@ -802,15 +802,18 @@ class FourallportalCommandController extends CommandController
         $client = $event->getModule()->getServer()->getClient();
         try {
             $mapper = $event->getModule()->getMapper();
-            if (empty($event->getBeanData()) && $event->getEventType() !== 'delete') {
-                $responseData = $client->getBeans(
-                    [
-                        $event->getObjectId()
-                    ],
-                    $event->getModule()->getConnectorName()
-                );
-            } else {
-                $responseData = ['result' => [$event->getBeanData()]];
+            $responseData = [];
+            if ($event->getEventType() !== 'delete') {
+                if (empty($event->getBeanData())) {
+                    $responseData = $client->getBeans(
+                        [
+                            $event->getObjectId()
+                        ],
+                        $event->getModule()->getConnectorName()
+                    );
+                } else {
+                    $responseData = ['result' => [$event->getBeanData()]];
+                }
             }
             $mapper->import($responseData, $event);
             $event->setStatus('claimed');
