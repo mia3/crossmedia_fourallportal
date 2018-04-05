@@ -64,6 +64,8 @@ class FalMapping extends AbstractMapping
                     // push back event.
                     return;
                 }
+                /** @var File $object */
+                $object->delete();
                 $repository->remove($object);
                 break;
             case 'update':
