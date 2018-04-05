@@ -11,6 +11,7 @@ use TYPO3\CMS\Core\Charset\CharsetConverter;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Resource\Driver\AbstractHierarchicalFilesystemDriver;
 use TYPO3\CMS\Core\Resource\Driver\LocalDriver;
+use TYPO3\CMS\Core\Resource\DuplicationBehavior;
 use TYPO3\CMS\Core\Resource\Exception\ExistingTargetFileNameException;
 use TYPO3\CMS\Core\Resource\Exception\FolderDoesNotExistException;
 use TYPO3\CMS\Core\Resource\Exception\InvalidFileNameException;
@@ -177,16 +178,16 @@ class FalMapping extends AbstractMapping
                 $contents = file_get_contents($tempPathAndFilename);
                 unlink($tempPathAndFilename);
                 $targetFilename = $this->sanitizeFileName(pathinfo($tempPathAndFilename, PATHINFO_BASENAME));
-                $file = $folder->createFile($targetFilename);
-                foreach($existingFileRows as $existingFileRow) {
-                    if($existingFileRow['name'] !== $targetFilename) {
-                        $existingFile = $storage->getFile($existingFileRow['identifier']);
-                        try {
-                            $storage->deleteFile($existingFile);
-                        } catch(\Exception $e) {
-
+                if (count($existingFileRows) > 0) {
+                    foreach($existingFileRows as $existingFileRow) {
+                        $file = $storage->getFile($existingFileRow['identifier']);
+                        if($existingFileRow['name'] !== $targetFilename) {
+                            $file->rename($targetFilename, DuplicationBehavior::REPLACE);
+                            break;
                         }
                     }
+                } else {
+                    $file = $folder->createFile($targetFilename);
                 }
             } catch (ExistingTargetFileNameException $error) {
                 $file = reset($this->getObjectRepository()->searchByName($folder, $targetFilename));
