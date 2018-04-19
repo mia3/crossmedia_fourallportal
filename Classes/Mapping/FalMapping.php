@@ -25,6 +25,7 @@ use TYPO3\CMS\Extbase\Domain\Model\FileReference;
 use TYPO3\CMS\Extbase\DomainObject\AbstractEntity;
 use TYPO3\CMS\Extbase\Object\ObjectManager;
 use TYPO3\CMS\Extbase\Persistence\Generic\PersistenceManager;
+use TYPO3\CMS\Extbase\Reflection\ObjectAccess;
 
 class FalMapping extends AbstractMapping
 {
@@ -180,10 +181,17 @@ class FalMapping extends AbstractMapping
                 $targetFilename = $this->sanitizeFileName(pathinfo($tempPathAndFilename, PATHINFO_BASENAME));
                 if (count($existingFileRows) > 0) {
                     foreach($existingFileRows as $existingFileRow) {
-                        $file = $storage->getFile($existingFileRow['identifier']);
-                        if($existingFileRow['name'] !== $targetFilename) {
-                            $file->rename($targetFilename, DuplicationBehavior::REPLACE);
-                            break;
+                        $existingFile = $storage->getFile($existingFileRow['identifier']);
+                        if (!$existingFile || $existingFileRow['name'] !== $targetFilename || !ObjectAccess::getProperty($storage, 'driver', true)->fileExists($existingFile->getIdentifier())) {
+                            // File is determined to not exist, but exists in database. Remove the record, create file anew.
+                            // If this is not done, various permission nonsense is raised by FAL without indication of the
+                            // actual error. Any problem ranging from a missing file over file/folder permissions to user
+                            // restrictions may be in effect, all of which result in the same error. We target the "file is
+                            // missing" case specifically here since that's the case we are likely to encounter when renaming.
+                            $queryBuilder->delete('sys_file')->where($queryBuilder->expr()->eq('uid', $existingFileRow['uid']))->execute();
+                        } elseif ($existingFileRow['name'] === $targetFilename) {
+                            // Note: this case reached only if file physically exists and has the same name, due to check above.
+                            $file = $existingFile;
                         }
                     }
                 } else {
@@ -196,7 +204,7 @@ class FalMapping extends AbstractMapping
             }
 
             if (!$file) {
-                throw new \RuntimeException('Unable to either create or re-use existing file: ' . $targetFolder . $targetFilename, 1508242160);
+                $file = $folder->createFile($targetFilename);
             }
 
             $file->setContents($contents);
