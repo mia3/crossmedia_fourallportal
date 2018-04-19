@@ -87,10 +87,10 @@ abstract class AbstractMapping implements MappingInterface
         $properties = $this->addMissingNullProperties($properties, $module);
         if ($dimensionMapping !== null) {
             foreach ($properties as $propertyName => $value) {
-                if (is_array($value) && isset($value[0]['dimensions'])) {
-                    foreach ($value as $dimensionValue) {
-                        if ($dimensionMapping->matches($dimensionValue['dimensions'])) {
-                            $properties[$propertyName] = $dimensionValue['value'];
+                if (is_array($value) && array_key_exists('dimensions', $value) && is_array($value['dimensions'])) {
+                    foreach ($value['dimensions'] as $dimensionName => $dimensionValue) {
+                        if ($dimensionMapping->matches($dimensionName)) {
+                            $properties[$propertyName] = $dimensionValue;
                         }
                     }
                 }
@@ -100,6 +100,12 @@ abstract class AbstractMapping implements MappingInterface
         foreach ($properties as $importedName => $propertyValue) {
             if (($map[$importedName] ?? null) === false) {
                 continue;
+            }
+            if (is_array($propertyValue[0] ?? false) && array_key_exists('dimensions', $propertyValue[0])) {
+                // Data is provided with dimensions, was not re-assigned during dimension mapping above, indicating that
+                // either the PIM side has no dimensions (dimensions are NULL, not array, hence array_key_exists vs isset)
+                // or that the TYPO3 side has no dimensions configured. Either way, the value can be found in this property.
+                $propertyValue = $propertyValue[0]['value'];
             }
             $customSetter = MappingRegister::resolvePropertyValueSetter(static::class, $importedName);
             if ($customSetter) {
