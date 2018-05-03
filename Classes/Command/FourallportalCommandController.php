@@ -11,6 +11,7 @@ use TYPO3\CMS\Core\Locking\Exception\LockCreateException;
 use TYPO3\CMS\Core\Locking\FileLockStrategy;
 use TYPO3\CMS\Core\Locking\LockFactory;
 use TYPO3\CMS\Core\Locking\LockingStrategyInterface;
+use TYPO3\CMS\Core\Log\LogManager;
 use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Mvc\Controller\CommandController;
@@ -597,7 +598,13 @@ class FourallportalCommandController extends CommandController
      */
     public function replayCommand($events = 1, $module = null, $objectId = null)
     {
-        $this->lockSync();
+        try {
+            $this->lockSync();
+        } catch (\Exception $error) {
+            $this->response->setContent('Cannot acquire lock - exiting without error' . PHP_EOL);
+            $this->response->send();
+            return;
+        }
         foreach ($this->getActiveModuleOrModules($module) as $moduleObject) {
             $eventQuery = $this->eventRepository->createQuery();
             if (!$objectId) {
@@ -629,13 +636,22 @@ class FourallportalCommandController extends CommandController
      *
      * Execute this to synchronise events from the PIM API.
      *
-     * @param boolean $sync Set to "1" to trigger a full sync
+     * @param bool $sync Set to "1" to trigger a full sync
      * @param string $module If passed can be used to only sync one module, using the module or connector name it has in 4AP.
      * @param string $exclude Exclude a list of modules from processing (CSV string module names)
+     * @param bool $force If set, forces the sync to run regardless of lock and will neither lock nor unlock the task
      */
-    public function syncCommand($sync = false, $module = null, $exclude = null)
+    public function syncCommand($sync = false, $module = null, $exclude = null, $force = false)
     {
-        $this->lockSync();
+        if (!$force) {
+            try {
+                $this->lockSync();
+            } catch (\Exception $error) {
+                $this->response->setContent('Cannot acquire lock - exiting without error' . PHP_EOL);
+                $this->response->send();
+                return;
+            }
+        }
         if (!empty($exclude)) {
             $exclude = explode(',', $exclude);
         } else {
@@ -685,9 +701,15 @@ class FourallportalCommandController extends CommandController
             $this->moduleRepository->update($module);
         }
 
-        $this->objectManager->get(PersistenceManagerInterface::class)->persistAll();
+        try {
+            $this->objectManager->get(PersistenceManagerInterface::class)->persistAll();
+        } catch (\Exception $error) {
+            $this->logProblem($error);
+        }
         $this->processAllPendingAndDeferredEvents();
-        $this->unlockSync();
+        if (!$force) {
+            $this->unlockSync();
+        }
     }
 
     /**
@@ -700,16 +722,20 @@ class FourallportalCommandController extends CommandController
     {
         $done = false;
         $allEvents = [];
-        while (($events = $client->getEvents($connectorName, $lastEventId)) && count($events) && !$done) {
-            foreach ($events as $event) {
-                //echo 'Read: ' . $connectorName . ':' . $event['id'] . PHP_EOL;
-                $lastEventId = $event['id'];
-                if (isset($allEvents[$lastEventId])) {
-                    $done = true;
-                    break;
+        try {
+            while (($events = $client->getEvents($connectorName, $lastEventId)) && count($events) && !$done) {
+                foreach ($events as $event) {
+                    //echo 'Read: ' . $connectorName . ':' . $event['id'] . PHP_EOL;
+                    $lastEventId = $event['id'];
+                    if (isset($allEvents[$lastEventId])) {
+                        $done = true;
+                        break;
+                    }
+                    $allEvents[$lastEventId] = $event;
                 }
-                $allEvents[$lastEventId] = $event;
             }
+        } catch (\Exception $error) {
+            $this->logProblem($error);
         }
         return $allEvents;
     }
@@ -830,9 +856,9 @@ class FourallportalCommandController extends CommandController
             $event->setStatus('deferred');
             $event->setMessage($error->getMessage() . ' (code: ' . $error->getCode() . ')');
         } catch(\Exception $exception) {
+            $this->logProblem($exception);
             $event->setStatus('failed');
             $event->setMessage($exception->getMessage() . ' (code: ' . $exception->getCode() . ')' . $exception->getFile() . ':' . $exception->getLine());
-            $this->response->appendContent($exception->getMessage() . ' (code: ' . $exception->getCode() . ')' . $exception->getFile() . ':' . $exception->getLine() . PHP_EOL);
             if ($updateEventId) {
                 $event->getModule()->setLastEventId(max($event->getEventId(), $event->getModule()->getLastEventId()));
             }
@@ -843,7 +869,11 @@ class FourallportalCommandController extends CommandController
         $event->setResponse($responseMetadata['response']);
         $event->setPayload($responseMetadata['payload']);
         $this->eventRepository->update($event);
-        GeneralUtility::makeInstance(ObjectManager::class)->get(PersistenceManager::class)->persistAll();
+        try {
+            GeneralUtility::makeInstance(ObjectManager::class)->get(PersistenceManager::class)->persistAll();
+        } catch (\Exception $error) {
+            $this->logProblem($error);
+        }
     }
 
     /**
@@ -891,11 +921,24 @@ class FourallportalCommandController extends CommandController
      */
     protected function unlockSync()
     {
-        return unlink($this->getLockFilePath());
+        $lockFile = $this->getLockFilePath();
+        return file_exists($lockFile) && unlink($lockFile);
     }
 
     protected function getLockFilePath()
     {
         return GeneralUtility::getFileAbsFileName('typo3temp/var/transient/') . 'lock_4ap_sync.lock';
+    }
+
+    protected function logProblem(\Exception $exception)
+    {
+        GeneralUtility::makeInstance(LogManager::class)->getLogger(__CLASS__)->critical(
+            $exception->getMessage(),
+            [
+                'code' => $exception->getCode(),
+                'file' => $exception->getFile(),
+                'line' => $exception->getLine(),
+            ]
+        );
     }
 }

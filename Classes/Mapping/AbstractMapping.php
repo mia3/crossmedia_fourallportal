@@ -7,6 +7,7 @@ use Crossmedia\Fourallportal\Domain\Model\Module;
 use Crossmedia\Fourallportal\Service\ApiClient;
 use Crossmedia\Fourallportal\TypeConverter\PimBasedTypeConverterInterface;
 use Crossmedia\Products\Domain\Repository\ProductRepository;
+use TYPO3\CMS\Core\Log\LogManager;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Domain\Model\FileReference;
 use TYPO3\CMS\Extbase\DomainObject\AbstractEntity;
@@ -190,12 +191,12 @@ abstract class AbstractMapping implements MappingInterface
                 if ($child instanceof Error) {
                     // For whatever reason, property validators will return a validation error rather than throw an exception.
                     // We therefore need to check this, log the problem, and skip the property.
-                    echo 'Mapping error when mapping property ' . $propertyName . ' on ' . get_class($object) . ':' .  $object->getRemoteId() . ': ' . $child->getMessage() . PHP_EOL;
+                    $this->logProblem('Mapping error when mapping property ' . $propertyName . ' on ' . get_class($object) . ':' .  $object->getRemoteId() . ': ' . $child->getMessage());
                     continue;
                 }
 
                 if (!$child) {
-                    echo 'Child of type ' . $childType . ' identified by ' . $identifier . ' not found when mapping property ' . $propertyName . ' on ' . get_class($object) . ':' .  $object->getRemoteId() . PHP_EOL;
+                    $this->logProblem('Child of type ' . $childType . ' identified by ' . $identifier . ' not found when mapping property ' . $propertyName . ' on ' . get_class($object) . ':' .  $object->getRemoteId());
                     continue;
                 }
                 if (!$objectStorage->contains($child)) {
@@ -220,7 +221,7 @@ abstract class AbstractMapping implements MappingInterface
                 if ($propertyValue instanceof Error) {
                     // For whatever reason, property validators will return a validation error rather than throw an exception.
                     // We therefore need to check this, log the problem, and skip the property.
-                    echo 'Mapping error when mapping property ' . $propertyName . ' on ' . get_class($object) . ':' .  $object->getRemoteId() . ': ' . $propertyValue->getMessage() . PHP_EOL;
+                    $this->logProblem('Mapping error when mapping property ' . $propertyName . ' on ' . get_class($object) . ':' .  $object->getRemoteId() . ': ' . $propertyValue->getMessage());
                     return;
                 }
 
@@ -514,5 +515,10 @@ abstract class AbstractMapping implements MappingInterface
         }
 
         $GLOBALS['TYPO3_DB']->exec_DELETEquery($this->getTableName(), 'sys_language_uid NOT IN (' . implode(', ', $sysLanguageUids) . ') AND l10n_parent = ' . $object->getUid());
+    }
+
+    protected function logProblem($message)
+    {
+        GeneralUtility::makeInstance(LogManager::class)->getLogger(__CLASS__)->alert($message);
     }
 }
