@@ -560,9 +560,16 @@ TEMPLATE;
                     'type' => 'input'
                 ];
                 break;
+            case 'CELong':
+                $dataType = 'int';
+                $sqlType = 'bigint(20) default 0 NOT NULL';
+                $tca = [
+                    'type' => 'input',
+                    'eval' => 'trim,int'
+                ];
+                break;
             case 'CETimestamp':
             case 'CEInteger':
-            case 'CELong':
             case 'MAMNumber':
             case 'XMPNumber':
                 $dataType = 'int';
