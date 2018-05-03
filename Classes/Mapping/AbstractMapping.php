@@ -8,6 +8,7 @@ use Crossmedia\Fourallportal\Service\ApiClient;
 use Crossmedia\Fourallportal\TypeConverter\PimBasedTypeConverterInterface;
 use Crossmedia\Products\Domain\Repository\ProductRepository;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Extbase\Domain\Model\FileReference;
 use TYPO3\CMS\Extbase\DomainObject\AbstractEntity;
 use TYPO3\CMS\Extbase\DomainObject\DomainObjectInterface;
 use TYPO3\CMS\Extbase\Object\ObjectManager;
@@ -64,6 +65,11 @@ abstract class AbstractMapping implements MappingInterface
         if (isset($object)) {
             $this->processRelationships($object, $data, $event);
         }
+    }
+
+    protected function removeObject(DomainObjectInterface $object)
+    {
+        GeneralUtility::makeInstance(ObjectManager::class)->get(PersistenceManager::class)->remove($object);
     }
 
     protected function removeObjectFromRepository(DomainObjectInterface $object)
@@ -127,6 +133,16 @@ abstract class AbstractMapping implements MappingInterface
         if (!property_exists(get_class($object), $propertyName)) {
             return;
         }
+        $currentPropertyValue = ObjectAccess::getProperty($object, $propertyName);
+        // We need to check if the current value is an instance of the special FileReference proxy, which if it is, needs
+        // to be explicitly removed from the repository so the mapping can create fresh instances.
+        if ($currentPropertyValue instanceof FileReference) {
+            // We unset, but do not return, so that:
+            // 1) if the value is null, the property gets nulled and we return just below here
+            // 2) if it is not, a new reference will be created and the value overridden in the end of the function.
+            $this->removeObject($currentPropertyValue);
+        }
+
         if ($propertyValue === null && !reset((new \ReflectionMethod(get_class($object), 'set' . ucfirst($propertyName)))->getParameters())->allowsNull()) {
             ObjectAccess::setProperty($object, $propertyName, null);
             return;
@@ -147,9 +163,18 @@ abstract class AbstractMapping implements MappingInterface
             $objectStorage = ObjectAccess::getProperty($object, $propertyName) ?? new ObjectStorage();
             // Step one is to detach all currently related objects. Please note that $objectStorage->removeAll($objectStorage)
             // does not work due to array pointer reset issues with Iterators. The only functioning way is to iterate and
-            // detach all, one by one, as below.
+            // detach all, one by one, as below. Conversion to array is essential!
             foreach ($objectStorage->toArray() as $item) {
                 $objectStorage->detach($item);
+
+                // In addition, we need to check if the object being removed is the well-known proxy entity from Extbase
+                // that creates relations between Extbase entities and `sys_file` objects which are not Extbase-based.
+                // If the object being removed is such a reference, the object itself must also be removed.
+                // NB: This must not be done for normal entities and any third-party integrations with this extension
+                // must manually perform such removals in an override for this method, *BEFORE* calling the original method.
+                if ($item instanceof FileReference) {
+                    $this->removeObject($item);
+                }
             }
 
             foreach ((array) $propertyValue as $identifier) {
