@@ -16,6 +16,7 @@ namespace Crossmedia\Fourallportal\ViewHelpers;
 
 use Crossmedia\Fourallportal\Domain\Model\Module;
 use Crossmedia\Fourallportal\Domain\Repository\ModuleRepository;
+use Crossmedia\Fourallportal\ValueReader\ResponseDataFieldValueReader;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Object\ObjectManager;
 use TYPO3Fluid\Fluid\Core\Rendering\RenderingContextInterface;
@@ -46,7 +47,7 @@ class RelatedModuleViewHelper extends AbstractViewHelper
             return '<span class="text-danger"><i class="icon fa fa-exclamation"></i> Not in response!</span>';
         }
 
-        $fieldValue = $response['result'][0]['properties'][$field];
+        $fieldValue = (new ResponseDataFieldValueReader())->readResponseDataField($response['result'][0], $field);
 
         $relatedModuleName = static::detectRelatedModule(
             $field,

@@ -314,15 +314,15 @@ class FalMapping extends AbstractMapping
         $files = $beans['result'] ?? [];
 
         foreach($files as $result) {
-            if (!isset($result['properties']['data_name'])) {
+            if (!isset($result['properties']['data_name']['value'])) {
                 $status['class'] = 'danger';
                 $messages['data_name'] = '<p><strong class="text-danger">Connector does not provide required "data_name" property</strong></p>';
             }
-            if (!isset($result['properties']['data_shellpath'])) {
+            if (!isset($result['properties']['data_shellpath']['value'])) {
                 $messages['data_shellpath'] = '<p><strong class="text-danger">Connector does not provide required "data_shellpath" property</strong></p>';
                 $status['class'] = 'danger';
             }
-            $paths[] = $result['properties']['data_shellpath'] . $result['properties']['data_name'];
+            $paths[] = $result['properties']['data_shellpath']['value'] . $result['properties']['data_name']['value'];
        }
         if (empty($module->getShellPath())) {
             $status['class'] = 'danger';
