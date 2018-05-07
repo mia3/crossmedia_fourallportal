@@ -105,7 +105,7 @@ class FalMapping extends AbstractMapping
             if (isset($map[$propertyName])) {
                 $targetPropertyName = $map[$propertyName];
                 if (substr($targetPropertyName, 0, 9) === 'metadata.') {
-                    $metadata[substr($targetPropertyName, 9)] = $fieldValueReader->readResponseDataField($data['result'], 'value');
+                    $metadata[substr($targetPropertyName, 9)] = $fieldValueReader->readResponseDataField($data['result'], $propertyName);
                 }
             }
         }
@@ -126,12 +126,12 @@ class FalMapping extends AbstractMapping
     protected function downloadFileAndGetFileObject($objectId, array $data, Event $event)
     {
         $fieldValueReader = new ResponseDataFieldValueReader();
-        $originalFileName = $fieldValueReader->readResponseDataField($data['result'], 'data_name');
+        $originalFileName = $fieldValueReader->readResponseDataField($data['result'][0], 'data_name');
         $targetFilename = $this->sanitizeFileName($originalFileName);
         $tempPathAndFilename = GeneralUtility::tempnam('mamfal', $targetFilename);
 
         $trimShellPath = $event->getModule()->getShellPath();
-        $targetFolder = trim(substr($fieldValueReader->readResponseDataField($data['result'], 'data_shellpath'), strlen($trimShellPath)), '/');
+        $targetFolder = trim(substr($fieldValueReader->readResponseDataField($data['result'][0], 'data_shellpath'), strlen($trimShellPath)), '/');
         $targetFolder = implode('/', array_map([$this, 'sanitizeFileName'], explode('/', $targetFolder))) . '/';
 
         $client = $this->getClientByServer($event->getModule()->getServer());
@@ -146,8 +146,8 @@ class FalMapping extends AbstractMapping
         $download = !empty($targetFolder . $targetFilename);
         $file = null;
 
-        $finalFileName = $fieldValueReader->readResponseDataField($data['result'], 'bm_typo3_title');
-        $finalFileExtension = $fieldValueReader->readResponseDataField($data['result'], 'bm_derivatsformat');
+        $finalFileName = $fieldValueReader->readResponseDataField($data['result'][0], 'bm_typo3_title');
+        $finalFileExtension = $fieldValueReader->readResponseDataField($data['result'][0], 'bm_derivatsformat');
         if (!empty($finalFileName) && !empty($finalFileExtension)) {
             $targetFilename =  $finalFileName . '.' . $finalFileExtension;
         }
@@ -163,8 +163,8 @@ class FalMapping extends AbstractMapping
             /** @var FileInterface $file */
             $file = reset($this->getObjectRepository()->searchByName($folder, $targetFilename)) ?: null;
             $remoteModificationTime = (
-                new \DateTime($fieldValueReader->readResponseDataField($data['result'], 'mod_time_img')
-                    ?? $fieldValueReader->readResponseDataField($data['result'], 'mod_time')
+                new \DateTime($fieldValueReader->readResponseDataField($data['result'][0], 'mod_time_img')
+                    ?? $fieldValueReader->readResponseDataField($data['result'][0], 'mod_time')
                 )
             )->format('U');
             $download = $file && $file->getModificationTime() < $remoteModificationTime;

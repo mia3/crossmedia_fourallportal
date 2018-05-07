@@ -6,7 +6,6 @@ use Crossmedia\Fourallportal\Domain\Model\Event;
 use Crossmedia\Fourallportal\Domain\Model\Module;
 use Crossmedia\Fourallportal\Service\ApiClient;
 use Crossmedia\Fourallportal\TypeConverter\PimBasedTypeConverterInterface;
-use Crossmedia\Products\Domain\Repository\ProductRepository;
 use TYPO3\CMS\Core\Log\LogManager;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Domain\Model\FileReference;
@@ -97,7 +96,7 @@ abstract class AbstractMapping implements MappingInterface
                 if (is_array($value) && array_key_exists('dimensions', $value) && is_array($value['dimensions'])) {
                     foreach ($value['dimensions'] as $dimensionName => $dimensionValue) {
                         if ($dimensionMapping->matches($dimensionName)) {
-                            $properties[$propertyName] = $dimensionValue;
+                            $properties[$propertyName]['value'] = $dimensionValue;
                         }
                     }
                 }
@@ -113,6 +112,8 @@ abstract class AbstractMapping implements MappingInterface
                 // either the PIM side has no dimensions (dimensions are NULL, not array, hence array_key_exists vs isset)
                 // or that the TYPO3 side has no dimensions configured. Either way, the value can be found in this property.
                 $propertyValue = $propertyValue[0]['value'];
+            } else {
+                $propertyValue = $propertyValue['value'];
             }
             $customSetter = MappingRegister::resolvePropertyValueSetter(static::class, $importedName);
             if ($customSetter) {
@@ -434,7 +435,7 @@ abstract class AbstractMapping implements MappingInterface
                             break;
                     }
                 }
-                $properties[$field['name']] = $value;
+                $properties[$field['name']]['value'] = $value;
             }
         }
 

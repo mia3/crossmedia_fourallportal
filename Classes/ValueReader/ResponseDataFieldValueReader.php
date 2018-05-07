@@ -13,6 +13,6 @@ class ResponseDataFieldValueReader
             // TODO: handle dimensions once languages are available in both TYPO3 and PIM
             return $result['properties'][$fieldName][0]['value'];
         }
-        return $result['properties'][$fieldName] ?? null;
+        return $result['properties'][$fieldName]['value'] ?? $result['properties'][$fieldName] ?? null;
     }
 }

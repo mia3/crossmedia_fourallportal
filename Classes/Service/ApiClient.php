@@ -368,10 +368,8 @@ class ApiClient
             )
         );
 
-        $beans = $this->normalizeArray($beans);
-        foreach ($beans as $key => $bean) {
-            #var_dump($bean);
-            #$beans[$key]['properties']['data_shellpath'] = $this->normalizePath($beans[$key]['properties']['data_shellpath']);
+        if (!isset($beans['result'][0])) {
+            throw new ApiException('Bean data request returned no results. Response: ' . json_encode($beans), 1525694885);
         }
 
         return $beans;
@@ -487,38 +485,6 @@ class ApiClient
         static::$lastResponse['uri'] = $uri;
         static::$lastResponse['payload'] = '';
         return $result;
-    }
-
-    /**
-     * normalizes an MAM result array into a flatter php array
-     *
-     * example:
-     *
-     * input:                 =>     output:
-     * array (                       array (
-     *   'foo' => array(               'foo' => 'bar'
-     *     'value' => 'bar'          )
-     *   )
-     * )
-     *
-     * @param array $input
-     * @return array
-     */
-    public function normalizeArray($input)
-    {
-        if (is_array($input)) {
-            foreach ($input as $key => $value) {
-                $input[$key] = $this->normalizeArray($value);
-            }
-            if (count($input) == 1 && array_key_exists('value', $input)) {
-                $input = $input['value'];
-            }
-            if (is_array($input) && count($input) == 0) {
-                $input = null;
-            }
-        }
-
-        return $input;
     }
 
     /**
