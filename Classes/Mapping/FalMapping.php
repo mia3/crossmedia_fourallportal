@@ -7,6 +7,7 @@ use Crossmedia\Fourallportal\Domain\Model\Module;
 use Crossmedia\Fourallportal\Domain\Model\Server;
 use Crossmedia\Fourallportal\Error\ApiException;
 use Crossmedia\Fourallportal\Service\ApiClient;
+use Crossmedia\Fourallportal\ValueReader\ResponseDataFieldValueReader;
 use TYPO3\CMS\Core\Charset\CharsetConverter;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Resource\Driver\AbstractHierarchicalFilesystemDriver;
@@ -98,12 +99,13 @@ class FalMapping extends AbstractMapping
         parent::mapPropertiesFromDataToObject($data, $object, $module, $dimensionMapping);
         $metadata = [];
         $map = MappingRegister::resolvePropertyMapForMapper(static::class);
+        $fieldValueReader = new ResponseDataFieldValueReader();
 
         foreach ($data['result'][0]['properties'] as $propertyName => $propertyValue) {
             if (isset($map[$propertyName])) {
                 $targetPropertyName = $map[$propertyName];
                 if (substr($targetPropertyName, 0, 9) === 'metadata.') {
-                    $metadata[substr($targetPropertyName, 9)] = $propertyValue;
+                    $metadata[substr($targetPropertyName, 9)] = $fieldValueReader->readResponseDataField($data['result'], 'value');
                 }
             }
         }
@@ -123,12 +125,13 @@ class FalMapping extends AbstractMapping
      */
     protected function downloadFileAndGetFileObject($objectId, array $data, Event $event)
     {
-        $originalFileName = $data['result'][0]['properties']['data_name'];
+        $fieldValueReader = new ResponseDataFieldValueReader();
+        $originalFileName = $fieldValueReader->readResponseDataField($data['result'], 'data_name');
         $targetFilename = $this->sanitizeFileName($originalFileName);
         $tempPathAndFilename = GeneralUtility::tempnam('mamfal', $targetFilename);
 
         $trimShellPath = $event->getModule()->getShellPath();
-        $targetFolder = trim(substr($data['result'][0]['properties']['data_shellpath'], strlen($trimShellPath)), '/');
+        $targetFolder = trim(substr($fieldValueReader->readResponseDataField($data['result'], 'data_shellpath'), strlen($trimShellPath)), '/');
         $targetFolder = implode('/', array_map([$this, 'sanitizeFileName'], explode('/', $targetFolder))) . '/';
 
         $client = $this->getClientByServer($event->getModule()->getServer());
@@ -143,19 +146,10 @@ class FalMapping extends AbstractMapping
         $download = !empty($targetFolder . $targetFilename);
         $file = null;
 
-        // Temporary filename patching because DAM still won't transmit whether a PSD/EPS is converted to PNG or JPG.
-        $targetBaseFilename = pathinfo($targetFilename, PATHINFO_FILENAME);
-        $extension = strtolower(pathinfo($targetFilename, PATHINFO_EXTENSION));
-        if (in_array($extension, ['psd', 'eps', 'tif', 'tiff'])) {
-            if ($folder->hasFile($targetBaseFilename . '.png')) {
-                $targetFilename = $targetBaseFilename . '.png';
-            } elseif ($folder->hasFile($targetBaseFilename . '.jpg')) {
-                $targetFilename = $targetBaseFilename . '.jpg';
-            } elseif ($extension === 'tif' || $extension === 'tiff') {
-                $targetFilename = $targetBaseFilename . '.jpg';
-            } else {
-                $targetFilename = $targetBaseFilename . '.png';
-            }
+        $finalFileName = $fieldValueReader->readResponseDataField($data['result'], 'bm_typo3_title');
+        $finalFileExtension = $fieldValueReader->readResponseDataField($data['result'], 'bm_derivatsformat');
+        if (!empty($finalFileName) && !empty($finalFileExtension)) {
+            $targetFilename =  $finalFileName . '.' . $finalFileExtension;
         }
 
         $queryBuilder = (new ConnectionPool())->getConnectionForTable('sys_file')->createQueryBuilder();
@@ -168,7 +162,11 @@ class FalMapping extends AbstractMapping
         if ($folder->hasFile($targetFilename)) {
             /** @var FileInterface $file */
             $file = reset($this->getObjectRepository()->searchByName($folder, $targetFilename)) ?: null;
-            $remoteModificationTime = (new \DateTime($data['result'][0]['properties']['mod_time_img'] ?? $data['result'][0]['mod_time']))->format('U');
+            $remoteModificationTime = (
+                new \DateTime($fieldValueReader->readResponseDataField($data['result'], 'mod_time_img')
+                    ?? $fieldValueReader->readResponseDataField($data['result'], 'mod_time')
+                )
+            )->format('U');
             $download = $file && $file->getModificationTime() < $remoteModificationTime;
         }
 
