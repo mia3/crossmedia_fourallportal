@@ -974,6 +974,7 @@ TEMPLATE;
             if (class_exists($returnType) || strpos($returnType, 'ObjectStorage') !== false) {
                 $lazy = DynamicModelRegister::isLazyProperty($className, $propertyName);
             }
+            $isSingleObjectRelation = is_a(trim($property['type'], '?'), AbstractDomainObject::class, true);
 
             $upperCasePropertyName = ucfirst($propertyName);
             $functionsAndProperties .= sprintf(
@@ -987,7 +988,7 @@ TEMPLATE;
                 $returnType,
                 '$' . $propertyName,
                 $upperCasePropertyName,
-                '$' . $propertyName,
+                '$' . $propertyName . ($isSingleObjectRelation ? ' = null' : ''),
                 $propertyName,
                 '$' . $propertyName,
                 $virtualArrayGetter
@@ -1087,7 +1088,8 @@ TEMPLATE;
             if (class_exists(trim($returnType, '?\\'))) {
                 $isLazyProperty = DynamicModelRegister::isLazyProperty($className, $propertyName);
             }
-            $isLazySingleObjectRelation = $isLazyProperty && is_a(trim($property['type'], '?'), AbstractDomainObject::class, true);
+            $isSingleObjectRelation = is_a(trim($property['type'], '?'), AbstractDomainObject::class, true);
+            $isLazySingleObjectRelation = $isLazyProperty && $isSingleObjectRelation;
 
             $upperCasePropertyName = ucfirst($propertyName);
             $functionsAndProperties .= sprintf(
@@ -1101,7 +1103,7 @@ TEMPLATE;
                 $propertyName . ($isLazySingleObjectRelation ? ' instanceof LazyLoadingProxy ? $this->' . $propertyName . '->_loadRealInstance() : $this->' . $propertyName : ''),
                 $upperCasePropertyName,
                 $returnType ? $returnType . ' ' : '',
-                '$' . $propertyName,
+                '$' . $propertyName . ($isSingleObjectRelation ? ' = null' : ''),
                 $propertyName,
                 '$' . $propertyName,
                 $virtualArrayGetter
