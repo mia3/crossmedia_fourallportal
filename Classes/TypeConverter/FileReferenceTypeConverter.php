@@ -79,7 +79,6 @@ class FileReferenceTypeConverter extends AbstractUuidAwareObjectTypeConverter im
         // So instead we probe the DB and if a match is found, we know the existing property value is the
         // exact same relation we were asked to convert - and we return the current property value.
         $queryBuilder = (new ConnectionPool())->getConnectionForTable('sys_file')->createQueryBuilder();
-        $queryBuilder->getRestrictions()->removeAll();
         $query = $queryBuilder->select('r.uid')->from('sys_file', 'f')->from('sys_file_reference', 'r')->where(
             sprintf(
                 'r.uid_local = f.uid AND f.remote_id = \'%s\' AND r.tablenames = \'%s\' AND r.table_local = \'sys_file\' AND r.fieldname = \'%s\' AND r.uid_foreign = %d',
