@@ -1078,7 +1078,7 @@ TEMPLATE;
                 // Arrays will be stored as strings and are, technically, strings in the model property,
                 // but will have a virtual getter method that returns a json_decode()'d value.
                 $virtualArrayGetter = $this->generateVirtualArrayGetter($propertyName, true);
-                $returnType = 'string';
+                $returnType = '?string';
                 $variableType = 'string';
             }
 
