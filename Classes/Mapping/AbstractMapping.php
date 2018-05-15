@@ -143,6 +143,7 @@ abstract class AbstractMapping implements MappingInterface
             // 1) if the value is null, the property gets nulled and we return just below here
             // 2) if it is not, a new reference will be created and the value overridden in the end of the function.
             $this->removeObject($currentPropertyValue);
+            $this->persist();
         }
 
         if ($propertyValue === null && !reset((new \ReflectionMethod(get_class($object), 'set' . ucfirst($propertyName)))->getParameters())->allowsNull()) {
@@ -176,6 +177,7 @@ abstract class AbstractMapping implements MappingInterface
                 // must manually perform such removals in an override for this method, *BEFORE* calling the original method.
                 if ($item instanceof FileReference) {
                     $this->removeObject($item);
+                    $this->persist();
                 }
             }
 
@@ -457,8 +459,18 @@ abstract class AbstractMapping implements MappingInterface
             ObjectAccess::setProperty($object, 'uid', $existingRow['uid']);
         }
         $this->getObjectRepository()->add($object);
-        GeneralUtility::makeInstance(ObjectManager::class)->get(PersistenceManager::class)->persistAll();
+        $this->persist();
         return $object;
+    }
+
+    /**
+     * Persists all objects pending for ORM
+     *
+     * @return void
+     */
+    protected function persist()
+    {
+        GeneralUtility::makeInstance(ObjectManager::class)->get(PersistenceManager::class)->persistAll();
     }
 
     public function getTableName() {
