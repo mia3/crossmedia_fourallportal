@@ -261,12 +261,12 @@ class ComplexType extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
     /**
      * @param mixed $value
      * @param string $type
-     * @return mixed
+     * @return float|int
      */
     protected function castValue($value, $type)
     {
         settype($value, $type);
-        return $value;
+        return is_numeric($value) ? $value : 0;
     }
 
 
