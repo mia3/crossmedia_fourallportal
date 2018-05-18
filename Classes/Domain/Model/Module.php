@@ -337,14 +337,22 @@ class Module extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
      */
     public function getModuleConfiguration()
     {
-        return $this->getServer()->getClient()->getModuleConfig($this->moduleName);
+        static $configs = [];
+        if ($configs[$this->moduleName] === null) {
+            $configs[$this->moduleName] = $this->getServer()->getClient()->getModuleConfig($this->moduleName);
+        }
+        return $configs[$this->moduleName];
     }
     /**
      * @return array
      */
     public function getConnectorConfiguration()
     {
-        return $this->getServer()->getClient()->getConnectorConfig($this->connectorName);
+        static $configs = [];
+        if ($configs[$this->connectorName] === null) {
+            $configs[$this->connectorName] = $this->getServer()->getClient()->getConnectorConfig($this->connectorName);
+        }
+        return $configs[$this->connectorName];
     }
 
     /**
