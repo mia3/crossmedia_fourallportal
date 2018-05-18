@@ -17,49 +17,7 @@
         <f:form.textfield name="uuid" placeholder="Enter object UUID" size="40" value="{uuid}" />
         <f:form.submit value="Check data response" />
     </f:form>
-    <f:if condition="{module}">
-        <h4>Fields</h4>
-        <p>
-            Field inspection based on field presence in <code>fieldsToLoad</code> array of connector configuration
-            of connector <code>{module.connectorName}</code>.
-        </p>
-        <table class="table table-bordered table-striped table-hover">
-            <thead>
-                <th>Field</th>
-                <th>Config</th>
-                <th>Relations</th>
-                <th>Status</th>
-            </thead>
-            <f:for each="{module.connectorConfiguration.fieldsToLoad}" as="fieldConfig" key="field">
-                <tr>
-                    <td>{field}</td>
-                    <td>{fieldConfig.type}</td>
-                    <td>
-                        <fourallportal:relatedModule module="{module}" field="{field}" response="{response}">
-                            <h5 class="text-success">Related module: {relatedModule.moduleName}</h5>
-                            <f:if condition="{relations}">
-                                <f:else>
-                                    There are no relations - field value: <code>{fieldValueDump -> f:format.raw()}</code>
-                                </f:else>
-                                <f:then>
-                                    <ol>
-                                        <f:for each="{relations}" as="relation">
-                                            <li>
-                                                <f:link.action action="module" arguments="{module: relatedModule.uid, uuid: relation.id}">{relation.id}</f:link.action>
-                                            </li>
-                                        </f:for>
-                                    </ol>
-                                </f:then>
-                            </f:if>
-                        </fourallportal:relatedModule>
-                    </td>
-                    <td>
-                        <fourallportal:propertyCheck module="{module}" field="{field}" response="{response}" />
-                    </td>
-                </tr>
-            </f:for>
-        </table>
-        <pre>{prettyResponse -> f:format.raw()}</pre>
-    </f:if>
+    <f:render partial="ModuleCheck" arguments="{_all}" />
+    <pre>{prettyResponse -> f:format.raw()}</pre>
 </f:section>
 </html>
