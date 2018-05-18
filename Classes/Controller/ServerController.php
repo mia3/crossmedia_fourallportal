@@ -61,6 +61,7 @@ class ServerController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
             $this->view->assign('response', $response);
             $this->view->assign('uuid', $uuid);
             $this->view->assign('module', $module);
+            $this->view->assign('verifyRelations', true);
         }
         $this->view->assign('modules', GeneralUtility::makeInstance(ObjectManager::class)->get(ModuleRepository::class)->findAll(true));
     }

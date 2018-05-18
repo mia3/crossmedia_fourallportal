@@ -35,6 +35,7 @@ class RelatedModuleViewHelper extends AbstractViewHelper
         $this->registerArgument('module', Module::class, 'Module', true);
         $this->registerArgument('response', 'array', 'Response array', true);
         $this->registerArgument('field', 'string', 'Field name', true);
+        $this->registerArgument('verifyRelations', 'boolean', 'Verify related objects are fetchable', true, false);
     }
 
     public static function renderStatic(array $arguments, \Closure $renderChildrenClosure, RenderingContextInterface $renderingContext)
@@ -66,7 +67,11 @@ class RelatedModuleViewHelper extends AbstractViewHelper
             return '<span class="text-warning"><i class="icon fa fa-exclamation"></i> Module "' . $relatedModuleName . '" is not supported</span>';
         }
 
-        $relations = $module->getServer()->getClient()->getBeans($fieldValue, $relatedModule->getConnectorName());
+        if ($arguments['verifyRelations']) {
+            $relations = $module->getServer()->getClient()->getBeans($fieldValue, $relatedModule->getConnectorName());
+        } else {
+            $relations = ['result' => (array)$fieldValue];
+        }
 
         $variableProvider = $renderingContext->getVariableProvider();
         $variableProvider->add('relations', $relations['result']);
