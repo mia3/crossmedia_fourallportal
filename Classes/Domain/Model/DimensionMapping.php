@@ -91,6 +91,12 @@ class DimensionMapping extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
 
     public function matches($dimensions) {
         foreach ($this->dimensions as $dimension) {
+            if (!isset($dimensions[$dimension->getName()])) {
+                // We will allow and ignore the case of a requested locale not being present in the PIM data.
+                // Technically this constitutes an error. Thus we throw this little member-berry in here:
+                // TODO: throw an exception once the data on PIM is consistent, to report such a problem as an error.
+                continue;
+            }
             if ($dimensions[$dimension->getName()] != $dimension->getValue()) {
                 return false;
             }
