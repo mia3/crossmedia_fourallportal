@@ -44,9 +44,15 @@ class EventController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionController
             '' => 'all'
         ];
 
-        if ($status) {
+        if ($status || $search) {
             // Load events with selected status
-            $events = $this->searchEventsWithStatus($status, $search);
+            $events = $this->searchEventsWithStatus($status === 'all' ? false : $status, $search);
+            if ($status && $status !== 'all' && $events->count() === 0) {
+                // Widen search to search other statuses than the selected one.
+                $searchWidened = true;
+                $events = $this->searchEventsWithStatus(false, $search);
+                $status = '';
+            }
         } else {
             // Find first status from prioritised list above which yields results
             do {
@@ -55,6 +61,7 @@ class EventController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionController
             } while ($events->count() === 0 && next($eventOptions));
         }
 
+        $this->view->assign('searchWidened', $searchWidened);
         $this->view->assign('status', $status);
         $this->view->assign('events', $events);
         $this->view->assign('search', $search);
