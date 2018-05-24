@@ -41,17 +41,17 @@ class EventController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionController
             'failed' => 'failed',
             'deferred' => 'deferred',
             'claimed' => 'claimed',
-            '' => 'all'
+            'all' => 'all'
         ];
 
         if ($status || $search) {
             // Load events with selected status
-            $events = $this->searchEventsWithStatus($status === 'all' ? false : $status, $search);
-            if ($status && $status !== 'all' && $events->count() === 0) {
+            $events = $this->searchEventsWithStatus($status, $search);
+            if ($status !== 'all' && $events->count() === 0) {
                 // Widen search to search other statuses than the selected one.
                 $searchWidened = true;
                 $events = $this->searchEventsWithStatus(false, $search);
-                $status = '';
+                $status = 'all';
             }
         } else {
             // Find first status from prioritised list above which yields results
@@ -77,16 +77,16 @@ class EventController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionController
     {
         $query = $this->eventRepository->createQuery();
         $constraints = [];
-        if ($status) {
+        if ($status !== 'all') {
             $constraints[] = $query->equals('status', $status);
         }
 
         if ($search) {
             $constraints[] = $query->logicalOr([
                 $query->equals('eventId', (integer) $search),
-                $query->equals('module.connectorName', $search),
-                $query->like('objectId', $search),
-                $query->like('eventType', $search),
+                $query->like('module.connectorName', '%' . $search . '%'),
+                $query->like('objectId', '%' . $search . '%'),
+                $query->like('eventType', '%' . $search . '%'),
             ]);
         }
 
