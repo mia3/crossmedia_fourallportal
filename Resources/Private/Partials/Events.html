@@ -12,7 +12,7 @@
     </tr>
     </thead>
     <tbody>
-    <f:be.widget.paginate objects="{events}" as="paginatedEvents" configuration="{itemsPerPage: 100}">
+    <f:be.widget.paginate objects="{events}" as="paginatedEvents" configuration="{itemsPerPage: 100, addQueryStringMethod: 'POST,GET'}">
         <f:for each="{paginatedEvents}" as="event">
             <tr>
                 <td>{event.eventId}</td>
