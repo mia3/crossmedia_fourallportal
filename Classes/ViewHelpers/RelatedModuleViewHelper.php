@@ -48,6 +48,7 @@ class RelatedModuleViewHelper extends AbstractViewHelper
             return '<span class="text-danger"><i class="icon fa fa-exclamation"></i> Not in response!</span>';
         }
 
+        // Not passing a dimension mapping to the response data reader is okay here - relations do not have dimensions.
         $fieldValue = (new ResponseDataFieldValueReader())->readResponseDataField($response['result'][0], $field);
 
         $relatedModuleName = static::detectRelatedModule(

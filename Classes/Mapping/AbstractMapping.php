@@ -93,10 +93,42 @@ abstract class AbstractMapping implements MappingInterface
         $properties = $this->addMissingNullProperties($properties, $module);
         if ($dimensionMapping !== null) {
             foreach ($properties as $propertyName => $value) {
-                if (is_array($value) && array_key_exists('dimensions', $value) && is_array($value['dimensions'])) {
-                    foreach ($value['dimensions'] as $dimensionName => $dimensionValue) {
-                        if ($dimensionMapping->matches($dimensionName)) {
-                            $properties[$propertyName]['value'] = $dimensionValue;
+                $valueIsSelected = false;
+                if (is_array($value) && isset($value[0]) && is_array($value[0]) && array_key_exists('dimensions', $value[0]) && is_array($value[0]['dimensions'])) {
+                    // Matching a dimension means iterating over the array inside $value, each one being a definition of
+                    // a value and a collection of dimensions that the value applies to. In order to match the right one
+                    // we iterate and check $dimensionMapping->matches with ALL of the dimensions in a certain set. If
+                    // any one of those does not match, we do not use the value.
+                    foreach ($value as $dimensionObject) {
+                        if ($dimensionMapping->matches($dimensionObject['dimensions'])) {
+                            $properties[$propertyName]['value'] = $dimensionObject['value'];
+                            $valueIsSelected = true;
+                            break;
+                        }
+
+                    }
+                    if (!$valueIsSelected) {
+                        // We were not able to select a value using normal matching of dimensions. Check the value if it
+                        // matches the very specific case of 1) being an array which 2) has exactly one entry that 3) has
+                        // a key named "value" and 5) has a key named "dimensions" which 6) is an array that 7) is empty.
+                        // Then, and only then, will we read the value and consider it "applies to all translated objects".
+                        // I know what you're thinking.
+                        // It is what it is.
+                        if (is_array($value) && count($value) === 1 && isset($value[0]) && is_array($value[0]) && array_key_exists('value', $value[0]) && array_key_exists('dimensions', $value[0]) && is_array($value[0]['dimensions']) && empty($value[0]['dimensions'])) {
+                            $properties[$propertyName]['value'] = $value;
+                        } else {
+                            throw new DeferralException(
+                                sprintf(
+                                    'A value was not possible to resolve for property %s on %s and the property is not ' .
+                                    'recognized as having no dimensions, thus a cross-translation value could not be ' .
+                                    'resolved either. To remedy this problem you must configure dimensions appropriately ' .
+                                    'on object %s in PIM so it either contains valid dimensions or no dimensions at all.',
+                                    $propertyName,
+                                    $this->getEntityClassName(),
+                                    $object->getRemoteId()
+                                ),
+                                1527159905
+                            );
                         }
                     }
                 }
@@ -224,8 +256,9 @@ abstract class AbstractMapping implements MappingInterface
                 if ($propertyValue instanceof Error) {
                     // For whatever reason, property validators will return a validation error rather than throw an exception.
                     // We therefore need to check this, log the problem, and skip the property.
-                    $this->logProblem('Mapping error when mapping property ' . $propertyName . ' on ' . get_class($object) . ':' .  $object->getRemoteId() . ': ' . $propertyValue->getMessage());
-                    return;
+                    $message = 'Mapping error when mapping property ' . $propertyName . ' on ' . get_class($object) . ':' .  $object->getRemoteId() . ': ' . $propertyValue->getMessage();
+                    $this->logProblem($message);
+                    throw new DeferralException($message, 1527161230);
                 }
 
                 // Sanity filter: do not attempt to set Entity with setter if an instance is required but the value is null.
@@ -496,7 +529,7 @@ abstract class AbstractMapping implements MappingInterface
             if ($dimensionMapping->getLanguage() === 0) {
                 $defaultDimensionMapping = $dimensionMapping;
             } else {
-                $sysLanguageUids[] = $dimensionMapping->getLanguage();
+                $sysLanguageUids[] = (int)$dimensionMapping->getLanguage();
                 $translationDimensionMappings[] = $dimensionMapping;
             }
         }
@@ -505,10 +538,18 @@ abstract class AbstractMapping implements MappingInterface
             $object = $this->createObject($event);
         }
 
+        // Notice: if for some reason - say, if dimensions were not configured - the system contains no dimension which
+        // maps to the default language, then $defaultDimensionMapping will be null. Depending on whether or not the
+        // remote system has enabled dimensions, the mapping may cause errors (if PIM has dimensions but local system
+        // has not configured them, properties cannot map correctly).
         $this->mapPropertiesFromDataToObject($data, $object, $event->getModule(), $defaultDimensionMapping);
         $this->getObjectRepository()->update($object);
 
         if ($defaultDimensionMapping === null) {
+            // This return is in place for TYPO3 configurations that don't contain dimension mapping. If the PIM wants
+            // to deliver dimensions but none are configured, errors will most likely have been raised during mapping
+            // right before this case - but even in case the mapping actually succeeds with pure null values, we put
+            // a return here because there is no need to continue mapping dimensions to translations.
             return;
         }
 
@@ -527,7 +568,10 @@ abstract class AbstractMapping implements MappingInterface
             $this->getObjectRepository()->update($translationObject);
         }
 
-        $GLOBALS['TYPO3_DB']->exec_DELETEquery($this->getTableName(), 'sys_language_uid NOT IN (' . implode(', ', $sysLanguageUids) . ') AND l10n_parent = ' . $object->getUid());
+        if (!empty($sysLanguageUids)) {
+            // Necessary to check if UID list is empty, or SQL query will be invalid (containing IN () condition).
+            $GLOBALS['TYPO3_DB']->exec_DELETEquery($this->getTableName(), 'sys_language_uid NOT IN (' . implode(', ', $sysLanguageUids) . ') AND l10n_parent = ' . $object->getUid());
+        }
     }
 
     protected function logProblem($message)
