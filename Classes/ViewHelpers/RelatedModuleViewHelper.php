@@ -48,9 +48,6 @@ class RelatedModuleViewHelper extends AbstractViewHelper
             return '<span class="text-danger"><i class="icon fa fa-exclamation"></i> Not in response!</span>';
         }
 
-        // Not passing a dimension mapping to the response data reader is okay here - relations do not have dimensions.
-        $fieldValue = (new ResponseDataFieldValueReader())->readResponseDataField($response['result'][0], $field);
-
         $relatedModuleName = static::detectRelatedModule(
             $field,
             $module->getConnectorConfiguration()['fieldsToLoad'][$field],
@@ -58,9 +55,15 @@ class RelatedModuleViewHelper extends AbstractViewHelper
             $module->getModuleName()
         );
 
-
         if (!$relatedModuleName) {
             return '<i class="icon fa fa-check"></i> Not a relation';
+        }
+
+        try {
+            // Make an attempt with the FIRST configured dimension mapping enabled. The first entry SHOULD always be the default language.
+            $fieldValue = (new ResponseDataFieldValueReader())->readResponseDataField($response['result'][0], $field, $module->getServer()->getDimensionMappings()->current());
+        } catch (\RuntimeException $error) {
+            $fieldValue = $error->getMessage();
         }
 
         $relatedModule = static::getModuleByName($relatedModuleName);
