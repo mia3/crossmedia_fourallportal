@@ -6,6 +6,7 @@ use Crossmedia\Fourallportal\Domain\Model\Module;
 use Crossmedia\Fourallportal\Domain\Model\Server;
 use Crossmedia\Fourallportal\DynamicModel\DynamicModelGenerator;
 use Crossmedia\Fourallportal\DynamicModel\DynamicModelRegister;
+use Crossmedia\Fourallportal\Mapping\DeferralException;
 use Crossmedia\Fourallportal\Service\ApiClient;
 use TYPO3\CMS\Core\Locking\Exception\LockCreateException;
 use TYPO3\CMS\Core\Locking\FileLockStrategy;
@@ -647,6 +648,7 @@ class FourallportalCommandController extends CommandController
             try {
                 $this->lockSync();
             } catch (\Exception $error) {
+                $this->logProblem($error);
                 $this->response->setContent('Cannot acquire lock - exiting without error' . PHP_EOL);
                 $this->response->send();
                 return;
@@ -850,12 +852,25 @@ class FourallportalCommandController extends CommandController
             if ($updateEventId) {
                 $event->getModule()->setLastEventId(max($event->getEventId(), $event->getModule()->getLastEventId()));
             }
-        } catch (\InvalidArgumentException $error) {
+        } catch (DeferralException $error) {
             // The system was unable to map properties, most likely because of an unresolvable relation.
             // Skip the event for now; process it later.
-            $event->setStatus('deferred');
+            $skippedUntil = $event->getSkipUntil();
+            $ttl = (int)($GLOBALS['TYPO3_CONF_VARS']['EXT']['extConf']['fourallportal']['eventDeferralTTL'] ?? 86400);
+            $now = time();
+            if ($skippedUntil === 0) {
+                // Assign a TTL, after which if the event still causes a problem it gets marked as failed.
+                $skippedUntil = $now + $ttl;
+                $event->setSkipUntil($skippedUntil);
+                $event->setStatus('deferred');
+            } elseif ($skippedUntil < $now) {
+                // Event has been deferred too long and still causes an error. Mark it as failed (and reset the
+                // deferral TTL so that deferral is again allowed, should the event be retried via BE module).
+                $event->setSkipUntil(0);
+                $event->setStatus('failed');
+            }
             $event->setMessage($error->getMessage() . ' (code: ' . $error->getCode() . ')');
-        } catch(\Exception $exception) {
+        } catch (\Exception $exception) {
             $this->logProblem($exception);
             $event->setStatus('failed');
             $event->setMessage($exception->getMessage() . ' (code: ' . $exception->getCode() . ')' . $exception->getFile() . ':' . $exception->getLine());

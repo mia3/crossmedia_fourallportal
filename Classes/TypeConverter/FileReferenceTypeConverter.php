@@ -1,6 +1,7 @@
 <?php
 namespace Crossmedia\Fourallportal\TypeConverter;
 
+use Crossmedia\Fourallportal\Mapping\DeferralException;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Resource\FileRepository;
 use TYPO3\CMS\Core\Resource\ResourceFactory;
@@ -112,15 +113,16 @@ class FileReferenceTypeConverter extends AbstractUuidAwareObjectTypeConverter im
         // invalid or impossible to resolve - and an exception is thrown, causing the importing to be
         // resumed on next run which should then have imported the target file so we can point to it.
         $queryBuilder = (new ConnectionPool())->getConnectionForTable('sys_file')->createQueryBuilder();
-        $queryBuilder->getRestrictions()->removeAll();
         $original = $queryBuilder->select('f.uid')->from('sys_file', 'f')
             ->where($queryBuilder->expr()->eq('f.remote_id', $queryBuilder->quote($source)))
             ->setMaxResults(1)
             ->execute()
             ->fetchAll();
         if (!isset($original[0]['uid'])) {
-            return null;
-            //throw new \InvalidArgumentException('Unable to map ' . $this->propertyName . ' on ' . get_class($this->parentObject) . ': Asset ' . $source . ' does not appear to exist');
+            throw new DeferralException(
+                'Unable to map ' . $this->propertyName . ' on ' . get_class($this->parentObject) . ': Asset ' . $source . ' does not appear to exist (yet).',
+                1527167261
+            );
         }
 
         // File reference object needs to be created with the exact composition of this array. Not
@@ -135,7 +137,10 @@ class FileReferenceTypeConverter extends AbstractUuidAwareObjectTypeConverter im
         ]);
 
         if (!isset($reference)) {
-            throw new \InvalidArgumentException('A reference could not be resolved');
+            throw new DeferralException(
+                'Unable to map ' . $this->propertyName . ' on ' . get_class($this->parentObject) . ': Asset ' . $source . ' does not appear to exist (yet).',
+                1527167262
+            );
         }
 
         // New Extbase model FileReference instance is fitted with target and returned. The resulting

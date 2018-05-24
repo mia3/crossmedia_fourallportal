@@ -7,6 +7,7 @@ if (!isset($GLOBALS['TYPO3_CONF_VARS']['EXT']['extConf']['fourallportal'])) {
     $GLOBALS['TYPO3_CONF_VARS']['EXT']['extConf']['fourallportal'] = [
         'clientConnectTimeout' => 10,
         'clientTransferTimeout' => 60,
+        'eventDeferralTTL' => 86400,
     ];
 }
 

@@ -1,5 +1,8 @@
 # cat=basic/timeout/10; type=int; label=Client request timeout;Number of seconds the API client will wait for the remote server to respond. Zero means infinite wait.
 clientConnectTimeout = 10
 
-# cat=basic/timeout/10; type=int; label=Client transfer timeout;Number of seconds the API client will wait for the remote server to finish transferring data. Zero means infinite wait.
+# cat=basic/timeout/20; type=int; label=Client transfer timeout;Number of seconds the API client will wait for the remote server to finish transferring data. Zero means infinite wait.
 clientTransferTimeout = 60
+
+# cat=basic/timeout/30; type=int; label=TTL for deferred events;Duration in number of seconds through which deferred events will be retried - after this limit is reached, the event fails.
+eventDeferralTTL = 86400
