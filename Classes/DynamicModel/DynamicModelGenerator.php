@@ -650,13 +650,14 @@ TEMPLATE;
             $dataType = '\\' . ComplexType::class;
             $sqlType = 'int(11) default 0 NOT NULL';
             $tca = [
-                'type' => 'inline',
+                'type' => 'select',
                 'foreign_table' => 'tx_fourallportal_domain_model_complextype',
                 'foreign_field' => 'parent_uid',
-                'foreign_match_fields' => [
+                'size' => 1,
+                //'foreign_match_fields' => [
                 //    'table_name' => $tableNameParent,
-                    'field_name' => $fieldConfiguration['name'],
-                ],
+                //    'field_name' => $fieldConfiguration['name'],
+                //],
                 //'foreign_table_field' => 'table_name',
                 //'foreign_table_field' => $entityShortNameParent,
                 'maxitems' => 1
