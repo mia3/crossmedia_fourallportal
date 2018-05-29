@@ -242,7 +242,7 @@ abstract class AbstractMapping implements MappingInterface
         } elseif ($propertyValue !== null) {
             $sourceType = $propertyMapper->determineSourceType($propertyValue);
             if ($targetType !== $sourceType) {
-                if ($targetType === 'string' && $sourceType === 'array') {
+                if (trim($targetType, '?') === 'string' && $sourceType === 'array') {
                     $propertyValue = json_encode($propertyValue, JSON_HEX_QUOT | JSON_HEX_AMP | JSON_HEX_TAG);
                 } else {
                     $targetType = trim($targetType, '\\');
