@@ -652,8 +652,8 @@ TEMPLATE;
             $tca = [
                 'type' => 'select',
                 'foreign_table' => 'tx_fourallportal_domain_model_complextype',
-                'foreign_field' => 'parent_uid',
                 'size' => 1,
+                //'foreign_field' => 'parent_uid',
                 //'foreign_match_fields' => [
                 //    'table_name' => $tableNameParent,
                 //    'field_name' => $fieldConfiguration['name'],
