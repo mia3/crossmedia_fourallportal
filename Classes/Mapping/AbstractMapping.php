@@ -139,10 +139,11 @@ abstract class AbstractMapping implements MappingInterface
             if (($map[$importedName] ?? null) === false) {
                 continue;
             }
-            if (is_array($propertyValue[0] ?? false) && array_key_exists('dimensions', $propertyValue[0])) {
+            if (is_array($propertyValue[0] ?? false) && array_key_exists('dimensions', $propertyValue[0]) && !array_key_exists('value', $propertyValue)) {
                 // Data is provided with dimensions, was not re-assigned during dimension mapping above, indicating that
                 // either the PIM side has no dimensions (dimensions are NULL, not array, hence array_key_exists vs isset)
-                // or that the TYPO3 side has no dimensions configured. Either way, the value can be found in this property.
+                // or that the TYPO3 side has no dimensions configured.
+                // TODO: replace this with a behavior that will fall back to a given dimension. Perhaps remove if fallback matching gets added to DimensionMapping object instead.
                 $propertyValue = $propertyValue[0]['value'];
             } else {
                 $propertyValue = $propertyValue['value'];
