@@ -245,7 +245,7 @@ abstract class AbstractMapping implements MappingInterface
                 if (trim($targetType, '?') === 'string' && $sourceType === 'array') {
                     $propertyValue = json_encode($propertyValue, JSON_HEX_QUOT | JSON_HEX_AMP | JSON_HEX_TAG);
                 } else {
-                    $targetType = trim($targetType, '\\');
+                    $targetType = trim($targetType, '\\?');
                     $typeConverter = $propertyMapper->findTypeConverter($propertyValue, $targetType, $configuration);
                     if ($typeConverter instanceof PimBasedTypeConverterInterface) {
                         $typeConverter->setParentObjectAndProperty($object, $propertyName);
