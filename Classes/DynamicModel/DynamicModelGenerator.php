@@ -1075,12 +1075,14 @@ TEMPLATE;
             }
 
             $virtualArrayGetter = '';
-            if ($property['type'] === 'array') {
+            if ($variableType === 'array') {
                 // Arrays will be stored as strings and are, technically, strings in the model property,
                 // but will have a virtual getter method that returns a json_decode()'d value.
                 $virtualArrayGetter = $this->generateVirtualArrayGetter($propertyName, true);
                 $returnType = '?string';
                 $variableType = 'string';
+            } elseif ($variableType === 'string') {
+                $returnType = '?string';
             }
 
             $defaultValueExpression = ($property['default'] ?? null) === null ? 'null' : var_export($property['default'], true);
