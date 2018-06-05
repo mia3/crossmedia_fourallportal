@@ -875,6 +875,8 @@ class FourallportalCommandController extends CommandController
                 // deferral TTL so that deferral is again allowed, should the event be retried via BE module).
                 $event->setSkipUntil(0);
                 $event->setStatus('failed');
+            } else {
+                $event->setStatus('deferred');
             }
             $event->setMessage($error->getMessage() . ' (code: ' . $error->getCode() . ')');
         } catch (\Exception $exception) {
