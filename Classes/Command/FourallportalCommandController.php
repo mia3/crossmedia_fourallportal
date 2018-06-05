@@ -852,7 +852,10 @@ class FourallportalCommandController extends CommandController
             if ($mapper->import($responseData, $event)) {
                 // This method returns TRUE if any property caused problems that were also logged. When this
                 // happens, throw a deferral exception and let the catch statement below handle deferral.
-                throw new DeferralException('Property mapping problems occurred - the object was partially mapped and will be retried', 1528129226);
+                throw new DeferralException(
+                    'Property mapping problems occurred and have been logged - the object was partially mapped and will be retried',
+                    1528129226
+                );
             }
             $event->setStatus('claimed');
             $event->setMessage('Successfully executed - no additional output available');

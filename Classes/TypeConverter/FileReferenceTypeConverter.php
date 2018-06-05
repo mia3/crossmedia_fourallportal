@@ -120,7 +120,8 @@ class FileReferenceTypeConverter extends AbstractUuidAwareObjectTypeConverter im
             ->fetchAll();
         if (!isset($original[0]['uid'])) {
             throw new DeferralException(
-                'Unable to map ' . $this->propertyName . ' on ' . get_class($this->parentObject) . ': Asset ' . $source . ' does not appear to exist (yet).',
+                'Unable to map ' . $this->propertyName . ' on ' . get_class($this->parentObject) . ':' . $this->parentObject->getRemoteId() .
+                ' - Asset ' . $source . ' does not appear to exist (yet).',
                 1527167261
             );
         }
@@ -138,7 +139,8 @@ class FileReferenceTypeConverter extends AbstractUuidAwareObjectTypeConverter im
 
         if (!isset($reference)) {
             throw new DeferralException(
-                'Unable to map ' . $this->propertyName . ' on ' . get_class($this->parentObject) . ': Asset ' . $source . ' does not appear to exist (yet).',
+                'Unable to map ' . $this->propertyName . ' on ' . get_class($this->parentObject) . ':' . $this->parentObject->getRemoteId() .
+                ' - Asset ' . $source . ' does not appear to exist (yet).',
                 1527167262
             );
         }
