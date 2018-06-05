@@ -89,6 +89,28 @@ class DimensionMapping extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
         $this->dimensions = $dimensions;
     }
 
+    /**
+     * Returns $this if the current object is the default dimension;
+     * or behaves as an emulated 1:1 relation to a default language.
+     *
+     * @return DimensionMapping
+     */
+    public function getDefaultDimensionMapping(): DimensionMapping
+    {
+        if ($this->language === 0) {
+            return $this;
+        }
+
+        foreach ($this->server->getDimensionMappings() as $dimensionMapping) {
+            if ($dimensionMapping->getLanguage() === 0) {
+                return $dimensionMapping;
+            }
+        }
+
+        // TODO: throw a deferral if the resolved value is null
+        return null;
+    }
+
     public function matches($dimensions) {
         foreach ($this->dimensions as $dimension) {
             if (!isset($dimensions[$dimension->getName()])) {

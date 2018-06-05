@@ -14,23 +14,34 @@ class ResponseDataFieldValueReader
             && is_array($result['properties'][$fieldName][0]['dimensions'] ?? false)
         ) {
             if ($dimensionMapping !== null) {
+                if (empty($result['properties'][$fieldName][0]['dimensions'])) {
+                    // This is a dimension capable response, but the dimensions are empty; return the value since it applies to
+                    // every possible translation.
+                    return $result['properties'][$fieldName][0]['value'];
+                }
+
+                // Look for a value in dimensions specific to this dimension mapping.
                 foreach ($result['properties'][$fieldName] as $dimensionObject) {
                     if ($dimensionMapping->matches($dimensionObject['dimensions'])) {
                         return $dimensionObject['value'];
                     }
                 }
+
+                // Look for a value in the default language dimension. If one exists there, use it as fallback value.
+                $defaultDimension = $dimensionMapping->getDefaultDimensionMapping();
+                foreach ($result['properties'][$fieldName] as $dimensionObject) {
+                    if ($defaultDimension->matches($dimensionObject['dimensions'])) {
+                        return $dimensionObject['value'];
+                    }
+                }
             }
-            if (empty($result['properties'][$fieldName][0]['dimensions'])) {
-                // This is a dimension capable response, but the dimensions are empty; return the value since it applies to
-                // every possible translation.
-                return $result['properties'][$fieldName][0]['value'];
-            }
+
             throw new PropertyNotAccessibleException(
                 'Cannot read property ' . $fieldName . ' from PIM response. ' .
                 (
                     $dimensionMapping === null
-                        ? 'Dimension mapping is NOT in effect but property contains dimensions'
-                        : 'Dimension mapping is in effect but no dimensions match the language being imported'
+                        ? 'Dimension mapping is NOT in effect but property contains dimensions.'
+                        : 'Dimension mapping is in effect but no dimensions match the language being imported and the default/fallback dimension data is not included.'
                 ),
                 1527168391
             );
