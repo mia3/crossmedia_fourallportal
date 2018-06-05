@@ -1,16 +1,13 @@
 <?php
 namespace Crossmedia\Fourallportal\TypeConverter;
 
-use Crossmedia\Fourallportal\DynamicModel\DynamicModelGenerator;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\DomainObject\AbstractEntity;
 use TYPO3\CMS\Extbase\Object\ObjectManager;
-use TYPO3\CMS\Extbase\Persistence\Generic\PersistenceManager;
 use TYPO3\CMS\Extbase\Persistence\RepositoryInterface;
 use TYPO3\CMS\Extbase\Property\PropertyMappingConfigurationInterface;
 use TYPO3\CMS\Extbase\Property\TypeConverter\AbstractTypeConverter;
 use TYPO3\CMS\Extbase\Property\TypeConverterInterface;
-use TYPO3\CMS\Extbase\Reflection\ObjectAccess;
 
 abstract class AbstractUuidAwareObjectTypeConverter extends AbstractTypeConverter implements TypeConverterInterface, PimBasedTypeConverterInterface
 {
@@ -64,32 +61,7 @@ abstract class AbstractUuidAwareObjectTypeConverter extends AbstractTypeConverte
         if ($fromRemoteId) {
             return $fromRemoteId;
         }
-
-        $candidate = $repository->findByUid((integer) $source);
-        if (!$candidate && preg_match('/[a-z0-9]{8}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{8}/', $source)) {
-            // Automatically create objects absolutely only if the ID is a proper UUID.
-            // It may happen that the relation is merely the title of an object (which cannot be associated
-            // since, for example, it isn't published). In this case we ignore the automatic creation.
-            $candidate = $this->autoCreateObject($repository, $source);
-        }
-        return $candidate;
-    }
-
-    /**
-     * @param RepositoryInterface $repository
-     * @param string $remoteId
-     * @return AbstractEntity
-     */
-    protected function autoCreateObject($repository, $remoteId)
-    {
-        // In all likelihood, desynced queue events which contain a reference that hasn't yet been created.
-        // We create it now, and persist it, to make sure it is fetchable even though it hasn't technically been created (property-filled from API) yet.
-        $class = $this->getSupportedTargetType();
-        $candidate = new $class();
-        ObjectAccess::setProperty($candidate, 'remoteId', $remoteId);
-        $repository->add($candidate);
-        GeneralUtility::makeInstance(ObjectManager::class)->get(PersistenceManager::class)->persistAll();
-        return $candidate;
+        return $repository->findByUid((integer) $source);
     }
 
     /**
