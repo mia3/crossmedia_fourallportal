@@ -6,6 +6,7 @@ use Crossmedia\Fourallportal\Domain\Model\Event;
 use Crossmedia\Fourallportal\Domain\Model\Module;
 use Crossmedia\Fourallportal\Service\ApiClient;
 use Crossmedia\Fourallportal\TypeConverter\PimBasedTypeConverterInterface;
+use Crossmedia\Fourallportal\ValueReader\ResponseDataFieldValueReader;
 use TYPO3\CMS\Core\Log\LogManager;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Domain\Model\FileReference;
@@ -19,6 +20,7 @@ use TYPO3\CMS\Extbase\Persistence\RepositoryInterface;
 use TYPO3\CMS\Extbase\Property\PropertyMappingConfiguration;
 use TYPO3\CMS\Extbase\Property\TypeConverter\DateTimeConverter;
 use TYPO3\CMS\Extbase\Property\TypeConverter\PersistentObjectConverter;
+use TYPO3\CMS\Extbase\Reflection\Exception\PropertyNotAccessibleException;
 use TYPO3\CMS\Extbase\Reflection\MethodReflection;
 use TYPO3\CMS\Extbase\Reflection\ObjectAccess;
 use TYPO3\CMS\Extbase\Reflection\PropertyReflection;
@@ -95,71 +97,26 @@ abstract class AbstractMapping implements MappingInterface
         }
         $map = MappingRegister::resolvePropertyMapForMapper(static::class);
         $properties = $data['result'][0]['properties'];
-        $properties = $this->addMissingNullProperties($properties, $module);
-        if ($dimensionMapping !== null) {
-            foreach ($properties as $propertyName => $value) {
-                $valueIsSelected = false;
-                if (is_array($value) && isset($value[0]) && is_array($value[0]) && array_key_exists('dimensions', $value[0]) && is_array($value[0]['dimensions'])) {
-                    // Matching a dimension means iterating over the array inside $value, each one being a definition of
-                    // a value and a collection of dimensions that the value applies to. In order to match the right one
-                    // we iterate and check $dimensionMapping->matches with ALL of the dimensions in a certain set. If
-                    // any one of those does not match, we do not use the value.
-                    foreach ($value as $dimensionObject) {
-                        if ($dimensionMapping->matches($dimensionObject['dimensions'])) {
-                            $properties[$propertyName]['value'] = $dimensionObject['value'];
-                            $valueIsSelected = true;
-                            break;
-                        }
-
-                    }
-                    if (!$valueIsSelected) {
-                        // We were not able to select a value using normal matching of dimensions. Check the value if it
-                        // matches the very specific case of 1) being an array which 2) has exactly one entry that 3) has
-                        // a key named "value" and 5) has a key named "dimensions" which 6) is an array that 7) is empty.
-                        // Then, and only then, will we read the value and consider it "applies to all translated objects".
-                        // I know what you're thinking.
-                        // It is what it is.
-                        if (is_array($value) && count($value) === 1 && isset($value[0]) && is_array($value[0]) && array_key_exists('value', $value[0]) && array_key_exists('dimensions', $value[0]) && is_array($value[0]['dimensions']) && empty($value[0]['dimensions'])) {
-                            $properties[$propertyName]['value'] = $value;
-                        } else {
-                            throw new DeferralException(
-                                sprintf(
-                                    'A value was not possible to resolve for property %s on %s and the property is not ' .
-                                    'recognized as having no dimensions, thus a cross-translation value could not be ' .
-                                    'resolved either. To remedy this problem you must configure dimensions appropriately ' .
-                                    'on object %s in PIM so it either contains valid dimensions or no dimensions at all.',
-                                    $propertyName,
-                                    $this->getEntityClassName(),
-                                    $object->getRemoteId()
-                                ),
-                                1527159905
-                            );
-                        }
-                    }
-                }
-            }
-        }
+        $responseValueReader = new ResponseDataFieldValueReader();
         $properties = $this->addMissingNullProperties($properties, $module);
         $mappingProblemsOccurred = false;
         foreach ($properties as $importedName => $propertyValue) {
             if (($map[$importedName] ?? null) === false) {
                 continue;
             }
-            if (is_array($propertyValue[0] ?? false) && array_key_exists('dimensions', $propertyValue[0]) && !array_key_exists('value', $propertyValue)) {
-                // Data is provided with dimensions, was not re-assigned during dimension mapping above, indicating that
-                // either the PIM side has no dimensions (dimensions are NULL, not array, hence array_key_exists vs isset)
-                // or that the TYPO3 side has no dimensions configured.
-                // TODO: replace this with a behavior that will fall back to a given dimension. Perhaps remove if fallback matching gets added to DimensionMapping object instead.
-                $propertyValue = $propertyValue[0]['value'];
-            } else {
-                $propertyValue = $propertyValue['value'];
-            }
-            $customSetter = MappingRegister::resolvePropertyValueSetter(static::class, $importedName);
-            if ($customSetter) {
-                $customSetter->setValueOnObject($propertyValue, $importedName, $data, $object, $module, $this);
-            } else {
-                $targetPropertyName = isset($map[$importedName]) ? $map[$importedName] : GeneralUtility::underscoredToLowerCamelCase($importedName);
-                $this->mapPropertyValueToObject($targetPropertyName, $propertyValue, $object);
+            try {
+                $propertyValue = $responseValueReader->readResponseDataField($data['result'][0], $importedName, $dimensionMapping);
+                $customSetter = MappingRegister::resolvePropertyValueSetter(static::class, $importedName);
+                if ($customSetter) {
+                    $customSetter->setValueOnObject($propertyValue, $importedName, $data, $object, $module, $this);
+                } else {
+                    $targetPropertyName = isset($map[$importedName]) ? $map[$importedName] : GeneralUtility::underscoredToLowerCamelCase($importedName);
+                    $propertyMappingProblemsOccurred = $this->mapPropertyValueToObject($targetPropertyName, $propertyValue, $object);
+                    $mappingProblemsOccurred = $mappingProblemsOccurred ?: $propertyMappingProblemsOccurred;
+                }
+            } catch (PropertyNotAccessibleException $error) {
+                $this->logProblem($error->getMessage());
+                $mappingProblemsOccurred = true;
             }
         }
         return $mappingProblemsOccurred;
