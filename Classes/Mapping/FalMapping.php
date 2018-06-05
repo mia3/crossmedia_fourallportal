@@ -10,9 +10,7 @@ use Crossmedia\Fourallportal\Service\ApiClient;
 use Crossmedia\Fourallportal\ValueReader\ResponseDataFieldValueReader;
 use TYPO3\CMS\Core\Charset\CharsetConverter;
 use TYPO3\CMS\Core\Database\ConnectionPool;
-use TYPO3\CMS\Core\Resource\Driver\AbstractHierarchicalFilesystemDriver;
 use TYPO3\CMS\Core\Resource\Driver\LocalDriver;
-use TYPO3\CMS\Core\Resource\DuplicationBehavior;
 use TYPO3\CMS\Core\Resource\Exception\ExistingTargetFileNameException;
 use TYPO3\CMS\Core\Resource\Exception\FolderDoesNotExistException;
 use TYPO3\CMS\Core\Resource\Exception\InvalidFileNameException;
@@ -46,6 +44,7 @@ class FalMapping extends AbstractMapping
     /**
      * @param array $data
      * @param Event $event
+     * @return bool
      */
     public function import(array $data, Event $event)
     {
@@ -70,6 +69,13 @@ class FalMapping extends AbstractMapping
                     // push back event.
                     return;
                 }
+
+                // Do reference checking because references to sys_file are extremely prone to throwing exceptions if
+                // a file is suddenly removed. The repository does not complain about such cases so we check it here.
+                // Failures (as in: references that block deletion) cause a DeferralException which cases the event to
+                // be continuously retried until it either fails because of TTL, or references are removed.
+                $this->performSanityCheckBeforeDeletion($record);
+
                 $object->delete();
                 $repository->remove($object);
                 break;
@@ -87,6 +93,105 @@ class FalMapping extends AbstractMapping
         if ($object) {
             $this->processRelationships($object, $data, $event);
         }
+
+        return $deferAfterProcessing;
+    }
+
+    /**
+     * @param File $file
+     * @param array $record
+     * @param Module $module
+     * @throws DeferralException
+     */
+    protected function performSanityCheckBeforeDeletion(array $record)
+    {
+        $queryBuilder = (new ConnectionPool())->getConnectionForTable('sys_file_reference')->createQueryBuilder();
+        $query = $queryBuilder->select('*')
+            ->from('sys_file_reference')
+            ->where('uid_local = :fileUid AND deleted = 0')
+            ->setParameter('fileUid', $record['uid']);
+        $existingReferences = $query->execute()->fetchAll();
+
+        list ($referringRecords, $referringObjects) = $this->collectTablesAndRecordsWithRelationsToFileReferences($existingReferences);
+
+        if (!empty($referringRecords)) {
+            // Records, possibly also PIM-synced objects, are still referring to one or more references to this file.
+            // Cowardly refuse to delete it, but defer the event so it will be retried.
+            $exceptionMessage = 'The following records refer to the file and prevent deleting it: ' . implode(', ', $referringRecords) . '.';
+            if (!empty($referringObjects)) {
+                $exceptionMessage .= ' The following PIM objects still refer to the image and also prevent deletion: ' . implode(', ', $referringObjects) . '.';
+            }
+            throw new DeferralException($exceptionMessage, 1528123767);
+        }
+    }
+
+    protected function collectTablesAndRecordsWithRelationsToFileReferences(array $existingReferences): array
+    {
+        $referenceUids = array_column($existingReferences, 'uid');
+        $originalUids = array_column($existingReferences, 'uid_local');
+        $targetTables = [];
+        $references = [];
+        $referringObjects = [];
+        foreach ($GLOBALS['TCA'] as $table => $config) {
+            if ($table === 'sys_file_metadata' || $table === 'sys_file_reference' || $table === 'sys_file') {
+                // We will silently ignore the file related tables themselves
+                continue;
+            }
+            $collectedFieldNames = [];
+            foreach ($config['columns'] as $columnName => $columnConfiguration) {
+                if ($columnConfiguration['config']['type'] !== 'select' && $columnConfiguration['config']['type'] !== 'group' && $columnConfiguration['config']['type'] !== 'inline') {
+                    continue;
+                }
+                if ($columnConfiguration['config']['type'] === 'group' && strpos($columnConfiguration['config']['allowed'], 'sys_file') === false) {
+                    continue;
+                }
+                $foreignTable = $columnConfiguration['config']['foreign_table'] ?? $columnConfiguration['config']['allowed'] ?? '';
+                if ($foreignTable === 'sys_file_reference' || $foreignTable === 'sys_file' || strpos($foreignTable, 'sys_file') !== false) {
+                    $collectedFieldNames[] = $columnName;
+                    $targetTables[$table][$columnName] = $foreignTable;
+                }
+            }
+
+            $selectColumns = $collectedFieldNames;
+            $selectColumns[] = 'uid';
+            if (isset($config['remote_id'])) {
+                $selectColumns[] = 'remote_id';
+            }
+
+            if (empty($collectedFieldNames)) {
+                continue;
+            }
+
+            $queryBuilder = (new ConnectionPool())->getConnectionForTable($table)->createQueryBuilder();
+            foreach ($queryBuilder->select(...$selectColumns)->from($table)->execute()->fetchAll() as $record) {
+                foreach ($collectedFieldNames as $fieldName) {
+                    $referredValues = [];
+                    if ($config['columns'][$fieldName]['config']['type'] === 'select' || $config['columns'][$fieldName]['config']['type'] === 'group') {
+                        if (!isset($config['columns'][$fieldName]['config']['foreign_field'])) {
+                            $referredValues = array_filter(GeneralUtility::trimExplode(',', $record[$fieldName]));
+                        }
+                    }
+                    foreach ($existingReferences as $existingReference) {
+                        if (
+                            $table === $existingReference['tablenames']
+                            && $existingReference['fieldname'] === $fieldName
+                            && (int)$existingReference['uid_foreign'] === (int)$record['uid']
+                        ) {
+                            $referredValues[] = $existingReference['uid'];
+                        }
+                    }
+                    foreach ($referredValues as $referredValue) {
+                        if (in_array((int)$referredValue, $targetTables[$table][$fieldName] === 'sys_file' ? $originalUids : $referenceUids)) {
+                            $references[] = $table . ':' . $record['uid'] . ':' . $fieldName;
+                            if (isset($record['remote_id'])) {
+                                $referringObjects[] = $table . ':' . $record['remote_id'] . ':' . $fieldName;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return [$references, $referringObjects];
     }
 
     /**
