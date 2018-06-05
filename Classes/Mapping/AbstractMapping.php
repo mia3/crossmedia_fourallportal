@@ -144,7 +144,7 @@ abstract class AbstractMapping implements MappingInterface
             $this->persist();
         }
 
-        if ($propertyValue === null && !reset((new \ReflectionMethod(get_class($object), 'set' . ucfirst($propertyName)))->getParameters())->allowsNull()) {
+        if ($propertyValue === null && reset((new \ReflectionMethod(get_class($object), 'set' . ucfirst($propertyName)))->getParameters())->allowsNull()) {
             ObjectAccess::setProperty($object, $propertyName, null);
             return false;
         }
