@@ -117,6 +117,9 @@ abstract class AbstractMapping implements MappingInterface
             } catch (PropertyNotAccessibleException $error) {
                 $this->logProblem($error->getMessage());
                 $mappingProblemsOccurred = true;
+            } catch (DeferralException $error) {
+                $this->logProblem($error->getMessage());
+                $mappingProblemsOccurred = true;
             }
         }
         return $mappingProblemsOccurred;
