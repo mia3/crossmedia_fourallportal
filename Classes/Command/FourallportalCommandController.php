@@ -865,20 +865,20 @@ class FourallportalCommandController extends CommandController
             $skippedUntil = $event->getSkipUntil();
             $ttl = (int)($GLOBALS['TYPO3_CONF_VARS']['EXT']['extConf']['fourallportal']['eventDeferralTTL'] ?? 86400);
             $now = time();
+            $event->setMessage($error->getMessage() . ' (code: ' . $error->getCode() . ')');
+            $event->setStatus('deferred');
             if ($skippedUntil === 0) {
                 // Assign a TTL, after which if the event still causes a problem it gets marked as failed.
                 $skippedUntil = $now + $ttl;
                 $event->setSkipUntil($skippedUntil);
-                $event->setStatus('deferred');
             } elseif ($skippedUntil < $now) {
                 // Event has been deferred too long and still causes an error. Mark it as failed (and reset the
                 // deferral TTL so that deferral is again allowed, should the event be retried via BE module).
                 $event->setSkipUntil(0);
                 $event->setStatus('failed');
             } else {
-                $event->setStatus('deferred');
+                $event->setSkipUntil(0);
             }
-            $event->setMessage($error->getMessage() . ' (code: ' . $error->getCode() . ')');
         } catch (\Exception $exception) {
             $this->logProblem($exception);
             $event->setStatus('failed');
