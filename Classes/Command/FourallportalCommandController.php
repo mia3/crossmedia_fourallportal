@@ -843,15 +843,19 @@ class FourallportalCommandController extends CommandController
                     $responseData = ['result' => [$event->getBeanData()]];
                 }
             }
-            $mapper->import($responseData, $event);
-            $event->setStatus('claimed');
-            $event->setMessage('Successfully executed - no additional output available');
             // Update the Module's last recorded event ID, but only if the event ID was higher. This allows
             // deferred events to execute without lowering the last recorded event ID which would cause
             // duplicate event processing on the next run.
             if ($updateEventId) {
                 $event->getModule()->setLastEventId(max($event->getEventId(), $event->getModule()->getLastEventId()));
             }
+            if ($mapper->import($responseData, $event)) {
+                // This method returns TRUE if any property caused problems that were also logged. When this
+                // happens, throw a deferral exception and let the catch statement below handle deferral.
+                throw new DeferralException('Property mapping problems occurred - the object was partially mapped and will be retried', 1528129226);
+            }
+            $event->setStatus('claimed');
+            $event->setMessage('Successfully executed - no additional output available');
         } catch (DeferralException $error) {
             // The system was unable to map properties, most likely because of an unresolvable relation.
             // Skip the event for now; process it later.

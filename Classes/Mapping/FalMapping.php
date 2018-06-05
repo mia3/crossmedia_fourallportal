@@ -51,6 +51,7 @@ class FalMapping extends AbstractMapping
     {
         $repository = $this->getObjectRepository();
         $objectId = $event->getObjectId();
+        /** @var File|null $object */
         $object = null;
 
         // We have to do things the hard way, unfortunately. Because someone didn't implement a real Repository but declared the class a Repository anyway. Sigh.
@@ -61,20 +62,21 @@ class FalMapping extends AbstractMapping
             $object = $repository->findByUid($record['uid']);
         }
 
+        $deferAfterProcessing = false;
+
         switch ($event->getEventType()) {
             case 'delete':
                 if (!$object) {
                     // push back event.
                     return;
                 }
-                /** @var File $object */
                 $object->delete();
                 $repository->remove($object);
                 break;
             case 'update':
             case 'create':
                 $object = $this->downloadFileAndGetFileObject($objectId, $data, $event);
-                $this->mapPropertiesFromDataToObject($data, $object, $event->getModule());
+                $deferAfterProcessing = $this->mapPropertiesFromDataToObject($data, $object, $event->getModule());
                 break;
             default:
                 throw new \RuntimeException('Unknown event type: ' . $event->getEventType());
@@ -92,11 +94,11 @@ class FalMapping extends AbstractMapping
      * @param \TYPO3\CMS\Extbase\DomainObject\AbstractEntity $object
      * @param Module $module
      * @param DimensionMapping|null $dimensionMapping
-     * @return AbstractEntity
+     * @return bool
      */
     protected function mapPropertiesFromDataToObject(array $data, $object, Module $module, DimensionMapping $dimensionMapping = null)
     {
-        parent::mapPropertiesFromDataToObject($data, $object, $module, $dimensionMapping);
+        $deferAfterProcessing = parent::mapPropertiesFromDataToObject($data, $object, $module, $dimensionMapping);
         $metadata = [];
         $map = MappingRegister::resolvePropertyMapForMapper(static::class);
         $fieldValueReader = new ResponseDataFieldValueReader();
@@ -114,7 +116,7 @@ class FalMapping extends AbstractMapping
             $metadataRepository = $this->getMetaDataRepository();
             $metadataRepository->update($object->getUid(), $metadata);
         }
-        return $object;
+        return $deferAfterProcessing;
     }
 
     /**

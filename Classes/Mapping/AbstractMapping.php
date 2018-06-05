@@ -34,6 +34,7 @@ abstract class AbstractMapping implements MappingInterface
     /**
      * @param array $data
      * @param Event $event
+     * @return bool
      */
     public function import(array $data, Event $event)
     {
@@ -43,6 +44,7 @@ abstract class AbstractMapping implements MappingInterface
         $query->getQuerySettings()->setRespectStoragePage(false);
         $query->matching($query->equals('remoteId', $objectId));
         $object = $query->execute()->current();
+        $deferAfterProcessing = false;
 
         switch ($event->getEventType()) {
             case 'delete':
@@ -56,7 +58,7 @@ abstract class AbstractMapping implements MappingInterface
                 break;
             case 'update':
             case 'create':
-                $this->importObjectWithDimensionMappings($data, $object, $event);
+                $deferAfterProcessing = $this->importObjectWithDimensionMappings($data, $object, $event);
                 break;
             default:
                 throw new \RuntimeException('Unknown event type: ' . $event->getEventType());
@@ -65,6 +67,8 @@ abstract class AbstractMapping implements MappingInterface
         if (isset($object)) {
             $this->processRelationships($object, $data, $event);
         }
+
+        return $deferAfterProcessing;
     }
 
     protected function removeObject(DomainObjectInterface $object)
@@ -82,11 +86,12 @@ abstract class AbstractMapping implements MappingInterface
      * @param AbstractEntity $object
      * @param Module $module
      * @param DimensionMapping|null $dimensionMapping
+     * @return bool
      */
     protected function mapPropertiesFromDataToObject(array $data, $object, Module $module, DimensionMapping $dimensionMapping = null)
     {
         if (!$data['result']) {
-            return;
+            return true;
         }
         $map = MappingRegister::resolvePropertyMapForMapper(static::class);
         $properties = $data['result'][0]['properties'];
@@ -135,6 +140,7 @@ abstract class AbstractMapping implements MappingInterface
             }
         }
         $properties = $this->addMissingNullProperties($properties, $module);
+        $mappingProblemsOccurred = false;
         foreach ($properties as $importedName => $propertyValue) {
             if (($map[$importedName] ?? null) === false) {
                 continue;
@@ -156,17 +162,19 @@ abstract class AbstractMapping implements MappingInterface
                 $this->mapPropertyValueToObject($targetPropertyName, $propertyValue, $object);
             }
         }
+        return $mappingProblemsOccurred;
     }
 
     /**
      * @param string $propertyName
      * @param mixed $propertyValue
      * @param AbstractEntity $object
+     * @return bool
      */
     protected function mapPropertyValueToObject($propertyName, $propertyValue, $object)
     {
         if (!property_exists(get_class($object), $propertyName)) {
-            return;
+            return false;
         }
         $currentPropertyValue = ObjectAccess::getProperty($object, $propertyName);
         // We need to check if the current value is an instance of the special FileReference proxy, which if it is, needs
@@ -181,7 +189,7 @@ abstract class AbstractMapping implements MappingInterface
 
         if ($propertyValue === null && !reset((new \ReflectionMethod(get_class($object), 'set' . ucfirst($propertyName)))->getParameters())->allowsNull()) {
             ObjectAccess::setProperty($object, $propertyName, null);
-            return;
+            return false;
         }
         $configuration = new PropertyMappingConfiguration();
 
@@ -228,11 +236,12 @@ abstract class AbstractMapping implements MappingInterface
                     // For whatever reason, property validators will return a validation error rather than throw an exception.
                     // We therefore need to check this, log the problem, and skip the property.
                     $this->logProblem('Mapping error when mapping property ' . $propertyName . ' on ' . get_class($object) . ':' .  $object->getRemoteId() . ': ' . $child->getMessage());
-                    continue;
+                    $child = null;
                 }
 
                 if (!$child) {
                     $this->logProblem('Child of type ' . $childType . ' identified by ' . $identifier . ' not found when mapping property ' . $propertyName . ' on ' . get_class($object) . ':' .  $object->getRemoteId());
+                    $mappingProblemsOccurred = true;
                     continue;
                 }
                 if (!$objectStorage->contains($child)) {
@@ -258,14 +267,15 @@ abstract class AbstractMapping implements MappingInterface
                     // For whatever reason, property validators will return a validation error rather than throw an exception.
                     // We therefore need to check this, log the problem, and skip the property.
                     $message = 'Mapping error when mapping property ' . $propertyName . ' on ' . get_class($object) . ':' .  $object->getRemoteId() . ': ' . $propertyValue->getMessage();
+                    $mappingProblemsOccurred = true;
                     $this->logProblem($message);
-                    throw new DeferralException($message, 1527161230);
+                    $propertyValue = null;
                 }
 
                 // Sanity filter: do not attempt to set Entity with setter if an instance is required but the value is null.
                 if ((new \ReflectionMethod(get_class($object), 'set' . ucfirst($propertyName)))->getNumberOfRequiredParameters() === 1) {
                     if (is_null($propertyValue) && is_a($targetType, AbstractEntity::class, true)) {
-                        return;
+                        return false;
                     }
                 }
             }
@@ -282,6 +292,8 @@ abstract class AbstractMapping implements MappingInterface
         }
 
         ObjectAccess::setProperty($setOnObject, $lastPropertyName, $propertyValue);
+
+        return $mappingProblemsOccurred;
     }
 
     /**
@@ -522,6 +534,7 @@ abstract class AbstractMapping implements MappingInterface
     protected function importObjectWithDimensionMappings(array $data, $object, Event $event)
     {
         $dimensionMappings = $event->getModule()->getServer()->getDimensionMappings();
+        $mappingProblemsOccurred = false;
 
         $sysLanguageUids = [];
         $defaultDimensionMapping = null;
@@ -543,15 +556,16 @@ abstract class AbstractMapping implements MappingInterface
         // maps to the default language, then $defaultDimensionMapping will be null. Depending on whether or not the
         // remote system has enabled dimensions, the mapping may cause errors (if PIM has dimensions but local system
         // has not configured them, properties cannot map correctly).
-        $this->mapPropertiesFromDataToObject($data, $object, $event->getModule(), $defaultDimensionMapping);
+        $rootObjectMappingProblemsOccurred = $this->mapPropertiesFromDataToObject($data, $object, $event->getModule(), $defaultDimensionMapping);
         $this->getObjectRepository()->update($object);
+        $mappingProblemsOccurred = $mappingProblemsOccurred ?: $rootObjectMappingProblemsOccurred;
 
         if ($defaultDimensionMapping === null) {
             // This return is in place for TYPO3 configurations that don't contain dimension mapping. If the PIM wants
             // to deliver dimensions but none are configured, errors will most likely have been raised during mapping
             // right before this case - but even in case the mapping actually succeeds with pure null values, we put
             // a return here because there is no need to continue mapping dimensions to translations.
-            return;
+            return $mappingProblemsOccurred;
         }
 
         $dataMapper = GeneralUtility::makeInstance(DataMapper::class);
@@ -565,7 +579,8 @@ abstract class AbstractMapping implements MappingInterface
             }
             $translationObject->_setProperty('_languageUid', $translationDimensionMapping->getLanguage());
             $translationObject->setL10nParent($object);
-            $this->mapPropertiesFromDataToObject($data, $translationObject, $event->getModule(), $translationDimensionMapping);
+            $objectMappingProblemsOccurred = $this->mapPropertiesFromDataToObject($data, $translationObject, $event->getModule(), $translationDimensionMapping);
+            $mappingProblemsOccurred = $mappingProblemsOccurred ?: $objectMappingProblemsOccurred;
             $this->getObjectRepository()->update($translationObject);
         }
 
@@ -573,6 +588,7 @@ abstract class AbstractMapping implements MappingInterface
             // Necessary to check if UID list is empty, or SQL query will be invalid (containing IN () condition).
             $GLOBALS['TYPO3_DB']->exec_DELETEquery($this->getTableName(), 'sys_language_uid NOT IN (' . implode(', ', $sysLanguageUids) . ') AND l10n_parent = ' . $object->getUid());
         }
+        return $mappingProblemsOccurred;
     }
 
     protected function logProblem($message)
