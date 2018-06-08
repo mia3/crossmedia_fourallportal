@@ -99,6 +99,7 @@ class ComplexTypeConverter extends AbstractUuidAwareObjectTypeConverter implemen
         $templateComplexType->setActualValue($source['value']);
         $templateComplexType->setFieldName($originalFieldName);
         $templateComplexType->setParentUid($this->parentObject->getUid());
+        $templateComplexType->setLabel($source['unit']);
 
         return $templateComplexType;
     }
