@@ -178,34 +178,37 @@ abstract class AbstractMapping implements MappingInterface
                 // must manually perform such removals in an override for this method, *BEFORE* calling the original method.
                 if ($item instanceof FileReference) {
                     $this->removeObject($item);
-                    $this->persist();
                 }
             }
 
-            foreach ((array) $propertyValue as $identifier) {
-                if (!$identifier) {
-                    continue;
-                }
-                $typeConverter = $propertyMapper->findTypeConverter($identifier, $childType, $configuration);
-                if ($typeConverter instanceof PimBasedTypeConverterInterface) {
-                    $typeConverter->setParentObjectAndProperty($object, $propertyName);
-                }
-                $child = $typeConverter->convertFrom($identifier, $childType, [], $configuration);
+            $this->persist();
 
-                if ($child instanceof Error) {
-                    // For whatever reason, property validators will return a validation error rather than throw an exception.
-                    // We therefore need to check this, log the problem, and skip the property.
-                    $this->logProblem('Mapping error when mapping property ' . $propertyName . ' on ' . get_class($object) . ':' .  $object->getRemoteId() . ': ' . $child->getMessage());
-                    $child = null;
-                }
+            if (!empty($propertyValue)) {
+                foreach ((array) $propertyValue as $identifier) {
+                    if (!$identifier) {
+                        continue;
+                    }
+                    $typeConverter = $propertyMapper->findTypeConverter($identifier, $childType, $configuration);
+                    if ($typeConverter instanceof PimBasedTypeConverterInterface) {
+                        $typeConverter->setParentObjectAndProperty($object, $propertyName);
+                    }
+                    $child = $typeConverter->convertFrom($identifier, $childType, [], $configuration);
 
-                if (!$child) {
-                    $this->logProblem('Child of type ' . $childType . ' identified by ' . $identifier . ' not found when mapping property ' . $propertyName . ' on ' . get_class($object) . ':' .  $object->getRemoteId());
-                    $mappingProblemsOccurred = true;
-                    continue;
-                }
-                if (!$objectStorage->contains($child)) {
-                    $objectStorage->attach($child);
+                    if ($child instanceof Error) {
+                        // For whatever reason, property validators will return a validation error rather than throw an exception.
+                        // We therefore need to check this, log the problem, and skip the property.
+                        $this->logProblem('Mapping error when mapping property ' . $propertyName . ' on ' . get_class($object) . ':' .  $object->getRemoteId() . ': ' . $child->getMessage());
+                        $child = null;
+                    }
+
+                    if (!$child) {
+                        $this->logProblem('Child of type ' . $childType . ' identified by ' . $identifier . ' not found when mapping property ' . $propertyName . ' on ' . get_class($object) . ':' .  $object->getRemoteId());
+                        $mappingProblemsOccurred = true;
+                        continue;
+                    }
+                    if (!$objectStorage->contains($child)) {
+                        $objectStorage->attach($child);
+                    }
                 }
             }
             $propertyValue = $objectStorage;
@@ -396,6 +399,11 @@ abstract class AbstractMapping implements MappingInterface
     protected function addMissingNullProperties($properties, Module $module)
     {
         $moduleConfiguration = $module->getModuleConfiguration();
+        foreach ($moduleConfiguration['relation_conf'] as $field) {
+            if (!isset($properties[$field['name']])) {
+                $properties[$field['name']]['value'] = null;
+            }
+        }
         foreach ($moduleConfiguration['field_conf'] as $field) {
             if (!isset($properties[$field['name']])) {
                 $value = '';
