@@ -625,10 +625,10 @@ class FourallportalCommandController extends CommandController
             foreach ($eventQuery->execute() as $event) {
                 $event->setStatus('pending');
                 $this->eventRepository->update($event);
+                $this->objectManager->get(PersistenceManagerInterface::class)->persistAll();
+                $this->processEvent($event);
             }
         }
-        $this->objectManager->get(PersistenceManagerInterface::class)->persistAll();
-        $this->processAllPendingAndDeferredEvents(false);
         $this->unlockSync();
     }
 
