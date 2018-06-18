@@ -242,6 +242,16 @@ abstract class AbstractMapping implements MappingInterface
                     }
                 }
             }
+        } elseif ($propertyValue === null && !reset((new \ReflectionMethod(get_class($object), 'set' . ucfirst($propertyName)))->getParameters())->allowsNull()) {
+            $this->logProblem(
+                sprintf(
+                    'Property "%s" on object "%s->%s" does not allow NULL as value, but NULL was resolved. Please verify PIM response data consistency!',
+                    get_class($object),
+                    $propertyName,
+                    method_exists($object, 'getRemoteId') ? $object->getRemoteId() : $object->getUid()
+                )
+            );
+            return true;
         }
 
         $setOnObject = $object;
