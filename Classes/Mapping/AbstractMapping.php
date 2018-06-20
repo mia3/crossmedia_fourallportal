@@ -197,12 +197,19 @@ abstract class AbstractMapping implements MappingInterface
                     if ($child instanceof Error) {
                         // For whatever reason, property validators will return a validation error rather than throw an exception.
                         // We therefore need to check this, log the problem, and skip the property.
-                        $this->logProblem('Mapping error when mapping property ' . $propertyName . ' on ' . get_class($object) . ':' .  $object->getRemoteId() . ': ' . $child->getMessage());
+                        $this->logProblem(
+                            'Mapping error when mapping property ' . $propertyName . ' on ' . get_class($object) . ':' .  $object->getRemoteId() .
+                            ' in language UID ' . ObjectAccess::getProperty($object, '_languageUid', true) . ': ' . $child->getMessage()
+                        );
                         $child = null;
                     }
 
                     if (!$child) {
-                        $this->logProblem('Child of type ' . $childType . ' identified by ' . $identifier . ' not found when mapping property ' . $propertyName . ' on ' . get_class($object) . ':' .  $object->getRemoteId());
+                        $this->logProblem(
+                            'Child of type ' . $childType . ' identified by ' . $identifier . ' not found when mapping property ' .
+                            $propertyName . ' on ' . get_class($object) . ':' .  $object->getRemoteId() . ' in language UID ' .
+                            ObjectAccess::getProperty($object, '_languageUid', true)
+                        );
                         $mappingProblemsOccurred = true;
                         continue;
                     }
@@ -508,6 +515,7 @@ abstract class AbstractMapping implements MappingInterface
      * @param $object
      * @param Event $event
      * @throws \Exception
+     * @return bool
      */
     protected function importObjectWithDimensionMappings(array $data, $object, Event $event)
     {
