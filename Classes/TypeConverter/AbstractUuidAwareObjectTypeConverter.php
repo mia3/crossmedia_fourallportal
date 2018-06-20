@@ -4,10 +4,12 @@ namespace Crossmedia\Fourallportal\TypeConverter;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\DomainObject\AbstractEntity;
 use TYPO3\CMS\Extbase\Object\ObjectManager;
+use TYPO3\CMS\Extbase\Persistence\Generic\Mapper\DataMapper;
 use TYPO3\CMS\Extbase\Persistence\RepositoryInterface;
 use TYPO3\CMS\Extbase\Property\PropertyMappingConfigurationInterface;
 use TYPO3\CMS\Extbase\Property\TypeConverter\AbstractTypeConverter;
 use TYPO3\CMS\Extbase\Property\TypeConverterInterface;
+use TYPO3\CMS\Extbase\Reflection\ObjectAccess;
 
 abstract class AbstractUuidAwareObjectTypeConverter extends AbstractTypeConverter implements TypeConverterInterface, PimBasedTypeConverterInterface
 {
@@ -57,11 +59,28 @@ abstract class AbstractUuidAwareObjectTypeConverter extends AbstractTypeConverte
     public function convertFrom($source, $targetType, array $convertedChildProperties = [], PropertyMappingConfigurationInterface $configuration = null)
     {
         $repository = $this->getRepository();
-        $fromRemoteId = $repository->findOneByRemoteId($source);
-        if ($fromRemoteId) {
-            return $fromRemoteId;
+        if (is_numeric($source)) {
+            $existingRecordUid = (int)$source;
+        } else {
+            $languageUidOfParent = (int)ObjectAccess::getProperty($this->parent, '_languageUid', true);
+            $table = $this->getTableName($targetType);
+            $existingRow = $GLOBALS['TYPO3_DB']->exec_SELECTgetSingleRow(
+                'uid',
+                $table,
+                'sys_language_uid = ' . $languageUidOfParent .
+                ' AND remote_id = ' . $GLOBALS['TYPO3_DB']->fullQuoteStr($source, $table)
+            );
+            $existingRecordUid = $existingRow['uid'] ?? false;
         }
-        return $repository->findByUid((integer) $source);
+        if ($existingRecordUid) {
+            return $repository->findByUid($existingRecordUid);
+        }
+        return null;
+    }
+
+    protected function getTableName(string $targetType) {
+
+        return GeneralUtility::makeInstance(DataMapper::class)->getDataMap($targetType)->getTableName();
     }
 
     /**
