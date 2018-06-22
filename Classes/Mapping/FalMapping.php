@@ -21,9 +21,9 @@ use TYPO3\CMS\Core\Resource\Index\MetaDataRepository;
 use TYPO3\CMS\Core\Resource\StorageRepository;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Domain\Model\FileReference;
-use TYPO3\CMS\Extbase\DomainObject\AbstractEntity;
 use TYPO3\CMS\Extbase\Object\ObjectManager;
 use TYPO3\CMS\Extbase\Persistence\Generic\PersistenceManager;
+use TYPO3\CMS\Extbase\Reflection\Exception\PropertyNotAccessibleException;
 use TYPO3\CMS\Extbase\Reflection\ObjectAccess;
 
 class FalMapping extends AbstractMapping
@@ -234,8 +234,27 @@ class FalMapping extends AbstractMapping
     {
         $dimensionMapping = $event->getModule()->getServer()->getDimensionMappings()->current();
         $fieldValueReader = new ResponseDataFieldValueReader();
-        $originalFileName = $fieldValueReader->readResponseDataField($data['result'][0], 'data_name', $dimensionMapping);
-        $targetFilename = $this->sanitizeFileName($originalFileName);
+
+        $originalFullFileName = $fieldValueReader->readResponseDataField($data['result'][0], 'data_name', $dimensionMapping);
+
+        $originalFileExtension = pathinfo($originalFullFileName, PATHINFO_EXTENSION);
+        $originalFileName = pathinfo($originalFullFileName, PATHINFO_FILENAME);
+
+        try {
+            $finalFileName = $fieldValueReader->readResponseDataField($data['result'][0], 'bm_typo3_title', $dimensionMapping);
+        } catch (PropertyNotAccessibleException $error) {
+            $finalFileName = null;
+        }
+
+        try {
+            $finalFileExtension = $fieldValueReader->readResponseDataField($data['result'][0], 'bm_derivatsformat', $dimensionMapping);
+        } catch (PropertyNotAccessibleException $error) {
+            $finalFileExtension = null;
+        }
+
+        $targetFilename = ($finalFileName ?? $originalFileName) . '.' . ($finalFileExtension ?? $originalFileExtension);
+        $targetFilename = $this->sanitizeFileName($targetFilename);
+
         $tempPathAndFilename = GeneralUtility::tempnam('mamfal', $targetFilename);
 
         $trimShellPath = $event->getModule()->getShellPath();
@@ -253,12 +272,6 @@ class FalMapping extends AbstractMapping
 
         $download = !empty($targetFolder . $targetFilename);
         $file = null;
-
-        $finalFileName = $fieldValueReader->readResponseDataField($data['result'][0], 'bm_typo3_title', $dimensionMapping);
-        $finalFileExtension = $fieldValueReader->readResponseDataField($data['result'][0], 'bm_derivatsformat', $dimensionMapping);
-        if (!empty($finalFileName) && !empty($finalFileExtension)) {
-            $targetFilename =  $finalFileName . '.' . $finalFileExtension;
-        }
 
         $queryBuilder = (new ConnectionPool())->getConnectionForTable('sys_file')->createQueryBuilder();
         $query = $queryBuilder->select('*')
