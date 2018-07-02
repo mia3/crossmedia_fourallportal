@@ -9,9 +9,6 @@ use Crossmedia\Fourallportal\DynamicModel\DynamicModelRegister;
 use Crossmedia\Fourallportal\Mapping\DeferralException;
 use Crossmedia\Fourallportal\Service\ApiClient;
 use TYPO3\CMS\Core\Locking\Exception\LockCreateException;
-use TYPO3\CMS\Core\Locking\FileLockStrategy;
-use TYPO3\CMS\Core\Locking\LockFactory;
-use TYPO3\CMS\Core\Locking\LockingStrategyInterface;
 use TYPO3\CMS\Core\Log\LogManager;
 use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
@@ -771,15 +768,22 @@ class FourallportalCommandController extends CommandController
 
         // CD 5/12/17 Disabled: causes responses for full set of entries to be logged in database.
         //$this->collectPreloadDataForObjectsInEvents(array_merge_recursive($pending, $deferred));
+        $processedObjectIds = [];
 
         // Handle new, pending events first, which may cause some to be deferred:
         foreach ($pending as $event) {
             $this->processEvent($event, $updateEventId);
+            $processedObjectIds[$event->getModule()->getModuleName()][$event->getObjectId()] = true;
         }
 
         // Then handle any events that were deferred - which may cause some to be deferred again:
         foreach ($deferred as $event) {
-            $this->processEvent($event, $updateEventId);
+            if ($processedObjectIds[$event->getModule()->getModuleName()][$event->getObjectId()] ?? false) {
+                // An event was previously deferred, but a new event arrived which was processed. Remove the old event.
+                $this->eventRepository->remove($event);
+            } else {
+                $this->processEvent($event, $updateEventId);
+            }
         }
 
         $this->objectManager->get(PersistenceManagerInterface::class)->persistAll();
