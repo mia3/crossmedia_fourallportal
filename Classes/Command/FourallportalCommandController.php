@@ -576,10 +576,12 @@ class FourallportalCommandController extends CommandController
      * Unlock sync
      *
      * Removes a (stale) lock.
+     *
+     * @param int $requiredAge Number of seconds, required minimum age of the lock file before removal will be allowed.
      */
-    public function unlockCommand()
+    public function unlockCommand($requiredAge = 0)
     {
-        $this->unlockSync();
+        $this->unlockSync($requiredAge);
     }
 
     /**
@@ -945,12 +947,27 @@ class FourallportalCommandController extends CommandController
      * NB: Cannot use TYPO3 LockFactory here, will not consistently create locks
      * on docker setups.
      *
+     * @param int $requiredAge Number of seconds, required minimum age of the lock file before removal will be allowed.
      * @return bool
      */
-    protected function unlockSync()
+    protected function unlockSync($requiredAge = 0)
     {
         $lockFile = $this->getLockFilePath();
-        return file_exists($lockFile) && unlink($lockFile);
+        if (!file_exists($lockFile)) {
+            return false;
+        }
+        $age = time() - filemtime($lockFile);
+        if ($age >= $requiredAge) {
+            return unlink($lockFile);
+        }
+        $this->response->setContent(
+            sprintf(
+                'Lock file was not removed; it is younger than the required age for removal. %d seconds too young.',
+                $requiredAge - $age
+            )
+        );
+        $this->response->send();
+        return false;
     }
 
     protected function getLockFilePath()
