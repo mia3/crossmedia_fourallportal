@@ -783,7 +783,7 @@ class FourallportalCommandController extends CommandController
             if ($processedObjectIds[$event->getModule()->getModuleName()][$event->getObjectId()] ?? false) {
                 // An event was previously deferred, but a new event arrived which was processed. Remove the old event.
                 $this->eventRepository->remove($event);
-            } else {
+            } elseif ($event->getNextRetry() < time()) {
                 $this->processEvent($event, $updateEventId);
             }
         }
@@ -863,6 +863,7 @@ class FourallportalCommandController extends CommandController
                     1528129226
                 );
             }
+            $event->setRetries(0);
             $event->setStatus('claimed');
             $event->setMessage('Successfully executed - no additional output available');
         } catch (DeferralException $error) {
@@ -873,6 +874,12 @@ class FourallportalCommandController extends CommandController
             $now = time();
             $event->setMessage($error->getMessage() . ' (code: ' . $error->getCode() . ')');
             $event->setStatus('deferred');
+            $event->setRetries((int)$event->getRetries() + 1);
+            // Next retry time: current time plus, plus number of retries times half an hour, plus/minus 600 seconds to
+            // stagger event execution and prevent the bulk from executing at the same time if many deferrals happen
+            // during a full sync. So, deferral waiting time increases incrementally from no less than 20 minutes to
+            // around 10 hours maximum.
+            $event->setNextRetry($now + ((min($event->getRetries(), 20)) * 1800) + rand(-600, 600));
             if ($skippedUntil === 0) {
                 // Assign a TTL, after which if the event still causes a problem it gets marked as failed.
                 $skippedUntil = $now + $ttl;
@@ -881,13 +888,13 @@ class FourallportalCommandController extends CommandController
                 // Event has been deferred too long and still causes an error. Mark it as failed (and reset the
                 // deferral TTL so that deferral is again allowed, should the event be retried via BE module).
                 $event->setSkipUntil(0);
+                $event->setRetries(0);
                 $event->setStatus('failed');
-            } else {
-                $event->setSkipUntil(0);
             }
         } catch (\Exception $exception) {
             $this->logProblem($exception);
             $event->setStatus('failed');
+            $event->setRetries(0);
             $event->setMessage($exception->getMessage() . ' (code: ' . $exception->getCode() . ')' . $exception->getFile() . ':' . $exception->getLine());
             if ($updateEventId) {
                 $event->getModule()->setLastEventId(max($event->getEventId(), $event->getModule()->getLastEventId()));

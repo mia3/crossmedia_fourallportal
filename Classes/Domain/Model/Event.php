@@ -46,6 +46,20 @@ class Event extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
     protected $skipUntil = 0;
 
     /**
+     * nextRetry
+     *
+     * @var int
+     */
+    protected $nextRetry = 0;
+
+    /**
+     * retries
+     *
+     * @var int
+     */
+    protected $retries = 0;
+
+    /**
      * objectId
      *
      * @var string
@@ -166,6 +180,38 @@ class Event extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
     public function getSkipUntil()
     {
         return $this->skipUntil;
+    }
+
+    /**
+     * @return int
+     */
+    public function getRetries()
+    {
+        return $this->retries;
+    }
+
+    /**
+     * @param int $retries
+     */
+    public function setRetries($retries)
+    {
+        $this->retries = $retries;
+    }
+
+    /**
+     * @return int
+     */
+    public function getNextRetry()
+    {
+        return $this->nextRetry;
+    }
+
+    /**
+     * @param int $nextRetry
+     */
+    public function setNextRetry($nextRetry)
+    {
+        $this->nextRetry = $nextRetry;
     }
 
     /**

@@ -99,6 +99,8 @@ CREATE TABLE tx_fourallportal_domain_model_event (
 	event_type varchar(255) DEFAULT '' NOT NULL,
 	status varchar(255) DEFAULT '' NOT NULL,
 	skip_until int(11) DEFAULT '0' NOT NULL,
+	next_retry int(11) DEFAULT '0' NOT NULL,
+	retries int(11) DEFAULT '0' NOT NULL,
 	object_id varchar(255) DEFAULT '' NOT NULL,
 	module int(11) unsigned DEFAULT '0',
 

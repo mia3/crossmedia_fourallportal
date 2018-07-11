@@ -14,10 +14,10 @@ return [
         'iconfile' => 'EXT:fourallportal/Resources/Public/Icons/tx_fourallportal_domain_model_event.gif'
     ],
     'interface' => [
-        'showRecordFieldList' => 'event_id, event_type, status, skip_until, object_id, module',
+        'showRecordFieldList' => 'event_id, event_type, status, skip_until, retries, object_id, module',
     ],
     'types' => [
-        '1' => ['showitem' => 'event_id, event_type, status, skip_until, object_id, module'],
+        '1' => ['showitem' => 'event_id, event_type, status, skip_until, retries, object_id, module'],
     ],
     'columns' => [
 
@@ -98,6 +98,24 @@ return [
         'skip_until' => [
             'exclude' => true,
             'label' => 'LLL:EXT:fourallportal/Resources/Private/Language/locallang_db.xlf:tx_fourallportal_domain_model_event.skip_until',
+            'config' => [
+                'type' => 'input',
+                'size' => 4,
+                'eval' => 'int'
+            ]
+        ],
+        'next_retry' => [
+            'exclude' => true,
+            'label' => 'LLL:EXT:fourallportal/Resources/Private/Language/locallang_db.xlf:tx_fourallportal_domain_model_event.next_retry',
+            'config' => [
+                'type' => 'input',
+                'size' => 4,
+                'eval' => 'int'
+            ]
+        ],
+        'retries' => [
+            'exclude' => true,
+            'label' => 'LLL:EXT:fourallportal/Resources/Private/Language/locallang_db.xlf:tx_fourallportal_domain_model_event.retries',
             'config' => [
                 'type' => 'input',
                 'size' => 4,

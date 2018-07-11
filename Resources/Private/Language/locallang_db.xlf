@@ -81,6 +81,12 @@
 			<trans-unit id="tx_fourallportal_domain_model_event.skip_until">
 				<source>Skip Until</source>
 			</trans-unit>
+			<trans-unit id="tx_fourallportal_domain_model_event.next_retry">
+				<source>Next retry</source>
+			</trans-unit>
+			<trans-unit id="tx_fourallportal_domain_model_event.retries">
+				<source>Retries</source>
+			</trans-unit>
 			<trans-unit id="tx_fourallportal_domain_model_event.object_id">
 				<source>Object Id</source>
 			</trans-unit>
