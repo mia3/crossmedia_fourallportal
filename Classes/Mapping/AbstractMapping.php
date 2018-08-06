@@ -563,6 +563,7 @@ abstract class AbstractMapping implements MappingInterface
             } else {
                 $translationObject = $this->createObject($event, $existingRow);
             }
+            $translationObject->_setProperty('_localizedUid', $object->getUid());
             $translationObject->_setProperty('_languageUid', $translationDimensionMapping->getLanguage());
             $translationObject->setL10nParent($object);
             $objectMappingProblemsOccurred = $this->mapPropertiesFromDataToObject($data, $translationObject, $event->getModule(), $translationDimensionMapping);
