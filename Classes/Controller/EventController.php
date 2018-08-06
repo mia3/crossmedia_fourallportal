@@ -119,6 +119,8 @@ class EventController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionController
     public function resetAction($event)
     {
         $event->setStatus('pending');
+        $event->setNextRetry(0);
+        $event->setRetries(0);
         $this->eventRepository->update($event);
         #$this->objectManager->get(PersistenceManager::class)->persistAll());
         $this->redirect('index', null, null, ['status' => 'pending']);
