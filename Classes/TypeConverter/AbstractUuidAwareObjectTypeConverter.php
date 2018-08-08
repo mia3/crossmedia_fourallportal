@@ -59,12 +59,10 @@ abstract class AbstractUuidAwareObjectTypeConverter extends AbstractTypeConverte
      */
     public function convertFrom($source, $targetType, array $convertedChildProperties = [], PropertyMappingConfigurationInterface $configuration = null)
     {
-        $languageUidOfParent = (int)$this->parent->_getProperty('_languageUid');
         if (is_numeric($source)) {
             $existingRecordUid = (int)$source;
         } else {
             $table = $this->getTableName($targetType);
-            $languageUidOfParent = (int)ObjectAccess::getProperty($this->parent, '_languageUid', true);
             $existingRow = $GLOBALS['TYPO3_DB']->exec_SELECTgetSingleRow(
                 'uid',
                 $table,
@@ -73,16 +71,16 @@ abstract class AbstractUuidAwareObjectTypeConverter extends AbstractTypeConverte
             $existingRecordUid = $existingRow['uid'] ?? false;
         }
         if ($existingRecordUid) {
-            return $this->getObjectByUidUnrestricted((int)$existingRecordUid, (int) $languageUidOfParent);
+            return $this->getObjectByUidUnrestricted((int)$existingRecordUid);
         }
         return null;
     }
 
-    protected function getObjectByUidUnrestricted(int $uid, int $languageUid): DomainObjectInterface
+    protected function getObjectByUidUnrestricted(int $uid): DomainObjectInterface
     {
         $query = $this->getRepository()->createQuery();
-        $query->getQuerySettings()->setLanguageMode('strict');
-        $query->getQuerySettings()->setLanguageUid($languageUid);
+        //$query->getQuerySettings()->setLanguageMode('strict');
+        //$query->getQuerySettings()->setLanguageUid($languageUid);
         $query->getQuerySettings()->setRespectStoragePage(false);
         $query->getQuerySettings()->setIncludeDeleted(true);
         $query->getQuerySettings()->setIgnoreEnableFields(true);

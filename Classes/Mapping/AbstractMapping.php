@@ -162,7 +162,6 @@ abstract class AbstractMapping implements MappingInterface
         $configuration->setTypeConverterOption(PersistentObjectConverter::class, PersistentObjectConverter::CONFIGURATION_MODIFICATION_ALLOWED, true);
         $configuration->setTypeConverterOption(DateTimeConverter::class, DateTimeConverter::CONFIGURATION_DATE_FORMAT, 'Y#m#d\\TH#i#s+');
 
-
         $propertyMapper = $this->getAccessiblePropertyMapper();
         $targetType = $this->determineDataTypeForProperty($propertyName, $object);
         if (strpos($targetType, '<')) {
