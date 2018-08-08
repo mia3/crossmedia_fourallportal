@@ -76,7 +76,7 @@ abstract class AbstractUuidAwareObjectTypeConverter extends AbstractTypeConverte
         return null;
     }
 
-    protected function getObjectByUidUnrestricted(int $uid): DomainObjectInterface
+    protected function getObjectByUidUnrestricted(int $uid)
     {
         $query = $this->getRepository()->createQuery();
         //$query->getQuerySettings()->setLanguageMode('strict');
