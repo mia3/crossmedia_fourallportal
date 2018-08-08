@@ -496,9 +496,9 @@ abstract class AbstractMapping implements MappingInterface
                 'l10n_parent' => $languageParentUid,
                 'crdate' => time(),
             ];
-            $recordUid = $GLOBALS['TYPO3_DB']->exec_INSERTquery($this->getTableName(), $newRecordValues) ? $GLOBALS['TYPO3_DB']->sql_insert_id() : 0;
+            $GLOBALS['TYPO3_DB']->exec_INSERTquery($this->getTableName(), $newRecordValues);
+            $recordUid = $languageParentUid ?: $GLOBALS['TYPO3_DB']->sql_insert_id();
         }
-        $recordUid = $languageParentUid ?: $recordUid;
 
         $entityClassName = $event->getModule()->getMapper()->getEntityClassName();
         $session = GeneralUtility::makeInstance(ObjectManager::class)->get(Session::class);
