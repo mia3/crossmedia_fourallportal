@@ -3,6 +3,7 @@ namespace Crossmedia\Fourallportal\TypeConverter;
 
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\DomainObject\AbstractEntity;
+use TYPO3\CMS\Extbase\DomainObject\DomainObjectInterface;
 use TYPO3\CMS\Extbase\Object\ObjectManager;
 use TYPO3\CMS\Extbase\Persistence\Generic\Mapper\DataMapper;
 use TYPO3\CMS\Extbase\Persistence\RepositoryInterface;
@@ -58,24 +59,36 @@ abstract class AbstractUuidAwareObjectTypeConverter extends AbstractTypeConverte
      */
     public function convertFrom($source, $targetType, array $convertedChildProperties = [], PropertyMappingConfigurationInterface $configuration = null)
     {
-        $repository = $this->getRepository();
+        $languageUidOfParent = (int)$this->parent->_getProperty('_languageUid');
         if (is_numeric($source)) {
             $existingRecordUid = (int)$source;
         } else {
-            $languageUidOfParent = (int)ObjectAccess::getProperty($this->parent, '_languageUid', true);
             $table = $this->getTableName($targetType);
+            $languageUidOfParent = (int)ObjectAccess::getProperty($this->parent, '_languageUid', true);
             $existingRow = $GLOBALS['TYPO3_DB']->exec_SELECTgetSingleRow(
                 'uid',
                 $table,
-                'sys_language_uid = ' . $languageUidOfParent .
-                ' AND remote_id = ' . $GLOBALS['TYPO3_DB']->fullQuoteStr($source, $table)
+                'remote_id = ' . $GLOBALS['TYPO3_DB']->fullQuoteStr($source, $table)
             );
             $existingRecordUid = $existingRow['uid'] ?? false;
         }
         if ($existingRecordUid) {
-            return $repository->findByUid($existingRecordUid);
+            return $this->getObjectByUidUnrestricted((int)$existingRecordUid, (int) $languageUidOfParent);
         }
         return null;
+    }
+
+    protected function getObjectByUidUnrestricted(int $uid, int $languageUid): DomainObjectInterface
+    {
+        $query = $this->getRepository()->createQuery();
+        $query->getQuerySettings()->setLanguageMode('strict');
+        $query->getQuerySettings()->setLanguageUid($languageUid);
+        $query->getQuerySettings()->setRespectStoragePage(false);
+        $query->getQuerySettings()->setIncludeDeleted(true);
+        $query->getQuerySettings()->setIgnoreEnableFields(true);
+        //$query->getQuerySettings()->setRespectSysLanguage(false);
+        $query->matching($query->equals('uid', $uid));
+        return $query->execute()->getFirst();
     }
 
     protected function getTableName(string $targetType) {

@@ -13,8 +13,8 @@ use TYPO3\CMS\Extbase\Domain\Model\FileReference;
 use TYPO3\CMS\Extbase\DomainObject\AbstractEntity;
 use TYPO3\CMS\Extbase\DomainObject\DomainObjectInterface;
 use TYPO3\CMS\Extbase\Object\ObjectManager;
-use TYPO3\CMS\Extbase\Persistence\Generic\Mapper\DataMapper;
 use TYPO3\CMS\Extbase\Persistence\Generic\PersistenceManager;
+use TYPO3\CMS\Extbase\Persistence\Generic\Session;
 use TYPO3\CMS\Extbase\Persistence\ObjectStorage;
 use TYPO3\CMS\Extbase\Persistence\RepositoryInterface;
 use TYPO3\CMS\Extbase\Property\PropertyMappingConfiguration;
@@ -25,6 +25,8 @@ use TYPO3\CMS\Extbase\Reflection\MethodReflection;
 use TYPO3\CMS\Extbase\Reflection\ObjectAccess;
 use TYPO3\CMS\Extbase\Reflection\PropertyReflection;
 use TYPO3\CMS\Extbase\Validation\Error;
+use TYPO3\CMS\Frontend\Controller\TypoScriptFrontendController;
+use TYPO3\CMS\Frontend\Page\PageRepository;
 
 abstract class AbstractMapping implements MappingInterface
 {
@@ -40,10 +42,12 @@ abstract class AbstractMapping implements MappingInterface
      */
     public function import(array $data, Event $event)
     {
-        $repository = $this->getObjectRepository();
         $objectId = $event->getObjectId();
+        $repository = $this->getObjectRepository();
         $query = $repository->createQuery();
         $query->getQuerySettings()->setRespectStoragePage(false);
+        $query->getQuerySettings()->setRespectSysLanguage(false);
+        $query->getQuerySettings()->setIgnoreEnableFields(true);
         $query->matching($query->equals('remoteId', $objectId));
         $object = $query->execute()->current();
         $deferAfterProcessing = false;
@@ -477,21 +481,47 @@ abstract class AbstractMapping implements MappingInterface
 
     /**
      * @param Event $event
+     * @param int $systemLanguage
+     * @param int $languageParentUid
      * @param null $existingRow
      * @return mixed
      */
-    protected function createObject(Event $event, $existingRow = null)
+    protected function createObject(Event $event, int $systemLanguage = 0, int $languageParentUid = 0, $existingRow = null)
     {
-        $class = $this->getEntityClassName();
-        $object = new $class();
-        ObjectAccess::setProperty($object, 'remoteId', $event->getObjectId());
-        ObjectAccess::setProperty($object, 'pid', $event->getModule()->getStoragePid());
-        if (isset($existingRow['uid'])) {
-            ObjectAccess::setProperty($object, 'uid', $existingRow['uid']);
+        $recordUid = (int)($existingRow['l10n_parent'] ?? false) ?: ($existingRow['uid'] ?? false) ?: 0;
+        if ($recordUid === 0) {
+            $newRecordValues = [
+                'pid' => $event->getModule()->getStoragePid(),
+                'sys_language_uid' => $systemLanguage,
+                'l10n_parent' => $languageParentUid,
+                'crdate' => time(),
+            ];
+            $recordUid = $GLOBALS['TYPO3_DB']->exec_INSERTquery($this->getTableName(), $newRecordValues) ? $GLOBALS['TYPO3_DB']->sql_insert_id() : 0;
         }
-        $this->getObjectRepository()->add($object);
-        $this->persist();
-        return $object;
+        $recordUid = $languageParentUid ?: $recordUid;
+
+        $entityClassName = $event->getModule()->getMapper()->getEntityClassName();
+        $session = GeneralUtility::makeInstance(ObjectManager::class)->get(Session::class);
+        if ($session->hasIdentifier($recordUid, $entityClassName)) {
+            $recordedObject = $session->getObjectByIdentifier($recordUid, $entityClassName);
+            if ((int)$recordedObject->_getProperty('_languageUid') === $systemLanguage) {
+                return $recordedObject;
+            }
+            $session->unregisterObject($recordedObject);
+            $session->unregisterReconstitutedEntity($recordedObject);
+        }
+
+        $query = $this->getObjectRepository()->createQuery();
+        $query->getQuerySettings()
+            ->setRespectSysLanguage(false)
+            ->setIncludeDeleted(true)
+            ->setIgnoreEnableFields(true)
+            ->setRespectStoragePage(false)
+            ->setLanguageUid($systemLanguage)
+            ->setLanguageMode('strict');
+            //->setLanguageOverlayMode('hideNonTranslated');
+
+        return $query->matching($query->equals('uid', $recordUid))->execute()->getFirst();
     }
 
     /**
@@ -519,6 +549,12 @@ abstract class AbstractMapping implements MappingInterface
      */
     protected function importObjectWithDimensionMappings(array $data, $object, Event $event)
     {
+        $GLOBALS['TSFE'] = new TypoScriptFrontendController($GLOBALS['TYPO3_CONF_VARS'], $event->getModule()->getStoragePid(), 0);
+        $GLOBALS['TSFE']->sys_page = new PageRepository();
+        $GLOBALS['TSFE']->getPageAndRootline();
+        $GLOBALS['TSFE']->config['sys_language_uid'] = 0;
+        $GLOBALS['TSFE']->settingLanguage();
+
         $dimensionMappings = $event->getModule()->getServer()->getDimensionMappings();
         $mappingProblemsOccurred = false;
 
@@ -536,6 +572,8 @@ abstract class AbstractMapping implements MappingInterface
 
         if (!$object) {
             $object = $this->createObject($event);
+            $object->setRemoteId($event->getObjectId());
+            $this->persist();
         }
 
         // Notice: if for some reason - say, if dimensions were not configured - the system contains no dimension which
@@ -551,30 +589,33 @@ abstract class AbstractMapping implements MappingInterface
             // to deliver dimensions but none are configured, errors will most likely have been raised during mapping
             // right before this case - but even in case the mapping actually succeeds with pure null values, we put
             // a return here because there is no need to continue mapping dimensions to translations.
+            $this->persist();
             return $mappingProblemsOccurred;
         }
 
-        $dataMapper = GeneralUtility::makeInstance(DataMapper::class);
         foreach ($translationDimensionMappings as $translationDimensionMapping) {
-            $existingRow = $GLOBALS['TYPO3_DB']->exec_SELECTgetSingleRow('*', $this->getTableName(), 'sys_language_uid = ' . $translationDimensionMapping->getLanguage() . ' AND l10n_parent = ' . $object->getUid());
-            if (is_array($existingRow)) {
-                $translationObjects = $dataMapper->map($this->getEntityClassName(), [$existingRow]);
-                $translationObject = current($translationObjects);
-            } else {
-                $translationObject = $this->createObject($event, $existingRow);
-            }
-            $translationObject->_setProperty('_localizedUid', $object->getUid());
-            $translationObject->_setProperty('_languageUid', $translationDimensionMapping->getLanguage());
-            $translationObject->setL10nParent($object);
+
+            $this->persist();
+
+            $languageUid = $translationDimensionMapping->getLanguage();
+
+            $GLOBALS['TSFE']->config['sys_language_uid'] = $languageUid;
+            $GLOBALS['TSFE']->settingLanguage();
+
+            $existingRow = $GLOBALS['TYPO3_DB']->exec_SELECTgetSingleRow(
+                'uid,l10n_parent,sys_language_uid',
+                $this->getTableName(),
+                'sys_language_uid = ' . $languageUid . ' AND l10n_parent = ' . $object->getUid()
+            );
+
+            $translationObject = $this->createObject($event, $languageUid, $object->getUid(), $existingRow);
             $objectMappingProblemsOccurred = $this->mapPropertiesFromDataToObject($data, $translationObject, $event->getModule(), $translationDimensionMapping);
             $mappingProblemsOccurred = $mappingProblemsOccurred ?: $objectMappingProblemsOccurred;
             $this->getObjectRepository()->update($translationObject);
         }
 
-        if (!empty($sysLanguageUids)) {
-            // Necessary to check if UID list is empty, or SQL query will be invalid (containing IN () condition).
-            $GLOBALS['TYPO3_DB']->exec_DELETEquery($this->getTableName(), 'sys_language_uid NOT IN (' . implode(', ', $sysLanguageUids) . ') AND l10n_parent = ' . $object->getUid());
-        }
+        $this->persist();
+
         return $mappingProblemsOccurred;
     }
 
