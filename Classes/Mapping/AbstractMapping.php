@@ -156,6 +156,7 @@ abstract class AbstractMapping implements MappingInterface
             return false;
         }
         $configuration = new PropertyMappingConfiguration();
+        $mappingProblemsOccurred = false;
 
         $configuration->allowAllProperties();
         $configuration->setTypeConverterOption(PersistentObjectConverter::class, PersistentObjectConverter::CONFIGURATION_CREATION_ALLOWED, true);
@@ -213,7 +214,7 @@ abstract class AbstractMapping implements MappingInterface
                             $propertyName . ' on ' . get_class($object) . ':' .  $object->getRemoteId() . ' in language UID ' .
                             ObjectAccess::getProperty($object, '_languageUid', true)
                         );
-                        $mappingProblemsOccurred = true;
+                        //$mappingProblemsOccurred = trued;
                         continue;
                     }
                     if (!$objectStorage->contains($child)) {
@@ -240,7 +241,7 @@ abstract class AbstractMapping implements MappingInterface
                     // For whatever reason, property validators will return a validation error rather than throw an exception.
                     // We therefore need to check this, log the problem, and skip the property.
                     $message = 'Mapping error when mapping property ' . $propertyName . ' on ' . get_class($object) . ':' .  $object->getRemoteId() . ': ' . $propertyValue->getMessage();
-                    $mappingProblemsOccurred = true;
+                    //$mappingProblemsOccurred = true;
                     $this->logProblem($message);
                     $propertyValue = null;
                 }
