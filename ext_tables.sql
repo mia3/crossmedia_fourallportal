@@ -84,6 +84,9 @@ CREATE TABLE tx_fourallportal_domain_model_complextype (
 
 	PRIMARY KEY (uid),
 	KEY parent (pid),
+	KEY field_name (field_name),
+	KEY table_name (table_name),
+	KEY name (name),
 
 );
 
@@ -117,18 +120,13 @@ CREATE TABLE tx_fourallportal_domain_model_event (
 
 	PRIMARY KEY (uid),
 	KEY parent (pid),
+	KEY event_type (event_type),
+	KEY object_id (object_id),
+	KEY status (status),
+	KEY module (module),
+	KEY next_retry (next_retry)
 
 );
-
-#
-# Table structure for table 'tx_fourallportal_domain_model_module'
-#
-CREATE TABLE tx_fourallportal_domain_model_module (
-
-	server int(11) unsigned DEFAULT '0' NOT NULL,
-
-);
-
 
 #
 # Table structure for table 'sys_file'
