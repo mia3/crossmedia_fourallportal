@@ -659,12 +659,45 @@ class FourallportalCommandController extends CommandController
             $exclude = [];
         }
 
+        $activeModules = $this->getActiveModuleOrModules($module);
+
+        $deferredEvents = [];
         if (!$sync) {
-            $this->processAllPendingAndDeferredEvents();
-            $this->objectManager->get(PersistenceManagerInterface::class)->persistAll();
+            // Handle any events that were deferred - which may cause some to be deferred again:
+            foreach ($this->eventRepository->findByStatus('deferred') as $event) {
+                if (in_array($event->getModule()->getModuleName(), $exclude)) {
+                    continue;
+                }
+                if (!in_array($event->getModule(), $activeModules)) {
+                    continue;
+                }
+                $deferredEvents[$event->getModule()->getModuleName()][$event->getObjectId()][] = $event;
+                if ($event->getNextRetry() < time()) {
+                    $this->processEvent($event, false);
+                }
+            }
+        } else {
+            // Truncate the entire events database when syncing without module name or exclude list.
+            if (!$module && !$exclude) {
+                $GLOBALS['TYPO3_DB']->exec_TRUNCATEquery('tx_fourallportal_domain_model_event');
+            }
         }
 
-        foreach ($this->getActiveModuleOrModules($module) as $module) {
+
+        // Handle new, pending events first, which may cause some to be deferred:
+        $pending = $this->eventRepository->findByStatus('pending')->toArray();
+        foreach ($pending as $event) {
+            $module = $event->getModule();
+            if (in_array($module->getModuleName(), $exclude)) {
+                continue;
+            }
+            if (!in_array($module, $activeModules)) {
+                continue;
+            }
+            $this->processEvent($event, true);
+        }
+
+        foreach ($activeModules as $module) {
             if (in_array($module->getModuleName(), $exclude)) {
                 continue;
             }
@@ -694,6 +727,13 @@ class FourallportalCommandController extends CommandController
                     $this->response->setContent('** Ignoring duplicate older event: ' . $queuedEventsForModule[$result['object_id']]['id'] . PHP_EOL);
                     $this->response->send();
                 }
+                if (isset($deferredEvents[$result['module_name']][$result['object_id']])) {
+                    foreach ($deferredEvents[$result['module_name']][$result['object_id']] as $deferredEvent) {
+                        $this->eventRepository->remove($deferredEvent);
+                        $this->response->setContent('** Removing older deferred event: ' . $deferredEvent->getEventId() . PHP_EOL);
+                        $this->response->send();
+                    }
+                }
                 $queuedEventsForModule[$result['object_id']] = $result;
             }
             foreach ($queuedEventsForModule as $result) {
@@ -702,12 +742,20 @@ class FourallportalCommandController extends CommandController
             $this->moduleRepository->update($module);
         }
 
+        $this->objectManager->get(PersistenceManagerInterface::class)->persistAll();
+
+        // Handle new, pending events first, which may cause some to be deferred:
+        $pending = $this->eventRepository->findByStatus('pending')->toArray();
+        foreach ($pending as $event) {
+            $this->processEvent($event, true);
+        }
+
         try {
             $this->objectManager->get(PersistenceManagerInterface::class)->persistAll();
         } catch (\Exception $error) {
             $this->logProblem($error);
         }
-        $this->processAllPendingAndDeferredEvents();
+
         if (!$force) {
             $this->unlockSync();
         }
@@ -770,22 +818,17 @@ class FourallportalCommandController extends CommandController
 
         // CD 5/12/17 Disabled: causes responses for full set of entries to be logged in database.
         //$this->collectPreloadDataForObjectsInEvents(array_merge_recursive($pending, $deferred));
-        $processedObjectIds = [];
+
+        // Handle any events that were deferred - which may cause some to be deferred again:
+        foreach ($deferred as $event) {
+            if ($event->getNextRetry() < time()) {
+                $this->processEvent($event, $updateEventId);
+            }
+        }
 
         // Handle new, pending events first, which may cause some to be deferred:
         foreach ($pending as $event) {
             $this->processEvent($event, $updateEventId);
-            $processedObjectIds[$event->getModule()->getModuleName()][$event->getObjectId()] = true;
-        }
-
-        // Then handle any events that were deferred - which may cause some to be deferred again:
-        foreach ($deferred as $event) {
-            if ($processedObjectIds[$event->getModule()->getModuleName()][$event->getObjectId()] ?? false) {
-                // An event was previously deferred, but a new event arrived which was processed. Remove the old event.
-                $this->eventRepository->remove($event);
-            } elseif ($event->getNextRetry() < time()) {
-                $this->processEvent($event, $updateEventId);
-            }
         }
 
         $this->objectManager->get(PersistenceManagerInterface::class)->persistAll();
@@ -826,15 +869,14 @@ class FourallportalCommandController extends CommandController
      */
     public function processEvent($event, $updateEventId = true)
     {
-        /*
         $this->response->setContent(
-            'Processing event "' . $event->getModule()->getModuleName() . ':' . $event->getEventId() . '" - ' .
+            'Processing ' . $event->getStatus() . ' event "' . $event->getModule()->getModuleName() . ':' . $event->getEventId() . '" - ' .
             $event->getEventType() . ' ' . $event->getObjectId() . PHP_EOL
         );
-        */
         $this->response->send();
         $client = $event->getModule()->getServer()->getClient();
         try {
+
             $mapper = $event->getModule()->getMapper();
             $responseData = [];
             if ($event->getEventType() !== 'delete') {
@@ -849,6 +891,7 @@ class FourallportalCommandController extends CommandController
                     $responseData = ['result' => [$event->getBeanData()]];
                 }
             }
+
             // Update the Module's last recorded event ID, but only if the event ID was higher. This allows
             // deferred events to execute without lowering the last recorded event ID which would cause
             // duplicate event processing on the next run.
