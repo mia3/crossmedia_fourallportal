@@ -80,11 +80,12 @@ class FileReferenceTypeConverter extends AbstractUuidAwareObjectTypeConverter im
         $queryBuilder = (new ConnectionPool())->getConnectionForTable('sys_file')->createQueryBuilder();
         $query = $queryBuilder->select('r.uid')->from('sys_file', 'f')->from('sys_file_reference', 'r')->where(
             sprintf(
-                'r.uid_local = f.uid AND f.remote_id = \'%s\' AND r.tablenames = \'%s\' AND r.table_local = \'sys_file\' AND r.fieldname = \'%s\' AND r.uid_foreign = %d',
+                'r.uid_local = f.uid AND f.remote_id = \'%s\' AND r.tablenames = \'%s\' AND r.table_local = \'sys_file\' AND r.fieldname = \'%s\' AND r.uid_foreign = %d AND r.sys_language_uid = %d',
                 $source,
                 $dataMap->getTableName(),
                 $fieldName,
-                $this->parentObject->getUid()
+                $this->parentObject->getUid(),
+                $systemLanguageUid
             )
         )->setMaxResults(1);
         $references = $query->execute()->fetchAll();
