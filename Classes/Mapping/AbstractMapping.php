@@ -120,10 +120,8 @@ abstract class AbstractMapping implements MappingInterface
                 }
             } catch (PropertyNotAccessibleException $error) {
                 $this->logProblem($error->getMessage());
-                $mappingProblemsOccurred = true;
             } catch (DeferralException $error) {
                 $this->logProblem($error->getMessage());
-                $mappingProblemsOccurred = true;
             }
         }
         return $mappingProblemsOccurred;
@@ -262,7 +260,7 @@ abstract class AbstractMapping implements MappingInterface
                     method_exists($object, 'getRemoteId') ? $object->getRemoteId() : $object->getUid()
                 )
             );
-            return true;
+            return false;
         }
 
         $setOnObject = $object;
