@@ -5,18 +5,15 @@ use Crossmedia\Fourallportal\Mapping\DeferralException;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Resource\FileRepository;
 use TYPO3\CMS\Core\Resource\ResourceFactory;
-use TYPO3\CMS\Core\Utility\ClassNamingUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Domain\Model\FileReference;
 use TYPO3\CMS\Extbase\DomainObject\AbstractEntity;
 use TYPO3\CMS\Extbase\Object\ObjectManager;
 use TYPO3\CMS\Extbase\Persistence\Generic\Mapper\DataMapFactory;
-use TYPO3\CMS\Extbase\Persistence\Generic\PersistenceManager;
 use TYPO3\CMS\Extbase\Persistence\ObjectStorage;
 use TYPO3\CMS\Extbase\Persistence\RepositoryInterface;
 use TYPO3\CMS\Extbase\Property\PropertyMappingConfigurationInterface;
 use TYPO3\CMS\Extbase\Reflection\ObjectAccess;
-use TYPO3\CMS\Form\Domain\Runtime\Exception\PropertyMappingException;
 
 class FileReferenceTypeConverter extends AbstractUuidAwareObjectTypeConverter implements PimBasedTypeConverterInterface
 {
@@ -72,6 +69,7 @@ class FileReferenceTypeConverter extends AbstractUuidAwareObjectTypeConverter im
         $resourceFactory = ResourceFactory::getInstance();
         $model = new FileReference();
 
+        $systemLanguageUid = (int)$this->parentObject->_getProperty('_languageUid');
         $fieldName = $dataMap->getColumnMap($this->propertyName)->getColumnName(); // GeneralUtility::camelCaseToLowerCaseUnderscored($this->propertyName);
 
         // Lookup no. 1: try to find a sys_file_reference pointing to the sys_file with remote ID=$source
@@ -136,7 +134,8 @@ class FileReferenceTypeConverter extends AbstractUuidAwareObjectTypeConverter im
             'table_local' => 'sys_file',
             'fieldname' => $fieldName,
             'uid_local' => $original[0]['uid'],
-            'uid_foreign' => $this->parentObject->getUid()
+            'uid_foreign' => $this->parentObject->getUid(),
+            'sys_language_uid' => $systemLanguageUid,
         ]);
 
         if (!isset($reference)) {
@@ -150,6 +149,8 @@ class FileReferenceTypeConverter extends AbstractUuidAwareObjectTypeConverter im
         // New Extbase model FileReference instance is fitted with target and returned. The resulting
         // object persists correctly because the $reference above has had all properties manually set.
         $model->setOriginalResource($reference);
+        $model->_setProperty('_languageUid', $systemLanguageUid);
+        $model->setPid($this->parentObject->getPid());
         return $model;
     }
 
