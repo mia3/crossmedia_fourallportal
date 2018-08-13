@@ -77,6 +77,8 @@ return [
                 'type' => 'inline',
                 'foreign_table' => 'tx_fourallportal_domain_model_module',
                 'foreign_field' => 'server',
+                'foreign_sortby' => 'sorting',
+                'foreign_default_sortby' => 'sorting ASC',
                 'maxitems' => 9999,
                 'appearance' => [
                     'collapseAll' => 1,
