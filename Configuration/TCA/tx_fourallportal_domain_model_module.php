@@ -13,6 +13,8 @@ return [
             //'starttime' => 'starttime',
             //'endtime' => 'endtime',
         ],
+        'sortby' => 'sorting',
+        'default_sortby' => 'sorting',
         'searchFields' => 'connector_name,mapping_class,config_hash,last_event_id,shell_path,storage_pid,server',
         'iconfile' => 'EXT:fourallportal/Resources/Public/Icons/tx_fourallportal_domain_model_module.gif'
     ],

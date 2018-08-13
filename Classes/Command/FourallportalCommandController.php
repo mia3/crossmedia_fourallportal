@@ -662,25 +662,17 @@ class FourallportalCommandController extends CommandController
         $activeModules = $this->getActiveModuleOrModules($module);
 
         $deferredEvents = [];
-        if (!$sync) {
-            // Handle any events that were deferred - which may cause some to be deferred again:
-            foreach ($this->eventRepository->findByStatus('deferred') as $event) {
-                if (in_array($event->getModule()->getModuleName(), $exclude)) {
-                    continue;
-                }
-                if (!in_array($event->getModule(), $activeModules)) {
-                    continue;
-                }
-                $deferredEvents[$event->getModule()->getModuleName()][$event->getObjectId()][] = $event;
-                if ($event->getNextRetry() < time()) {
-                    $this->processEvent($event, false);
-                }
+        foreach ($this->eventRepository->findByStatus('deferred') as $event) {
+            if (in_array($event->getModule()->getModuleName(), $exclude)) {
+                continue;
             }
-        } else {
-            // Truncate the entire events database when syncing without module name or exclude list.
-            if (!$module && !$exclude) {
-                $GLOBALS['TYPO3_DB']->exec_TRUNCATEquery('tx_fourallportal_domain_model_event');
+            if (!in_array($event->getModule(), $activeModules)) {
+                continue;
             }
+            $deferredEvents[$event->getModule()->getModuleName()][$event->getObjectId()][] = $event;
+        }
+        if ($sync && !$module && !$exclude) {
+            $GLOBALS['TYPO3_DB']->exec_TRUNCATEquery('tx_fourallportal_domain_model_event');
         }
 
 
@@ -743,6 +735,19 @@ class FourallportalCommandController extends CommandController
         }
 
         $this->objectManager->get(PersistenceManagerInterface::class)->persistAll();
+
+        foreach ($this->eventRepository->findByStatus('deferred') as $event) {
+            if (in_array($event->getModule()->getModuleName(), $exclude)) {
+                continue;
+            }
+            if (!in_array($event->getModule(), $activeModules)) {
+                continue;
+            }
+            $deferredEvents[$event->getModule()->getModuleName()][$event->getObjectId()][] = $event;
+            if ($event->getNextRetry() < time()) {
+                $this->processEvent($event, false);
+            }
+        }
 
         // Handle new, pending events first, which may cause some to be deferred:
         $pending = $this->eventRepository->findByStatus('pending')->toArray();
