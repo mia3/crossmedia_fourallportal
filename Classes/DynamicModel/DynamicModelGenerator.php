@@ -803,7 +803,7 @@ TEMPLATE;
                 break;
         }
 
-        if (($tca['foreign_table'] ?? null) === 'sys_file_reference') {
+        if (($tca['foreign_table'] ?? null) === 'sys_file_reference' && $fieldType  !== 'ONE_TO_ONE') {
             $tca = \TYPO3\CMS\Core\Utility\ExtensionManagementUtility::getFileFieldTCAConfig(
                 $fieldConfiguration['name'],
                 [
@@ -842,7 +842,7 @@ TEMPLATE;
                                 --palette--;;filePalette'
                         ]
                     ],
-                    'maxitems' => $fieldType  === 'ONE_TO_ONE' ? 1 : 99999,
+                    //'maxitems' => $fieldType  === 'ONE_TO_ONE' ? 1 : 99999,
                     'foreign_match_fields' => [
                         'fieldname' => $fieldConfiguration['name'],
                         'tablenames' => $currentTableName,
