@@ -1,9 +1,6 @@
 <?php
 namespace Crossmedia\Fourallportal\Domain\Repository;
 
-use TYPO3\CMS\Core\Utility\GeneralUtility;
-use TYPO3\CMS\Extbase\Object\ObjectManager;
-
 /***
  *
  * This file is part of the "4AllPortal Connector" Extension for TYPO3 CMS.
@@ -27,6 +24,7 @@ class EventRepository extends \TYPO3\CMS\Extbase\Persistence\Repository
         $query->setOrderings(
             [
                 'module.sorting' => 'ASC',
+                'event_id' => 'ASC',
             ]
         );
         return $query->execute();
