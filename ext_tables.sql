@@ -42,6 +42,7 @@ CREATE TABLE tx_fourallportal_domain_model_module (
 	enable_dynamic_model int(4) unsigned DEFAULT '1' NOT NULL,
 	config_hash varchar(255) DEFAULT '' NOT NULL,
 	last_event_id int(11) DEFAULT '0' NOT NULL,
+	last_received_event_id int(11) DEFAULT '0' NOT NULL,
 	shell_path varchar(255) DEFAULT '' NOT NULL,
 	storage_pid int(11) DEFAULT '0' NOT NULL,
 	fal_storage int(11) DEFAULT '0' NOT NULL,

@@ -57,6 +57,13 @@ class Module extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
     protected $lastEventId = 0;
 
     /**
+     * lastReceivedEventId
+     *
+     * @var int
+     */
+    protected $lastReceivedEventId = 0;
+
+    /**
      * shellPath
      *
      * @var string
@@ -174,6 +181,22 @@ class Module extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
     public function setLastEventId($lastEventId)
     {
         $this->lastEventId = $lastEventId;
+    }
+
+    /**
+     * @return int
+     */
+    public function getLastReceivedEventId()
+    {
+        return (int)$this->lastReceivedEventId;
+    }
+
+    /**
+     * @param int $lastReceivedEventId
+     */
+    public function setLastReceivedEventId($lastReceivedEventId)
+    {
+        $this->lastReceivedEventId = (int)$lastReceivedEventId;
     }
 
     /**

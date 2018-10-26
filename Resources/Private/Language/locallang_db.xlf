@@ -51,6 +51,9 @@
 			<trans-unit id="tx_fourallportal_domain_model_module.last_event_id">
 				<source>Last Event Id</source>
 			</trans-unit>
+			<trans-unit id="tx_fourallportal_domain_model_module.last_received_event_id">
+				<source>Last Received Event Id</source>
+			</trans-unit>
 			<trans-unit id="tx_fourallportal_domain_model_module.shell_path">
 				<source>Shell Path</source>
 			</trans-unit>
