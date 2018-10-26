@@ -12,7 +12,9 @@ namespace Crossmedia\Fourallportal\Controller;
  *
  ***/
 
-use TYPO3\CMS\Extbase\Persistence\Generic\PersistenceManager;
+use Crossmedia\Fourallportal\Domain\Model\Event;
+use Crossmedia\Fourallportal\Response\CollectingResponse;
+use Crossmedia\Fourallportal\Service\EventExecutionService;
 
 /**
  * EventController
@@ -28,13 +30,27 @@ class EventController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionController
     protected $eventRepository = null;
 
     /**
+     * @var EventExecutionService
+     */
+    protected $eventExecutionService = null;
+
+    /**
+     * @param EventExecutionService $eventExecutionService
+     */
+    public function injectEventExecutionService(EventExecutionService $eventExecutionService)
+    {
+        $this->eventExecutionService = $eventExecutionService;
+    }
+
+    /**
      * action index
      *
      * @param string $status
      * @param string $search
+     * @param Event $modifiedEvent
      * @return void
      */
-    public function indexAction($status = null, $search = null)
+    public function indexAction($status = null, $search = null, Event $modifiedEvent = null)
     {
         $eventOptions = [
             'pending' => 'pending',
@@ -65,6 +81,7 @@ class EventController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionController
         $this->view->assign('status', $status);
         $this->view->assign('events', $events);
         $this->view->assign('search', $search);
+        $this->view->assign('modifiedEvent', $modifiedEvent);
         $this->view->assign('eventStatusOptions', $eventOptions);
     }
 
@@ -100,8 +117,6 @@ class EventController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionController
     }
 
     /**
-     * action index
-     *
      * @param \Crossmedia\Fourallportal\Domain\Model\Event $event
      * @return void
      */
@@ -111,8 +126,6 @@ class EventController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionController
     }
 
     /**
-     * action index
-     *
      * @param \Crossmedia\Fourallportal\Domain\Model\Event $event
      * @return void
      */
@@ -122,7 +135,33 @@ class EventController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionController
         $event->setNextRetry(0);
         $event->setRetries(0);
         $this->eventRepository->update($event);
-        #$this->objectManager->get(PersistenceManager::class)->persistAll());
         $this->redirect('index', null, null, ['status' => 'pending']);
+    }
+
+    /**
+     * @param \Crossmedia\Fourallportal\Domain\Model\Event $event
+     * @return void
+     */
+    public function executeAction($event)
+    {
+
+        $fakeResponse = new CollectingResponse();
+        $this->eventExecutionService->setResponse($fakeResponse);
+        $this->eventExecutionService->processEvent($event, false);
+
+        $message = $fakeResponse->getCollected() ?: 'No output from action';
+
+        $this->addFlashMessage($message, 'Executed event ' . $event->getEventId());
+
+        $this->redirect('index', null, null, ['modifiedEvent' => $event->getUid()]);
+    }
+
+    public function syncAction()
+    {
+        $fakeResponse = new CollectingResponse();
+        $this->eventExecutionService->setResponse($fakeResponse);
+        $this->eventExecutionService->sync();
+        $this->addFlashMessage(nl2br($fakeResponse->getCollected()) ?: 'No new events to fetch', 'Executed');
+        $this->redirect('index');
     }
 }

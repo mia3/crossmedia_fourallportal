@@ -30,6 +30,17 @@
 
                     <div class="btn-group" role="group">
                         <f:link.action
+                            action="execute"
+                            arguments="{event: event}"
+                            extensionName="Fourallportal"
+                            controller="Event"
+                            class="btn btn-danger" title="Execute event">
+                                <span>
+                                    <core:icon identifier="extensions-scheduler-run-task"
+                                               alternativeMarkupIdentifier="inline"/>
+                                </span>
+                        </f:link.action>
+                        <f:link.action
                             action="reset"
                             arguments="{event: event}"
                             extensionName="Fourallportal"

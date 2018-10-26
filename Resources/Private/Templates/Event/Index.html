@@ -7,7 +7,17 @@
 
 <f:section name="Content">
 
-    <f:flashMessages/>
+    <f:flashMessages />
+
+    <f:if condition="{modifiedEvent.uid}">
+        <p>
+            <f:link.action class="btn btn-info" action="check" arguments="{event: modifiedEvent.uid}">
+                <core:icon identifier="actions-document-info"
+                           alternativeMarkupIdentifier="inline"/>
+                Check response from event "{modifiedEvent.eventId}" / {modifiedEvent.module.moduleName}:{modifiedEvent.objectId}
+            </f:link.action>
+        </p>
+    </f:if>
 
     <div class="row-fluid">
         <f:form action="index" addQueryString="1" class="form form-inline" id="filter-form">
@@ -31,6 +41,13 @@
                 <f:form.submit value="Show" class="btn btn-primary" />
             </fieldset>
         </f:form>
+
+        <f:link.action action="sync" class="btn btn-success" title="Sync, but do not execute, new events from PIM">
+            <core:icon identifier="actions-refresh"
+                       alternativeMarkupIdentifier="inline"/>
+            Sync new events
+        </f:link.action>
+
         <strong>Events, {status}: </strong> {events -> f:count()}
     </div>
 

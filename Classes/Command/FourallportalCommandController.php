@@ -630,7 +630,7 @@ class FourallportalCommandController extends CommandController
         $this->eventExecutionService->setResponse($this->response);
         $this->eventExecutionService->sync($sync, $module, $exclude, $force);
         if ($execute) {
-            #$this->eventExecutionService->execute($sync, $module, $exclude, $force);
+            $this->eventExecutionService->execute($sync, $module, $exclude, $force);
         }
     }
 

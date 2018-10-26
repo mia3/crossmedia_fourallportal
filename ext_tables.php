@@ -13,7 +13,7 @@ call_user_func(
                 'fourallportal', // Submodule key
                 '', // Position
                 [
-                    'Event' => 'index, check, reset',
+                    'Event' => 'index, check, reset, execute, sync',
                     'Server' => 'index, check, disable, enable, delete, restartSynchronisation, module',
 
                 ],
