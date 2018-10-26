@@ -634,4 +634,19 @@ class FourallportalCommandController extends CommandController
         }
     }
 
+    /**
+     * Sync data
+     *
+     * Execute this to synchronise events from the PIM API.
+     *
+     * @param bool $sync Set to "1" to trigger a full sync
+     * @param string $module If passed can be used to only sync one module, using the module or connector name it has in 4AP.
+     * @param string $exclude Exclude a list of modules from processing (CSV string module names)
+     * @param bool $force If set, forces the sync to run regardless of lock and will neither lock nor unlock the task
+     */
+    public function executeCommand($sync = false, $module = null, $exclude = null, $force = false)
+    {
+        $this->eventExecutionService->setResponse($this->response);
+        $this->eventExecutionService->execute($sync, $module, $exclude, $force);
+    }
 }
