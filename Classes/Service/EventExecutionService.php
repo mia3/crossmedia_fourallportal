@@ -243,7 +243,7 @@ class EventExecutionService implements SingletonInterface
         }
 
         foreach ($this->eventRepository->findByStatus('deferred') as $event) {
-            if (in_array($event->getModule()->getModuleName(), $exclude)) {
+            if (in_array($event->getModule()->getModuleName(), $exclude ?? [])) {
                 continue;
             }
             if (!in_array($event->getModule(), $activeModules)) {
