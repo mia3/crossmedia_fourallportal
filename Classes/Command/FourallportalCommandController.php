@@ -627,10 +627,25 @@ class FourallportalCommandController extends CommandController
      */
     public function syncCommand($sync = false, $module = null, $exclude = null, $force = false, $execute = true)
     {
+        if (!$force) {
+            try {
+                $this->eventExecutionService->lock();
+            } catch (\Exception $error) {
+                $this->eventExecutionService->logProblem($error);
+                $this->response->setContent('Cannot acquire lock - exiting without error' . PHP_EOL);
+                $this->response->send();
+                return;
+            }
+        }
+
         $this->eventExecutionService->setResponse($this->response);
         $this->eventExecutionService->sync($sync, $module, $exclude, $force);
         if ($execute) {
             $this->eventExecutionService->execute($sync, $module, $exclude, $force);
+        }
+
+        if (!$force) {
+            $this->eventExecutionService->unlock();
         }
     }
 
@@ -646,7 +661,22 @@ class FourallportalCommandController extends CommandController
      */
     public function executeCommand($sync = false, $module = null, $exclude = null, $force = false)
     {
+        if (!$force) {
+            try {
+                $this->eventExecutionService->lock();
+            } catch (\Exception $error) {
+                $this->eventExecutionService->logProblem($error);
+                $this->response->setContent('Cannot acquire lock - exiting without error' . PHP_EOL);
+                $this->response->send();
+                return;
+            }
+        }
+
         $this->eventExecutionService->setResponse($this->response);
         $this->eventExecutionService->execute($sync, $module, $exclude, $force);
+
+        if (!$force) {
+            $this->eventExecutionService->unlock();
+        }
     }
 }

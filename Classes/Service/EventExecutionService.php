@@ -221,16 +221,7 @@ class EventExecutionService implements SingletonInterface
      */
     public function execute($sync = false, $module = null, $exclude = null, $force = false)
     {
-        if (!$force) {
-            try {
-                $this->lock();
-            } catch (\Exception $error) {
-                $this->logProblem($error);
-                $this->response->setContent('Cannot acquire lock - exiting without error' . PHP_EOL);
-                $this->response->send();
-                return;
-            }
-        }
+
 
         $activeModules = $this->getActiveModuleOrModules($module);
 
@@ -266,9 +257,6 @@ class EventExecutionService implements SingletonInterface
             $this->logProblem($error);
         }
 
-        if (!$force) {
-            $this->unlock();
-        }
     }
 
     /**
@@ -399,7 +387,7 @@ class EventExecutionService implements SingletonInterface
      * @return bool
      * @throws LockCreateException
      */
-    protected function lock()
+    public function lock()
     {
         $path = $this->getLockFilePath();
         if (file_exists($path)) {
@@ -442,7 +430,7 @@ class EventExecutionService implements SingletonInterface
         return GeneralUtility::getFileAbsFileName('typo3temp/var/transient/') . 'lock_4ap_sync.lock';
     }
 
-    protected function logProblem(\Exception $exception)
+    public function logProblem(\Exception $exception)
     {
         GeneralUtility::makeInstance(LogManager::class)->getLogger(__CLASS__)->critical(
             $exception->getMessage(),
