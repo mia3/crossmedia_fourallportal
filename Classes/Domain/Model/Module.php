@@ -379,6 +379,20 @@ class Module extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
     }
 
     /**
+     * @return bool
+     */
+    public function verifySchemaVersion()
+    {
+        return $this->configHash === $this->getConnectorConfiguration()['config_hash'];
+    }
+
+    public function pinSchemaVersion()
+    {
+        $this->configHash = $this->getConnectorConfiguration()['config_hash'];
+        $this->update();
+    }
+
+    /**
      * @return void
      */
     public function update()
