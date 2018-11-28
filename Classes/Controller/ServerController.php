@@ -87,12 +87,21 @@ class ServerController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
                 /** @var Module $module */
                 try {
                     $config = $client->getConnectorConfig($module->getConnectorName());
-                    $description = '
-                        <strong>Module Name:</strong> ' . $config['moduleConfig']['module_name'] . '<br />
-                        <strong>Config Hash:</strong> ' . $config['config_hash'] . '<br />
-                        <h4>Fields</h4>
-                    ';
-                    $description .= '<table>';
+                    $currentConfigurationHash = $module->getConfigHash();
+                    if ($config['config_hash'] !== $currentConfigurationHash) {
+                        $description = '
+                            <h2 class="text-danger">WARNING</h2>
+                            <p>The config hash "' . $config['config_hash'] . '" does not match the persisted config hash
+                            "' . $currentConfigurationHash . '" which indicates the PIM schema has changed. To update
+                            compatibility you can use the CLI command <code>fourallportal:pinschema</code>. 
+                        ';
+                    } else {
+                        $description = '
+                            <strong>Module Name:</strong> ' . $config['moduleConfig']['module_name'] . '<br />
+                            <strong>Config Hash:</strong> ' . $config['config_hash'] . '<br />
+                        ';
+                    }
+                    $description .= '<h4>Fields</h4><table>';
                     foreach ($config['fieldsToLoad'] as $field) {
                         $description .= '
                             <tr>
