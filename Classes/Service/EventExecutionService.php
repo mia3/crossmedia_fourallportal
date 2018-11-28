@@ -3,6 +3,7 @@ namespace Crossmedia\Fourallportal\Service;
 
 use Crossmedia\Fourallportal\Domain\Model\Event;
 use Crossmedia\Fourallportal\Domain\Model\Module;
+use Crossmedia\Fourallportal\Error\ApiException;
 use Crossmedia\Fourallportal\Mapping\DeferralException;
 use TYPO3\CMS\Core\Locking\Exception\LockCreateException;
 use TYPO3\CMS\Core\Log\LogManager;
@@ -130,7 +131,16 @@ class EventExecutionService implements SingletonInterface
      */
     public function sync($sync = false, $module = null, $exclude = null, $force = false)
     {
+        try {
+            $this->performSync($sync, $module, $exclude, $force);
+        } catch (ApiException $error) {
+            $this->logProblem($error);
+            $this->unlock();
+        }
+    }
 
+    protected function performSync($sync = false, $module = null, $exclude = null, $force = false)
+    {
         if (!empty($exclude)) {
             $exclude = explode(',', $exclude);
         } else {
@@ -153,10 +163,21 @@ class EventExecutionService implements SingletonInterface
             $GLOBALS['TYPO3_DB']->exec_TRUNCATEquery('tx_fourallportal_domain_model_event');
         }
 
-        foreach ($activeModules as $module) {
-            if (in_array($module->getModuleName(), $exclude)) {
+        foreach ($activeModules as $key => $module) {
+            if (!$module->verifySchemaVersion()) {
+                $this->logProblem(
+                    new ApiException(
+                        sprintf(
+                            'Remote config hash "%s" does not match local "%s" - skipping SYNC of module "%s"',
+                            $module->getConnectorConfiguration()['config_hash'],
+                            $module->getConfigHash(),
+                            $module->getModuleName()
+                        )
+                    )
+                );
                 continue;
             }
+
             $client = $module->getServer()->getClient();
             if (empty($module->getModuleName())) {
                 $connectorConfig = $client->getConnectorConfig($module->getConnectorName());
@@ -208,7 +229,6 @@ class EventExecutionService implements SingletonInterface
         }
 
         $this->objectManager->get(PersistenceManagerInterface::class)->persistAll();
-
     }
 
     /**
@@ -221,11 +241,33 @@ class EventExecutionService implements SingletonInterface
      */
     public function execute($sync = false, $module = null, $exclude = null, $force = false)
     {
+        try {
+            $this->performExecute($sync, $module, $exclude, $force);
+        } catch (ApiException $error) {
+            $this->logProblem($error);
+            $this->unlock();
+        }
+    }
 
-
+    protected function performExecute($sync = false, $module = null, $exclude = null, $force = false)
+    {
         $activeModules = $this->getActiveModuleOrModules($module);
 
         foreach ($activeModules as $module) {
+
+            if (!$module->verifySchemaVersion()) {
+                $this->logProblem(
+                    new ApiException(
+                        sprintf(
+                            'Remote config hash "%s" does not match local "%s" - skipping EXECUTE of module "%s"',
+                            $module->getConnectorConfiguration()['config_hash'],
+                            $module->getConfigHash(),
+                            $module->getModuleName()
+                        )
+                    )
+                );
+                continue;
+            }
 
             /** @var Module $module */
             if ($sync && $module->getLastReceivedEventId() > 0) {
@@ -256,7 +298,6 @@ class EventExecutionService implements SingletonInterface
         } catch (\Exception $error) {
             $this->logProblem($error);
         }
-
     }
 
     /**
@@ -440,6 +481,12 @@ class EventExecutionService implements SingletonInterface
                 'line' => $exception->getLine(),
             ]
         );
+        if ($this->response instanceof Response) {
+            $this->response->setContent($exception->getMessage() . PHP_EOL);
+            $this->response->setExitCode(1);
+            $this->response->send();
+            $this->response->setContent('');
+        }
     }
 
     /**
