@@ -93,7 +93,7 @@ class FourallportalCommandController extends CommandController
      */
     public function testCommand($onlyFailed = false, $withHistory = true)
     {
-        foreach ($this->getActiveModuleOrModules() as $module) {
+        foreach ($this->moduleRepository->findAll() as $module) {
             $testObjectUuid = $module->getTestObjectUuid();
             $this->response->setContent($module->getModuleName() . ':');
             if (empty($testObjectUuid)) {
