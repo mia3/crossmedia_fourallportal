@@ -63,6 +63,23 @@ class FourallportalCommandController extends CommandController
     }
 
     /**
+     * Pin PIM schema version
+     *
+     * Pins the PIM schema version, updating all local modules to use the
+     * version of configuration that is currently live on the configured
+     * remote server.
+     *
+     * Used when a schema version mismatch prevents PIM sync from running.
+     */
+    public function pinschemaCommand()
+    {
+        foreach ($this->moduleRepository->findAll() as $module) {
+            $module->pinSchemaVersion();
+        }
+        GeneralUtility::makeInstance(ObjectManager::class)->get(PersistenceManager::class)->persistAll();
+    }
+
+    /**
      * Run tests
      *
      * Runs tests on schema and response consistency and performs tracking
