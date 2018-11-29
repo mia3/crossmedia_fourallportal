@@ -162,8 +162,11 @@ class ServerController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
      */
     public function enableAction(\Crossmedia\Fourallportal\Domain\Model\Server $server)
     {
-        $server->setActive(true);
-        $this->serverRepository->update($server);
+        foreach ($this->serverRepository->findAll() as $persistedServer) {
+            $persistedServer->setActive($server === $persistedServer);
+            $this->serverRepository->update($persistedServer);
+        }
+
         $this->redirect('index');
     }
 
