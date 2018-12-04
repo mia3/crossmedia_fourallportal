@@ -486,7 +486,7 @@ abstract class AbstractMapping implements MappingInterface
      */
     protected function createObject(Event $event, int $systemLanguage = 0, int $languageParentUid = 0, $existingRow = null)
     {
-        $recordUid = (int)($existingRow['l10n_parent'] ?? false) ?: ($existingRow['uid'] ?? false) ?: 0;
+        $recordUid = (int)(($existingRow['l10n_parent'] ?? false) ?: ($existingRow['uid'] ?? false) ?: 0);
         if ($recordUid === 0) {
             $newRecordValues = [
                 'pid' => $event->getModule()->getStoragePid(),
