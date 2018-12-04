@@ -803,7 +803,13 @@ TEMPLATE;
                 break;
         }
 
-        if (($tca['foreign_table'] ?? null) === 'sys_file_reference' && $fieldType  !== 'ONE_TO_ONE') {
+        if (($tca['foreign_table'] ?? null) === 'sys_file_reference' && $fieldType === 'ONE_TO_ONE') {
+            $tca['type'] = 'group';
+            $tca['internal_type'] = 'db';
+            $tca['foreign_table'] = 'sys_file_reference';
+            $tca['allowed'] = 'sys_file_reference';
+            unset($tca['renderType']);
+        } elseif (($tca['foreign_table'] ?? null) === 'sys_file_reference' && $fieldType !== 'ONE_TO_ONE') {
             $tca = \TYPO3\CMS\Core\Utility\ExtensionManagementUtility::getFileFieldTCAConfig(
                 $fieldConfiguration['name'],
                 [
