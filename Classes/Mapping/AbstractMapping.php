@@ -516,7 +516,7 @@ abstract class AbstractMapping implements MappingInterface
             ->setIgnoreEnableFields(true)
             ->setRespectStoragePage(false)
             ->setLanguageUid($systemLanguage)
-            ->setLanguageMode('strict');
+            //->setLanguageMode('strict');
             //->setLanguageOverlayMode('hideNonTranslated');
 
         return $query->matching($query->equals('uid', $recordUid))->execute()->getFirst();
