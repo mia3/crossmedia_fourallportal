@@ -515,7 +515,7 @@ abstract class AbstractMapping implements MappingInterface
             ->setIncludeDeleted(true)
             ->setIgnoreEnableFields(true)
             ->setRespectStoragePage(false)
-            ->setLanguageUid($systemLanguage)
+            ->setLanguageUid($systemLanguage);
             //->setLanguageMode('strict');
             //->setLanguageOverlayMode('hideNonTranslated');
 
