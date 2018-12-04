@@ -74,7 +74,9 @@ class FourallportalCommandController extends CommandController
     public function pinschemaCommand()
     {
         foreach ($this->moduleRepository->findAll() as $module) {
-            $module->pinSchemaVersion();
+            if ($module->getServer()->isActive()) {
+                $module->pinSchemaVersion();
+            }
         }
         GeneralUtility::makeInstance(ObjectManager::class)->get(PersistenceManager::class)->persistAll();
     }
