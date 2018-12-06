@@ -62,7 +62,7 @@ class ApiClient
         }
         self::$sessionPool[] = $this;
         $this->initializeCreateMasks();
-        $this->extensionConfiguration = unserialize($GLOBALS['TYPO3_CONF_VARS']['EXT']['extConf']['fourallportal']);
+        $this->extensionConfiguration = (array) @unserialize($GLOBALS['TYPO3_CONF_VARS']['EXT']['extConf']['fourallportal']);
     }
 
     public function login()
