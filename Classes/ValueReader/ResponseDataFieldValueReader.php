@@ -45,6 +45,17 @@ class ResponseDataFieldValueReader
                 ),
                 1527168391
             );
+        } elseif (is_array($result['properties'][$fieldName][0] ?? false)
+            && isset($result['properties'][$fieldName][0]['dimensions'])
+        ) {
+            throw new \InvalidArgumentException(
+                sprintf(
+                    'Property "%s" is configured with dimensions, but the first dimension locale "%s" has no "value" ' .
+                    'attribute. This issue has to be addressed on the PIM system by assigning a value to the property.',
+                    $fieldName,
+                    $result['properties'][$fieldName][0]['dimensions']['locale']
+                )
+            );
         }
         return $result['properties'][$fieldName]['value'] ?? $result['properties'][$fieldName] ?? null;
     }
