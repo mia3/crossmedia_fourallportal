@@ -3,6 +3,7 @@ namespace Crossmedia\Fourallportal\Service;
 
 use Crossmedia\Fourallportal\Domain\Model\Event;
 use Crossmedia\Fourallportal\Domain\Model\Module;
+use Crossmedia\Fourallportal\Domain\Model\Server;
 use Crossmedia\Fourallportal\Error\ApiException;
 use Crossmedia\Fourallportal\Mapping\DeferralException;
 use TYPO3\CMS\Core\Locking\Exception\LockCreateException;
@@ -364,6 +365,9 @@ class EventExecutionService implements SingletonInterface
         /** @var Server[] $servers */
         $servers = $this->serverRepository->findByActive(true);
         foreach ($servers as $server) {
+            if (!$server->isActive()) {
+                continue;
+            }
             /** @var Module[] $modules */
             $modules = $server->getModules();
             foreach ($modules as $configuredModule) {
@@ -375,7 +379,6 @@ class EventExecutionService implements SingletonInterface
         }
         return $activeModules;
     }
-
 
     /**
      * @param Module $module
