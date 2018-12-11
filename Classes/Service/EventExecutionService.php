@@ -376,57 +376,6 @@ class EventExecutionService implements SingletonInterface
         return $activeModules;
     }
 
-    protected function processAllPendingAndDeferredEvents($updateEventId = true)
-    {
-        $pending = $this->eventRepository->findByStatus('pending')->toArray();
-        $deferred = $this->eventRepository->findByStatus('deferred')->toArray();
-
-        // CD 5/12/17 Disabled: causes responses for full set of entries to be logged in database.
-        //$this->collectPreloadDataForObjectsInEvents(array_merge_recursive($pending, $deferred));
-
-        // Handle any events that were deferred - which may cause some to be deferred again:
-        foreach ($deferred as $event) {
-            if ($event->getNextRetry() < time()) {
-                $this->processEvent($event, $updateEventId);
-            }
-        }
-
-        // Handle new, pending events first, which may cause some to be deferred:
-        foreach ($pending as $event) {
-            $this->processEvent($event, $updateEventId);
-        }
-
-        $this->objectManager->get(PersistenceManagerInterface::class)->persistAll();
-    }
-
-    /**
-     * @param Event[] $events
-     * @return array
-     */
-    protected function collectPreloadDataForObjectsInEvents(array $events)
-    {
-        if (empty($events)) {
-            return [];
-        }
-        $indexed = [];
-        $module = $events[0]->getModule();
-        $client = $module->getServer()->getClient();
-        foreach ($events as $event) {
-            if ($event->getEventType() !== 'delete') {
-                $objectId = $event->getObjectId();
-                $indexed[$objectId] = $event;
-            }
-        }
-        try {
-            $data = $client->getBeans(array_keys($indexed), $module->getConnectorName());
-            foreach ($data['result'] as $result) {
-                $objectId = $result['id'];
-                $indexed[$objectId]->setBeanData($result);
-            }
-        } catch (\Exception $error) {
-            return [];
-        }
-    }
 
     /**
      * @param Module $module
