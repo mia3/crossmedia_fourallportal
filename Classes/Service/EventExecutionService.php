@@ -288,8 +288,34 @@ class EventExecutionService implements SingletonInterface
             }
         }
 
+        /** @var Event[] $pending */
         $pending = $this->eventRepository->findByStatus('pending')->toArray();
         foreach ($pending as $event) {
+            if (!$event->getModule()->getServer()->isActive()) {
+                $this->logProblem(
+                    new ApiException(
+                        sprintf(
+                            'Pending event "%s" uses server "%s" which is disabled. Skipping event.',
+                            $event->getEventId(),
+                            $event->getModule()->getServer()->getDomain()
+                        )
+                    )
+                );
+                continue;
+            }
+            if (!$event->getModule()->verifySchemaVersion()) {
+                $this->logProblem(
+                    new ApiException(
+                        sprintf(
+                            'Remote config hash "%s" does not match local "%s" - skipping EXECUTE of pending event "%s"',
+                            $event->getModule()->getConnectorConfiguration()['config_hash'],
+                            $event->getModule()->getConfigHash(),
+                            $event->getEventId()
+                        )
+                    )
+                );
+                continue;
+            }
             $this->processEvent($event, true);
         }
 
