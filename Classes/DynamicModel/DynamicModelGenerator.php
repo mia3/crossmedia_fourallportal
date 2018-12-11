@@ -47,7 +47,7 @@ class DynamicModelGenerator
         'l10n_state TEXT DEFAULT NULL',
         'l10n_parent INT(11) DEFAULT \'0\' NOT NULL',
         'l10n_diffsource mediumblob',
-        'remote_id varchar(255) DEFAULT \'\' NOT NULL',
+        'remote_id varchar(64) DEFAULT \'\' NOT NULL',
     ];
 
     protected $automaticSchemaKeys = [
@@ -329,10 +329,10 @@ TEMPLATE;
             $propertyConfiguration['remoteId'] = [
                 "column"=> "remote_id",
                 "type"=> "string",
-                "schema" => "varchar(255) default ''",
+                "schema" => "varchar(64) default ''",
                 "config" => [
                     "type"=> "input",
-                    "size" => 255
+                    "size" => 64
                 ]
             ];
             $propertyConfiguration['l10nParent'] = [
@@ -527,11 +527,7 @@ TEMPLATE;
         switch ($fieldConfiguration['type']) {
             case 'CEVarchar':
                 $dataType = 'string';
-                $sqlType = sprintf(
-                    'varchar(%d) %s',
-                    $fieldConfiguration['length'],
-                    $fieldConfiguration['notNull'] ? 'NOT NULL' : 'default \'\''
-                );
+                $sqlType = 'text';
                 $tca = [
                     'type' => 'input',
                     'size' => $fieldConfiguration['length']
