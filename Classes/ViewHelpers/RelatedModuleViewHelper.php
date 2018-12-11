@@ -19,6 +19,7 @@ use Crossmedia\Fourallportal\Domain\Repository\ModuleRepository;
 use Crossmedia\Fourallportal\ValueReader\ResponseDataFieldValueReader;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Object\ObjectManager;
+use TYPO3\CMS\Extbase\Reflection\Exception\PropertyNotAccessibleException;
 use TYPO3Fluid\Fluid\Core\Rendering\RenderingContextInterface;
 use TYPO3Fluid\Fluid\Core\ViewHelper\AbstractViewHelper;
 use TYPO3Fluid\Fluid\Core\ViewHelper\Traits\CompileWithContentArgumentAndRenderStatic;
@@ -59,22 +60,23 @@ class RelatedModuleViewHelper extends AbstractViewHelper
             return '<i class="icon fa fa-check"></i> Not a relation';
         }
 
-        try {
-            // Make an attempt with the FIRST configured dimension mapping enabled. The first entry SHOULD always be the default language.
-            $fieldValue = (new ResponseDataFieldValueReader())->readResponseDataField($response['result'][0], $field, $module->getServer()->getDimensionMappings()->current());
-        } catch (\RuntimeException $error) {
-            $fieldValue = $error->getMessage();
-        }
-
         $relatedModule = static::getModuleByName($relatedModuleName);
         if (!$relatedModule) {
             return '<span class="text-warning"><i class="icon fa fa-exclamation"></i> Module "' . $relatedModuleName . '" is not supported</span>';
         }
 
-        if ($arguments['verifyRelations']) {
-            $relations = $module->getServer()->getClient()->getBeans($fieldValue, $relatedModule->getConnectorName());
-        } else {
-            $relations = ['result' => (array)$fieldValue];
+        try {
+            // Make an attempt with the FIRST configured dimension mapping enabled. The first entry SHOULD always be the default language.
+            $fieldValue = (new ResponseDataFieldValueReader())->readResponseDataField($response['result'][0], $field, $module->getServer()->getDimensionMappings()->current());
+            if ($arguments['verifyRelations']) {
+                $relations = $module->getServer()->getClient()->getBeans($fieldValue, $relatedModule->getConnectorName());
+            } else {
+                $relations = ['result' => (array)$fieldValue];
+            }
+        } catch (\RuntimeException $error) {
+            $fieldValue = $error->getMessage();
+        } catch (PropertyNotAccessibleException $error) {
+            $fieldValue = $error->getMessage();
         }
 
         $variableProvider = $renderingContext->getVariableProvider();
