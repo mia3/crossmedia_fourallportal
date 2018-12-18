@@ -521,7 +521,12 @@ abstract class AbstractMapping implements MappingInterface
             //->setLanguageMode('strict');
             //->setLanguageOverlayMode('hideNonTranslated');
 
-        return $query->matching($query->equals('uid', $recordUid))->execute()->getFirst();
+        $createdObject = $query->matching($query->equals('uid', $recordUid))->execute()->getFirst();
+        if ($systemLanguage) {
+            $createdObject->_setProperty('_localizedUid', $existingRow['uid'] ?? $recordUid);
+            $createdObject->_setProperty('_languageUid', $systemLanguage);
+        }
+        return $createdObject;
     }
 
     /**
