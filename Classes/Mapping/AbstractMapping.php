@@ -138,6 +138,8 @@ abstract class AbstractMapping implements MappingInterface
         if (!property_exists(get_class($object), $propertyName)) {
             return false;
         }
+
+        /*
         $currentPropertyValue = ObjectAccess::getProperty($object, $propertyName);
         // We need to check if the current value is an instance of the special FileReference proxy, which if it is, needs
         // to be explicitly removed from the repository so the mapping can create fresh instances.
@@ -148,6 +150,7 @@ abstract class AbstractMapping implements MappingInterface
             $this->removeObject($currentPropertyValue);
             $this->persist();
         }
+        */
 
         if ($propertyValue === null && reset((new \ReflectionMethod(get_class($object), 'set' . ucfirst($propertyName)))->getParameters())->allowsNull()) {
             ObjectAccess::setProperty($object, $propertyName, null);
@@ -179,11 +182,9 @@ abstract class AbstractMapping implements MappingInterface
                 // NB: This must not be done for normal entities and any third-party integrations with this extension
                 // must manually perform such removals in an override for this method, *BEFORE* calling the original method.
                 if ($item instanceof FileReference) {
-                    $this->removeObject($item);
+                    //$this->removeObject($item);
                 }
             }
-
-            $this->persist();
 
             if (!empty($propertyValue)) {
                 foreach ((array) $propertyValue as $identifier) {
