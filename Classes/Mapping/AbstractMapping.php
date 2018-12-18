@@ -588,19 +588,21 @@ abstract class AbstractMapping implements MappingInterface
         $rootObjectMappingProblemsOccurred = $this->mapPropertiesFromDataToObject($data, $object, $event->getModule(), $defaultDimensionMapping);
         $this->getObjectRepository()->update($object);
         $mappingProblemsOccurred = $mappingProblemsOccurred ?: $rootObjectMappingProblemsOccurred;
+        $this->persist();
+
+        $persistenceSession = GeneralUtility::makeInstance(ObjectManager::class)->get(Session::class);
+        $persistenceSession->unregisterObject($object);
 
         if ($defaultDimensionMapping === null) {
             // This return is in place for TYPO3 configurations that don't contain dimension mapping. If the PIM wants
             // to deliver dimensions but none are configured, errors will most likely have been raised during mapping
             // right before this case - but even in case the mapping actually succeeds with pure null values, we put
             // a return here because there is no need to continue mapping dimensions to translations.
-            $this->persist();
             return $mappingProblemsOccurred;
         }
 
         foreach ($translationDimensionMappings as $translationDimensionMapping) {
 
-            $this->persist();
 
             $languageUid = $translationDimensionMapping->getLanguage();
 
