@@ -1,6 +1,7 @@
 <?php
 namespace Crossmedia\Fourallportal\Mapping;
 
+use Crossmedia\Fourallportal\Domain\Model\DimensionMapping;
 use Crossmedia\Fourallportal\Domain\Model\Module;
 
 interface ValueSetterInterface
@@ -11,6 +12,7 @@ interface ValueSetterInterface
         array $inputData,
         $object,
         Module $module,
-        MappingInterface $mappingClass
+        MappingInterface $mappingClass,
+        DimensionMapping $dimensionMapping = null
     );
 }

@@ -112,7 +112,7 @@ abstract class AbstractMapping implements MappingInterface
                 $propertyValue = $responseValueReader->readResponseDataField($data['result'][0], $importedName, $dimensionMapping);
                 $customSetter = MappingRegister::resolvePropertyValueSetter(static::class, $importedName);
                 if ($customSetter) {
-                    $customSetter->setValueOnObject($propertyValue, $importedName, $data, $object, $module, $this);
+                    $customSetter->setValueOnObject($propertyValue, $importedName, $data, $object, $module, $this, $dimensionMapping);
                 } else {
                     $targetPropertyName = isset($map[$importedName]) ? $map[$importedName] : GeneralUtility::underscoredToLowerCamelCase($importedName);
                     $propertyMappingProblemsOccurred = $this->mapPropertyValueToObject($targetPropertyName, $propertyValue, $object);
