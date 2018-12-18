@@ -513,7 +513,7 @@ abstract class AbstractMapping implements MappingInterface
         $query = $this->getObjectRepository()->createQuery();
         $query->getQuerySettings()
             ->setRespectSysLanguage(false)
-            ->setIncludeDeleted(true)
+            ->setIncludeDeleted(false)
             ->setIgnoreEnableFields(true)
             ->setRespectStoragePage(false)
             ->setLanguageUid($systemLanguage);
