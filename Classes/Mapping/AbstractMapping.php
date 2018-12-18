@@ -213,7 +213,7 @@ abstract class AbstractMapping implements MappingInterface
                             $propertyName . ' on ' . get_class($object) . ':' .  $object->getRemoteId() . ' in language UID ' .
                             ObjectAccess::getProperty($object, '_languageUid', true)
                         );
-                        //$mappingProblemsOccurred = trued;
+                        $mappingProblemsOccurred = true;
                         continue;
                     }
                     if (!$objectStorage->contains($child)) {
