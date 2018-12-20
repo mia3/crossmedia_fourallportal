@@ -110,7 +110,6 @@ class FileReferenceTypeConverter extends AbstractUuidAwareObjectTypeConverter im
             }
             */
         } else {
-            $parentObjectId = method_exists($this->parentObject, 'getRemoteId') ? $this->parentObject->getRemoteId() : $this->parentObject->getUid();
 
             // Lookup no. 2: try to find a sys_file with remote ID=$source and use it as target for a new
             // file relation. If the original file cannot be found this way the relation is considered
@@ -123,6 +122,7 @@ class FileReferenceTypeConverter extends AbstractUuidAwareObjectTypeConverter im
                 ->execute()
                 ->fetchAll();
             if (!isset($original[0]['uid'])) {
+                $parentObjectId = method_exists($this->parentObject, 'getRemoteId') ? $this->parentObject->getRemoteId() : $this->parentObject->getUid();
                 throw new DeferralException(
                     'Unable to map ' . $this->propertyName . ' on ' . get_class($this->parentObject) . ':' . $parentObjectId .
                     ' - Asset ' . $source . ' does not appear to exist (yet).',
