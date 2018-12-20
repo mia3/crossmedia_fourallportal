@@ -169,22 +169,7 @@ abstract class AbstractMapping implements MappingInterface
         if (strpos($targetType, '<')) {
             $childType = substr($targetType, strpos($targetType, '<') + 1, -1);
             $childType = trim($childType, '\\');
-            $objectStorage = ObjectAccess::getProperty($object, $propertyName) ?? new ObjectStorage();
-            // Step one is to detach all currently related objects. Please note that $objectStorage->removeAll($objectStorage)
-            // does not work due to array pointer reset issues with Iterators. The only functioning way is to iterate and
-            // detach all, one by one, as below. Conversion to array is essential!
-            foreach ($objectStorage->toArray() as $item) {
-                $objectStorage->detach($item);
-
-                // In addition, we need to check if the object being removed is the well-known proxy entity from Extbase
-                // that creates relations between Extbase entities and `sys_file` objects which are not Extbase-based.
-                // If the object being removed is such a reference, the object itself must also be removed.
-                // NB: This must not be done for normal entities and any third-party integrations with this extension
-                // must manually perform such removals in an override for this method, *BEFORE* calling the original method.
-                if ($item instanceof FileReference) {
-                    //$this->removeObject($item);
-                }
-            }
+            $objectStorage = new ObjectStorage();
 
             if (!empty($propertyValue)) {
                 foreach ((array) $propertyValue as $identifier) {
