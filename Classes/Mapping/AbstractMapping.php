@@ -180,7 +180,14 @@ abstract class AbstractMapping implements MappingInterface
                     if ($typeConverter instanceof PimBasedTypeConverterInterface) {
                         $typeConverter->setParentObjectAndProperty($object, $propertyName);
                     }
-                    $child = $typeConverter->convertFrom($identifier, $childType, [], $configuration);
+
+                    try {
+                        $child = $typeConverter->convertFrom($identifier, $childType, [], $configuration);
+                    } catch (DeferralException $error) {
+                        $this->logProblem($error->getMessage());
+                        $mappingProblemsOccurred = true;
+                        continue;
+                    }
 
                     if ($child instanceof Error) {
                         // For whatever reason, property validators will return a validation error rather than throw an exception.
@@ -201,12 +208,13 @@ abstract class AbstractMapping implements MappingInterface
                         $mappingProblemsOccurred = true;
                         continue;
                     }
-                    if (!$objectStorage->contains($child)) {
-                        $objectStorage->attach($child);
-                    }
+
+                    $objectStorage->attach($child);
                 }
             }
+
             $propertyValue = $objectStorage;
+
         } elseif ($propertyValue !== null) {
             $sourceType = $propertyMapper->determineSourceType($propertyValue);
             $targetType = trim($targetType, '\\?');
