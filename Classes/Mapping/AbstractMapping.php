@@ -48,6 +48,7 @@ abstract class AbstractMapping implements MappingInterface
         $query->getQuerySettings()->setRespectStoragePage(false);
         $query->getQuerySettings()->setRespectSysLanguage(false);
         $query->getQuerySettings()->setIgnoreEnableFields(true);
+        $query->getQuerySettings()->setLanguageUid(0);
         $query->matching($query->equals('remoteId', $objectId));
         $object = $query->execute()->current();
         $deferAfterProcessing = false;
@@ -480,12 +481,25 @@ abstract class AbstractMapping implements MappingInterface
      */
     protected function createObject(Event $event, int $systemLanguage = 0, int $languageParentUid = 0, $existingRow = null)
     {
+        if ($systemLanguage > 0 && $languageParentUid === 0) {
+            throw new \Exception(
+                sprintf(
+                    'Will not create record for "%s:%s" in language "%d" since no translation parent was provided.',
+                    $event->getModule()->getModuleName(),
+                    $event->getObjectId(),
+                    $systemLanguage
+                )
+            );
+        }
+
         $recordUid = (int)(($existingRow['l10n_parent'] ?? false) ?: ($existingRow['uid'] ?? false) ?: 0);
+
         if ($recordUid === 0) {
             $newRecordValues = [
                 'pid' => $event->getModule()->getStoragePid(),
                 'sys_language_uid' => $systemLanguage,
                 'l10n_parent' => $languageParentUid,
+                'remote_id' => $event->getObjectId(),
                 'crdate' => time(),
             ];
             $GLOBALS['TYPO3_DB']->exec_INSERTquery($this->getTableName(), $newRecordValues);
@@ -497,9 +511,12 @@ abstract class AbstractMapping implements MappingInterface
         $session = GeneralUtility::makeInstance(ObjectManager::class)->get(Session::class);
         if ($session->hasIdentifier($recordUid, $entityClassName)) {
             $recordedObject = $session->getObjectByIdentifier($recordUid, $entityClassName);
-            if ((int)$recordedObject->_getProperty('_languageUid') === $systemLanguage) {
-                return $recordedObject;
-            }
+            $session->unregisterObject($recordedObject);
+            $session->unregisterReconstitutedEntity($recordedObject);
+        }
+
+        if ($languageParentUid > 0 && $session->hasIdentifier($languageParentUid, $entityClassName)) {
+            $recordedObject = $session->getObjectByIdentifier($languageParentUid, $entityClassName);
             $session->unregisterObject($recordedObject);
             $session->unregisterReconstitutedEntity($recordedObject);
         }
@@ -510,14 +527,27 @@ abstract class AbstractMapping implements MappingInterface
             ->setIncludeDeleted(false)
             ->setIgnoreEnableFields(true)
             ->setRespectStoragePage(false)
-            ->setLanguageUid($systemLanguage);
-            //->setLanguageMode('strict');
-            //->setLanguageOverlayMode('hideNonTranslated');
+            ->setLanguageUid($systemLanguage)
+            ->setLanguageMode('strict')
+            ->setLanguageOverlayMode('hideNonTranslated');
 
-        $createdObject = $query->matching($query->equals('uid', $recordUid))->execute()->getFirst();
+        $createdObject = $query->matching($query->equals('remote_id', $event->getObjectId()))->execute()->getFirst();
+        if (!$createdObject) {
+            throw new \Exception(
+                sprintf(
+                    'Unable to create object "%s:%s" in language "%d". Expected record UID: %s',
+                    $event->getModule()->getModuleName(),
+                    $event->getObjectId(),
+                    $systemLanguage,
+                    $recordUid
+                )
+            );
+        }
+
         if ($systemLanguage) {
             $createdObject->_setProperty('_localizedUid', $existingRow['uid'] ?? $recordUid);
             $createdObject->_setProperty('_languageUid', $systemLanguage);
+            $createdObject->setRemoteId($event->getObjectId());
         }
         return $createdObject;
     }
@@ -532,8 +562,8 @@ abstract class AbstractMapping implements MappingInterface
         GeneralUtility::makeInstance(ObjectManager::class)->get(PersistenceManager::class)->persistAll();
     }
 
-    public function getTableName() {
-
+    public function getTableName()
+    {
         $dataMapper = \TYPO3\CMS\Core\Utility\GeneralUtility::makeInstance(\TYPO3\CMS\Extbase\Persistence\Generic\Mapper\DataMapper::class);
         return $dataMapper->getDataMap($this->getEntityClassName())->getTableName();
     }
@@ -570,7 +600,7 @@ abstract class AbstractMapping implements MappingInterface
 
         if (!$object) {
             $object = $this->createObject($event);
-            $object->setRemoteId($event->getObjectId());
+            //$object->setRemoteId($event->getObjectId());
             $this->persist();
         }
 
@@ -609,6 +639,7 @@ abstract class AbstractMapping implements MappingInterface
             );
 
             $translationObject = $this->createObject($event, $languageUid, $object->getUid(), $existingRow);
+            //$translationObject->setRemoteId($event->getObjectId());
             $objectMappingProblemsOccurred = $this->mapPropertiesFromDataToObject($data, $translationObject, $event->getModule(), $translationDimensionMapping);
             $mappingProblemsOccurred = $mappingProblemsOccurred ?: $objectMappingProblemsOccurred;
             $this->getObjectRepository()->update($translationObject);
