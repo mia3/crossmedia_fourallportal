@@ -11,10 +11,6 @@ namespace Crossmedia\Fourallportal\Domain\Model;
  *  (c) 2017 Marc Neuhaus <marc@mia3.com>, MIA3 GmbH & Co. KG
  *
  ***/
-use Crossmedia\Fourallportal\Domain\Repository\ModuleRepository;
-use Crossmedia\Fourallportal\Mapping\MappingInterface;
-use TYPO3\CMS\Core\Utility\GeneralUtility;
-use TYPO3\CMS\Extbase\Object\ObjectManager;
 
 /**
  * Module
@@ -40,6 +36,11 @@ class DimensionMapping extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
      * @cascade remove
      */
     protected $dimensions = null;
+
+    /**
+     * @var string
+     */
+    protected $metricOrImperial = 'Metric';
 
     /**
      * @return int
@@ -87,6 +88,22 @@ class DimensionMapping extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
     public function setDimensions($dimensions)
     {
         $this->dimensions = $dimensions;
+    }
+
+    /**
+     * @return string
+     */
+    public function getMetricOrImperial()
+    {
+        return $this->metricOrImperial;
+    }
+
+    /**
+     * @param string $metricOrImperial
+     */
+    public function setMetricOrImperial($metricOrImperial)
+    {
+        $this->metricOrImperial = $metricOrImperial;
     }
 
     /**

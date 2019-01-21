@@ -16,10 +16,10 @@ return [
         'iconfile' => 'EXT:fourallportal/Resources/Public/Icons/tx_fourallportal_domain_model_dimensionmapping.gif'
     ],
     'interface' => [
-        'showRecordFieldList' => 'language, dimensions, server',
+        'showRecordFieldList' => 'language, metric_or_imperial, dimensions, server',
     ],
     'types' => [
-        '1' => ['showitem' => 'language, dimensions, server'],
+        '1' => ['showitem' => 'language, metric_or_imperial, dimensions, server'],
     ],
     'columns' => [
         'language' => [
@@ -31,6 +31,22 @@ return [
                 'special' => 'languages',
                 'default' => 0,
             ]
+        ],
+        'metric_or_imperial' => [
+            'label' => 'Imperial/Metric unit',
+            'config' => [
+                'type' => 'select',
+                'items' => [
+                    [
+                        'Metric',
+                        'Metric'
+                    ],
+                    [
+                        'Imperial',
+                        'Imperial',
+                    ],
+                ],
+            ],
         ],
         'server' => [
             'config' => [
