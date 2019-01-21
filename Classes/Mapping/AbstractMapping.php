@@ -579,7 +579,9 @@ abstract class AbstractMapping implements MappingInterface
     {
         $GLOBALS['TSFE'] = new TypoScriptFrontendController($GLOBALS['TYPO3_CONF_VARS'], $event->getModule()->getStoragePid(), 0);
         $GLOBALS['TSFE']->sys_page = new PageRepository();
+        $GLOBALS['TSFE']->sys_page->sys_language_uid = 0;
         $GLOBALS['TSFE']->getPageAndRootline();
+        $GLOBALS['TSFE']->sys_language_content = 0;
         $GLOBALS['TSFE']->config['sys_language_uid'] = 0;
         $GLOBALS['TSFE']->settingLanguage();
 
@@ -626,9 +628,10 @@ abstract class AbstractMapping implements MappingInterface
 
         foreach ($translationDimensionMappings as $translationDimensionMapping) {
 
-
             $languageUid = $translationDimensionMapping->getLanguage();
 
+            $GLOBALS['TSFE']->sys_language_content = $languageUid;
+            $GLOBALS['TSFE']->sys_page->sys_language_uid = $languageUid;
             $GLOBALS['TSFE']->config['sys_language_uid'] = $languageUid;
             $GLOBALS['TSFE']->settingLanguage();
 
