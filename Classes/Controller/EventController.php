@@ -122,7 +122,16 @@ class EventController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionController
      */
     public function checkAction($event)
     {
+        $events = $this->eventRepository->findByObjectId($event->getObjectId());
         $this->view->assign('event', $event);
+        $this->view->assign('events', $events);
+        foreach ($events as $historicalEvent) {
+            if ($historicalEvent->getEventType() === 'delete') {
+                $this->view->assign('deleted', ($historicalEvent->getStatus() === 'claimed'));
+                $this->view->assign('deletedScheduled', ($historicalEvent->getStatus() === 'pending'));
+                break;
+            }
+        }
     }
 
     /**
