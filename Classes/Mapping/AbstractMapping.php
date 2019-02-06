@@ -618,11 +618,13 @@ abstract class AbstractMapping implements MappingInterface
         $persistenceSession = GeneralUtility::makeInstance(ObjectManager::class)->get(Session::class);
         $persistenceSession->unregisterObject($object);
 
-        if ($defaultDimensionMapping === null) {
+        if ($defaultDimensionMapping === null || !$event->getModule()->getContainsDimensions()) {
             // This return is in place for TYPO3 configurations that don't contain dimension mapping. If the PIM wants
             // to deliver dimensions but none are configured, errors will most likely have been raised during mapping
             // right before this case - but even in case the mapping actually succeeds with pure null values, we put
             // a return here because there is no need to continue mapping dimensions to translations.
+            // Alternative case is that dimension mapping is disabled for the specific module, which is possible to do
+            // if the PIM service absolutely has no dimensioned data (e.g. the "data" module).
             return $mappingProblemsOccurred;
         }
 

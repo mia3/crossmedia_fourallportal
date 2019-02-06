@@ -19,10 +19,10 @@ return [
         'iconfile' => 'EXT:fourallportal/Resources/Public/Icons/tx_fourallportal_domain_model_module.gif'
     ],
     'interface' => [
-        'showRecordFieldList' => 'connector_name, module_name, mapping_class, enable_dynamic_model, config_hash, last_event_id, shell_path, storage_pid, fal_storage, usage_flag, test_object_uuid, server',
+        'showRecordFieldList' => 'connector_name, module_name, mapping_class, enable_dynamic_model, contains_dimensions, config_hash, last_event_id, shell_path, storage_pid, fal_storage, usage_flag, test_object_uuid, server',
     ],
     'types' => [
-        '1' => ['showitem' => 'connector_name, module_name, mapping_class, enable_dynamic_model, config_hash, last_event_id, last_received_event_id, shell_path, storage_pid, fal_storage, usage_flag, test_object_uuid, server'],
+        '1' => ['showitem' => 'connector_name, module_name, mapping_class, enable_dynamic_model, contains_dimensions, config_hash, last_event_id, last_received_event_id, shell_path, storage_pid, fal_storage, usage_flag, test_object_uuid, server'],
     ],
     'columns' => [
         'connector_name' => [
@@ -65,6 +65,14 @@ return [
         'enable_dynamic_model' => [
             'exclude' => true,
             'label' => 'LLL:EXT:fourallportal/Resources/Private/Language/locallang_db.xlf:tx_fourallportal_domain_model_module.enable_dynamic_model',
+            'config' => [
+                'type' => 'check',
+                'default' => 1
+            ],
+        ],
+        'contains_dimensions' => [
+            'exclude' => true,
+            'label' => 'LLL:EXT:fourallportal/Resources/Private/Language/locallang_db.xlf:tx_fourallportal_domain_model_module.contains_dimensions',
             'config' => [
                 'type' => 'check',
                 'default' => 1

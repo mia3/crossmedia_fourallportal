@@ -105,6 +105,11 @@ class Module extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
     protected $server = null;
 
     /**
+     * @var bool
+     */
+    protected $containsDimensions = true;
+
+    /**
      * Returns the connectorName
      *
      * @return string $connectorName
@@ -353,6 +358,30 @@ class Module extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
     public function setEnableDynamicModel($enableDynamicModel)
     {
         $this->enableDynamicModel = $enableDynamicModel;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isContainsDimensions()
+    {
+        return $this->containsDimensions;
+    }
+
+    /**
+     * @return bool
+     */
+    public function getContainsDimensions()
+    {
+        return $this->containsDimensions;
+    }
+
+    /**
+     * @param bool $containsDimensions
+     */
+    public function setContainsDimensions($containsDimensions)
+    {
+        $this->containsDimensions = (bool)$containsDimensions;
     }
 
     /**
