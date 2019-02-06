@@ -49,6 +49,17 @@
             <div class="btn-group" role="group">
                 <f:if condition="!{deleted}">
                     <f:link.action
+                        action="index"
+                        arguments="{objectId: event.objectId}"
+                        extensionName="Fourallportal"
+                        controller="Event"
+                        class="btn btn-default" title="Filter to show only events for this object">
+                                    <span>
+                                        <core:icon identifier="actions-filter"
+                                                   alternativeMarkupIdentifier="inline"/>
+                                    </span>
+                    </f:link.action>
+                    <f:link.action
                         action="execute"
                         arguments="{event: event}"
                         extensionName="Fourallportal"

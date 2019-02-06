@@ -47,20 +47,24 @@ class EventController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionController
      *
      * @param string $status
      * @param string $search
+     * @param string $objectId
      * @param Event $modifiedEvent
      * @return void
      */
-    public function indexAction($status = null, $search = null, Event $modifiedEvent = null)
+    public function indexAction($status = null, $search = null, $objectId = null, Event $modifiedEvent = null)
     {
         $eventOptions = [
-            'pending' => 'pending',
-            'failed' => 'failed',
-            'deferred' => 'deferred',
-            'claimed' => 'claimed',
-            'all' => 'all'
+            'pending' => 'Status: pending',
+            'failed' => 'Status: failed',
+            'deferred' => 'Status: deferred',
+            'claimed' => 'Status: claimed',
+            'all' => 'Status: all'
         ];
 
-        if ($status || $search) {
+        if ($objectId) {
+            $events = $this->eventRepository->findByObjectId($objectId);
+            $status = 'all';
+        } elseif ($status || $search) {
             // Load events with selected status
             $events = $this->searchEventsWithStatus($status, $search);
             if ($status !== 'all' && $events->count() === 0) {
@@ -81,6 +85,7 @@ class EventController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionController
         $this->view->assign('status', $status);
         $this->view->assign('events', $events);
         $this->view->assign('search', $search);
+        $this->view->assign('objectId', $objectId);
         $this->view->assign('modifiedEvent', $modifiedEvent);
         $this->view->assign('eventStatusOptions', $eventOptions);
     }

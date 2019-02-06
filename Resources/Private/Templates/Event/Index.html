@@ -22,23 +22,29 @@
     <div class="row-fluid">
         <f:form action="index" addQueryString="1" class="form form-inline" id="filter-form">
             <fieldset class="filter form-group pull-right">
-                <label>
-                    Status: <f:if condition="{searchWidened}"><span class="text-danger">expanded to <code>{f:if(condition: status, then: status, else: 'all')}</code>, no results found for your request!</span></f:if>
-                    <f:form.select name="status" value="{status}" class="form-control" additionalAttributes="{onchange: 'document.getElementById(\'filter-form\').submit();'}">
-                        <f:for each="{eventStatusOptions}" as="optionLabel" key="optionValue">
-                            <f:if condition="{optionValue} === {status}">
-                                <f:then>
-                                    <f:form.select.option value="{optionValue}" selected="selected">{optionLabel}</f:form.select.option>
-                                </f:then>
-                                <f:else>
-                                    <f:form.select.option value="{optionValue}">{optionLabel}</f:form.select.option>
-                                </f:else>
-                            </f:if>
-                        </f:for>
-                    </f:form.select>
-                </label>
-                <f:form.textfield name="search" type="search" class="filter-search form-control" placeholder="Search" value="{search}"/>
+                <f:form.textfield name="objectId" type="search" class="filter-search form-control" placeholder="Object UUID" value="{objectId}"/>
+                <f:if condition="!{objectId}">
+                    or
+                    <label>
+                        <f:if condition="{searchWidened}"><span class="text-danger">expanded to <code>{f:if(condition: status, then: status, else: 'all')}</code>, no results found for your request!</span></f:if>
+                        <f:form.select name="status" value="{status}" class="form-control" additionalAttributes="{onchange: 'document.getElementById(\'filter-form\').submit();'}">
+                            <f:for each="{eventStatusOptions}" as="optionLabel" key="optionValue">
+                                <f:if condition="{optionValue} === {status}">
+                                    <f:then>
+                                        <f:form.select.option value="{optionValue}" selected="selected">{optionLabel}</f:form.select.option>
+                                    </f:then>
+                                    <f:else>
+                                        <f:form.select.option value="{optionValue}">{optionLabel}</f:form.select.option>
+                                    </f:else>
+                                </f:if>
+                            </f:for>
+                        </f:form.select>
+                    </label>
+                    and
+                    <f:form.textfield name="search" type="search" class="filter-search form-control" placeholder="Search" value="{search}"/>
+                </f:if>
                 <f:form.submit value="Show" class="btn btn-primary" />
+                <f:link.action action="index" class="btn btn-warning">Reset</f:link.action>
             </fieldset>
         </f:form>
 
