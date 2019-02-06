@@ -76,7 +76,7 @@ class EventController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionController
         } else {
             // Find first status from prioritised list above which yields results
             do {
-                $status = current($eventOptions);
+                $status = key($eventOptions);
                 $events = $this->searchEventsWithStatus($status, $search);
             } while ($events->count() === 0 && next($eventOptions));
         }
