@@ -628,6 +628,11 @@ abstract class AbstractMapping implements MappingInterface
 
         foreach ($translationDimensionMappings as $translationDimensionMapping) {
 
+            if (!$translationDimensionMapping->isActive()) {
+                $this->logProblem('Dimension mapping ' . $translationDimensionMapping->getUid() . ' is configured to not use dimensions, skipping.');
+                continue;
+            }
+
             $languageUid = $translationDimensionMapping->getLanguage();
 
             $GLOBALS['TSFE']->sys_language_content = $languageUid;

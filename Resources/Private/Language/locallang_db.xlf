@@ -153,6 +153,9 @@
             <trans-unit id="tx_fourallportal_domain_model_dimensionmapping.language">
                 <source>Language</source>
             </trans-unit>
+            <trans-unit id="tx_fourallportal_domain_model_dimensionmapping.active">
+                <source>Active?</source>
+            </trans-unit>
             <trans-unit id="tx_fourallportal_domain_model_dimensionmapping.dimensions">
                 <source>Dimensions</source>
             </trans-unit>

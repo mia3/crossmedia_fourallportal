@@ -43,6 +43,13 @@ class DimensionMapping extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
     protected $metricOrImperial = 'Metric';
 
     /**
+     * active
+     *
+     * @var bool
+     */
+    protected $active = false;
+
+    /**
      * @return int
      */
     public function getLanguage()
@@ -104,6 +111,37 @@ class DimensionMapping extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
     public function setMetricOrImperial($metricOrImperial)
     {
         $this->metricOrImperial = $metricOrImperial;
+    }
+
+    /**
+     * Returns the active
+     *
+     * @return bool $active
+     */
+    public function getActive()
+    {
+        return $this->active;
+    }
+
+    /**
+     * Sets the active
+     *
+     * @param bool $active
+     * @return void
+     */
+    public function setActive($active)
+    {
+        $this->active = $active;
+    }
+
+    /**
+     * Returns the boolean state of active
+     *
+     * @return bool
+     */
+    public function isActive()
+    {
+        return $this->active;
     }
 
     /**

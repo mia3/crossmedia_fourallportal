@@ -151,13 +151,14 @@ CREATE TABLE tx_fourallportal_domain_model_dimensionmapping (
 
 	language varchar(255) DEFAULT '' NOT NULL,
 	metric_or_imperial varchar(10) DEFAULT 'Metric' NOT NULL,
+	active smallint(5) unsigned DEFAULT '1' NOT NULL,
 
 	tstamp int(11) unsigned DEFAULT '0' NOT NULL,
 	crdate int(11) unsigned DEFAULT '0' NOT NULL,
 	cruser_id int(11) unsigned DEFAULT '0' NOT NULL,
 
 	PRIMARY KEY (uid),
-	KEY parent (pid),
+	KEY parent (pid)
 
 );
 

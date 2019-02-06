@@ -16,10 +16,10 @@ return [
         'iconfile' => 'EXT:fourallportal/Resources/Public/Icons/tx_fourallportal_domain_model_dimensionmapping.gif'
     ],
     'interface' => [
-        'showRecordFieldList' => 'language, metric_or_imperial, dimensions, server',
+        'showRecordFieldList' => 'active, language, metric_or_imperial, dimensions, server',
     ],
     'types' => [
-        '1' => ['showitem' => 'language, metric_or_imperial, dimensions, server'],
+        '1' => ['showitem' => 'active, language, metric_or_imperial, dimensions, server'],
     ],
     'columns' => [
         'language' => [
@@ -52,6 +52,19 @@ return [
             'config' => [
                 'type' => 'passthrough',
             ],
+        ],
+        'active' => [
+            'exclude' => true,
+            'label' => 'LLL:EXT:fourallportal/Resources/Private/Language/locallang_db.xlf:tx_fourallportal_domain_model_dimensionmapping.active',
+            'config' => [
+                'type' => 'check',
+                'items' => [
+                    '1' => [
+                        '0' => 'LLL:EXT:lang/locallang_core.xlf:labels.enabled'
+                    ]
+                ],
+                'default' => 0,
+            ]
         ],
         'dimensions' => [
             'exclude' => true,
