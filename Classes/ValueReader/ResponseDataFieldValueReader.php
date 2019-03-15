@@ -26,14 +26,6 @@ class ResponseDataFieldValueReader
                         return $dimensionObject['value'];
                     }
                 }
-
-                // Look for a value in the default language dimension. If one exists there, use it as fallback value.
-                $defaultDimension = $dimensionMapping->getDefaultDimensionMapping();
-                foreach ($result['properties'][$fieldName] as $dimensionObject) {
-                    if ($defaultDimension->matches($dimensionObject['dimensions'])) {
-                        return $dimensionObject['value'];
-                    }
-                }
             }
 
             throw new PropertyNotAccessibleException(
