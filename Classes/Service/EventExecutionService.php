@@ -1,6 +1,7 @@
 <?php
 namespace Crossmedia\Fourallportal\Service;
 
+use Crossmedia\Fourallportal\Domain\Dto\SyncParameters;
 use Crossmedia\Fourallportal\Domain\Model\Event;
 use Crossmedia\Fourallportal\Domain\Model\Module;
 use Crossmedia\Fourallportal\Domain\Model\Server;
@@ -120,28 +121,27 @@ class EventExecutionService implements SingletonInterface
         $this->unlock();
     }
 
-    /**
-     * Sync data
-     *
-     * Execute this to synchronise events from the PIM API.
-     *
-     * @param bool $sync Set to "1" to trigger a full sync
-     * @param string $module If passed can be used to only sync one module, using the module or connector name it has in 4AP.
-     * @param string $exclude Exclude a list of modules from processing (CSV string module names)
-     * @param bool $force If set, forces the sync to run regardless of lock and will neither lock nor unlock the task
-     */
-    public function sync($sync = false, $module = null, $exclude = null, $force = false)
+    public function sync(SyncParameters $parameters)
     {
         try {
-            $this->performSync($sync, $module, $exclude, $force);
+            $parameters->startExecution();
+            if ($parameters->getSync()) {
+                $this->performSync($parameters);
+            }
+            if ($parameters->getExecute()) {
+                $this->performExecute($parameters);
+            }
         } catch (ApiException $error) {
             $this->logProblem($error);
             $this->unlock();
         }
     }
 
-    protected function performSync($sync = false, $module = null, $exclude = null, $force = false)
+    protected function performSync(SyncParameters $parameters)
     {
+        $fullSync = $parameters->getFullSync();
+        $module = $parameters->getModule();
+        $exclude = $parameters->getExclude();
         if (!empty($exclude)) {
             $exclude = explode(',', $exclude);
         } else {
@@ -160,7 +160,7 @@ class EventExecutionService implements SingletonInterface
             }
             $deferredEvents[$event->getModule()->getModuleName()][$event->getObjectId()][] = $event;
         }
-        if ($sync && !$module && !$exclude) {
+        if ($fullSync && !$module && !$exclude) {
             $GLOBALS['TYPO3_DB']->exec_TRUNCATEquery('tx_fourallportal_domain_model_event');
         }
 
@@ -186,7 +186,7 @@ class EventExecutionService implements SingletonInterface
             }
 
             /** @var Module $configuredModule */
-            if ($sync && $module->getLastReceivedEventId() > 0) {
+            if ($fullSync && $module->getLastReceivedEventId() > 0) {
                 $module->setLastReceivedEventId(0);
                 $moduleEvents = $this->eventRepository->findByModule($module->getUid());
                 foreach ($moduleEvents as $moduleEvent) {
@@ -232,26 +232,21 @@ class EventExecutionService implements SingletonInterface
         $this->objectManager->get(PersistenceManagerInterface::class)->persistAll();
     }
 
-    /**
-     * Execute all deferred and pending events
-     *
-     * @param bool $sync If true, will start executing events from earliest possible. If false, will continue from last processed event.
-     * @param string $module If passed can be used to only sync one module, using the module or connector name it has in 4AP.
-     * @param string $exclude Exclude a list of modules from processing (CSV string module names)
-     * @param bool $force If set, forces the sync to run regardless of lock and will neither lock nor unlock the task
-     */
-    public function execute($sync = false, $module = null, $exclude = null, $force = false)
+    public function execute(SyncParameters $parameters)
     {
         try {
-            $this->performExecute($sync, $module, $exclude, $force);
+            $this->performExecute($parameters);
         } catch (ApiException $error) {
             $this->logProblem($error);
             $this->unlock();
         }
     }
 
-    protected function performExecute($sync = false, $module = null, $exclude = null, $force = false)
+    protected function performExecute(SyncParameters $parameters)
     {
+        $sync = $parameters->getSync();
+        $module = $parameters->getModule();
+        $exclude = $parameters->getExclude();
         $activeModules = $this->getActiveModuleOrModules($module);
 
         foreach ($activeModules as $module) {
@@ -277,6 +272,9 @@ class EventExecutionService implements SingletonInterface
         }
 
         foreach ($this->eventRepository->findByStatus('deferred') as $event) {
+            if (!$parameters->shouldContinue()) {
+                break;
+            }
             if (in_array($event->getModule()->getModuleName(), $exclude ?: [])) {
                 continue;
             }
@@ -286,17 +284,26 @@ class EventExecutionService implements SingletonInterface
             $deferredEvents[$event->getModule()->getModuleName()][$event->getObjectId()][] = $event;
             if ($event->getNextRetry() < time()) {
                 $this->processEvent($event, false);
+                $parameters->countExecutedEvent();
             }
         }
 
         /** @var Event[] $pending */
         $pending = $this->eventRepository->findByStatus('pending')->toArray();
-        foreach ($pending as $event) {
+        $this->processEvents($parameters, $pending);
+    }
+
+    protected function processEvents(SyncParameters $parameters, array $events)
+    {
+        foreach ($events as $event) {
+            if (!$parameters->shouldContinue()) {
+                break;
+            }
             if (!$event->getModule()->getServer()->isActive()) {
                 $this->logProblem(
                     new ApiException(
                         sprintf(
-                            'Pending event "%s" uses server "%s" which is disabled. Skipping event.',
+                            'Event "%s" uses server "%s" which is disabled. Skipping event.',
                             $event->getEventId(),
                             $event->getModule()->getServer()->getDomain()
                         )
@@ -308,7 +315,7 @@ class EventExecutionService implements SingletonInterface
                 $this->logProblem(
                     new ApiException(
                         sprintf(
-                            'Remote config hash "%s" does not match local "%s" - skipping EXECUTE of pending event "%s"',
+                            'Remote config hash "%s" does not match local "%s" - skipping EXECUTE of event "%s"',
                             $event->getModule()->getConnectorConfiguration()['config_hash'],
                             $event->getModule()->getConfigHash(),
                             $event->getEventId()
@@ -318,6 +325,7 @@ class EventExecutionService implements SingletonInterface
                 continue;
             }
             $this->processEvent($event, true);
+            $parameters->countExecutedEvent();
         }
 
         try {
@@ -477,6 +485,7 @@ class EventExecutionService implements SingletonInterface
             'Processing ' . $event->getStatus() . ' event "' . $event->getModule()->getModuleName() . ':' . $event->getEventId() . '" - ' .
             $event->getEventType() . ' ' . $event->getObjectId() . PHP_EOL
         );
+
         $this->response->send();
         $client = $event->getModule()->getServer()->getClient();
         try {

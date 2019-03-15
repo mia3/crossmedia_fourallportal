@@ -12,9 +12,11 @@ namespace Crossmedia\Fourallportal\Controller;
  *
  ***/
 
+use Crossmedia\Fourallportal\Domain\Dto\SyncParameters;
 use Crossmedia\Fourallportal\Domain\Model\Event;
 use Crossmedia\Fourallportal\Response\CollectingResponse;
 use Crossmedia\Fourallportal\Service\EventExecutionService;
+use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 /**
  * EventController
@@ -172,9 +174,10 @@ class EventController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionController
 
     public function syncAction()
     {
+        $syncParameters = GeneralUtility::makeInstance(SyncParameters::class)->setSync(true)->setExecute(true);
         $fakeResponse = new CollectingResponse();
         $this->eventExecutionService->setResponse($fakeResponse);
-        $this->eventExecutionService->sync();
+        $this->eventExecutionService->sync($syncParameters);
         $this->addFlashMessage(nl2br($fakeResponse->getCollected()) ?: 'No new events to fetch', 'Executed');
         $this->redirect('index');
     }

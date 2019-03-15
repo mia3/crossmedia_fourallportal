@@ -1,6 +1,7 @@
 <?php
 namespace Crossmedia\Fourallportal\Command;
 
+use Crossmedia\Fourallportal\Domain\Dto\SyncParameters;
 use Crossmedia\Fourallportal\Domain\Model\Event;
 use Crossmedia\Fourallportal\Domain\Model\Module;
 use Crossmedia\Fourallportal\Domain\Model\Server;
@@ -638,14 +639,25 @@ class FourallportalCommandController extends CommandController
      *
      * Execute this to synchronise events from the PIM API.
      *
-     * @param bool $sync Set to "1" to trigger a full sync
+     * @param bool $sync Set to "1" to sync events (starting from last received event). If execute=true will happen before executing.
+     * @param bool $fullSync Set to "1" to trigger a full sync
      * @param string $module If passed can be used to only sync one module, using the module or connector name it has in 4AP.
      * @param string $exclude Exclude a list of modules from processing (CSV string module names)
      * @param bool $force If set, forces the sync to run regardless of lock and will neither lock nor unlock the task
      * @param bool $execute If true, also executes events after receiving (syncing) events
+     * @param int $maxEvents Maximum number of events to process. Default is unlimited. Affects only the number of events being executed, if sync is enabled will still sync all.
+     * @param int $maxTime Maximum number of seconds that the sync is allowed to run, once expired, will require a new execution to continue
      */
-    public function syncCommand($sync = false, $module = null, $exclude = null, $force = false, $execute = true)
-    {
+    public function syncCommand(
+        $sync = false,
+        $fullSync = false,
+        $module = null,
+        $exclude = null,
+        $force = false,
+        $execute = false,
+        $maxEvents = 0,
+        $maxTime = 0
+    ) {
         if (!$force) {
             try {
                 $this->eventExecutionService->lock();
@@ -657,42 +669,18 @@ class FourallportalCommandController extends CommandController
             }
         }
 
-        $this->eventExecutionService->setResponse($this->response);
-        $this->eventExecutionService->sync($sync, $module, $exclude, $force);
-        if ($execute) {
-            $this->eventExecutionService->execute($sync, $module, $exclude, $force);
-        }
-
-        if (!$force) {
-            $this->eventExecutionService->unlock();
-        }
-    }
-
-    /**
-     * Sync data
-     *
-     * Execute this to synchronise events from the PIM API.
-     *
-     * @param bool $sync Set to "1" to trigger a full sync
-     * @param string $module If passed can be used to only sync one module, using the module or connector name it has in 4AP.
-     * @param string $exclude Exclude a list of modules from processing (CSV string module names)
-     * @param bool $force If set, forces the sync to run regardless of lock and will neither lock nor unlock the task
-     */
-    public function executeCommand($sync = false, $module = null, $exclude = null, $force = false)
-    {
-        if (!$force) {
-            try {
-                $this->eventExecutionService->lock();
-            } catch (\Exception $error) {
-                $this->eventExecutionService->logProblem($error);
-                $this->response->setContent('Cannot acquire lock - exiting without error' . PHP_EOL);
-                $this->response->send();
-                return;
-            }
-        }
+        $syncParameters = GeneralUtility::makeInstance(SyncParameters::class)
+            ->setSync((bool)$sync)
+            ->setFullSync((bool)$fullSync)
+            ->setModule($module)
+            ->setExclude($exclude)
+            ->setForce($force)
+            ->setExecute($execute)
+            ->setEventLimit((int)$maxEvents)
+            ->setTimeLimit((int)$maxTime);
 
         $this->eventExecutionService->setResponse($this->response);
-        $this->eventExecutionService->execute($sync, $module, $exclude, $force);
+        $this->eventExecutionService->sync($syncParameters);
 
         if (!$force) {
             $this->eventExecutionService->unlock();
