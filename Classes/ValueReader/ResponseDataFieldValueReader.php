@@ -26,17 +26,28 @@ class ResponseDataFieldValueReader
                         return $dimensionObject['value'];
                     }
                 }
+
+                $errorData = [];
+                foreach ($dimensionMapping->getDimensions() as $dimension) {
+                    $errorData[$dimension->getName()] = $dimension->getValue();
+                }
+
+                throw new PropertyNotAccessibleException(
+                    'Cannot read property ' . $fieldName . ' from PIM response. ' .
+                    sprintf(
+                        'Dimension mapping is in effect but data set has no dimensioned data which matches %s.',
+                        json_encode($errorData)
+                    ),
+                    1527168392
+                );
             }
 
             throw new PropertyNotAccessibleException(
-                'Cannot read property ' . $fieldName . ' from PIM response. ' .
-                (
-                    $dimensionMapping === null
-                        ? 'Dimension mapping is NOT in effect but property contains dimensions.'
-                        : 'Dimension mapping is in effect but no dimensions match the language being imported and the default/fallback dimension data is not included.'
-                ),
+                'Cannot read property ' . $fieldName . ' from PIM response. Dimension mapping is NOT in effect but property contains dimensions.',
                 1527168391
             );
+
+
         } elseif (is_array($result['properties'][$fieldName][0] ?? false)
             && isset($result['properties'][$fieldName][0]['dimensions'])
         ) {
