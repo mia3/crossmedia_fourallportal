@@ -7,6 +7,7 @@ use Crossmedia\Fourallportal\Domain\Model\Module;
 use Crossmedia\Fourallportal\Domain\Model\Server;
 use Crossmedia\Fourallportal\Error\ApiException;
 use Crossmedia\Fourallportal\Mapping\DeferralException;
+use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Locking\Exception\LockCreateException;
 use TYPO3\CMS\Core\Log\LogManager;
 use TYPO3\CMS\Core\SingletonInterface;
@@ -440,6 +441,7 @@ class EventExecutionService implements SingletonInterface
         }
         $age = time() - filemtime($lockFile);
         if ($age >= $requiredAge) {
+            $this->resetSchedulerTask($requiredAge);
             return unlink($lockFile);
         }
         $this->response->setContent(
@@ -450,6 +452,24 @@ class EventExecutionService implements SingletonInterface
         );
         $this->response->send();
         return false;
+    }
+
+    protected function resetSchedulerTask($requiredAge)
+    {
+        $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('tx_scheduler_task');
+        $queryBuilder->select('uid', 'serialized_task_object')->from('tx_scheduler_task');
+        $result = $queryBuilder->execute();
+        $deadAge = time() - $requiredAge;
+        while (($taskRecord = $result->fetch())) {
+            /** @var Task $task */
+            $task = unserialize($taskRecord['serialized_task_object']);
+            $task->__construct();
+            if ($task->isExecutionRunning() && $task->getCommandIdentifier() === 'fourallportal:fourallportal:sync' && $task->getExecutionTime() <= $deadAge) {
+                $task->setRunOnNextCronJob(true);
+                $task->unmarkAllExecutions();
+                $task->save();
+            }
+        }
     }
 
     protected function getLockFilePath()
