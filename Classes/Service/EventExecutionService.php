@@ -454,7 +454,7 @@ class EventExecutionService implements SingletonInterface
 
     protected function getLockFilePath()
     {
-        return GeneralUtility::getFileAbsFileName('typo3temp/var/transient/') . 'lock_4ap_sync.lock';
+        return GeneralUtility::getFileAbsFileName('typo3temp/var/locks/') . 'lock_4ap_sync.lock';
     }
 
     public function logProblem(\Exception $exception)
