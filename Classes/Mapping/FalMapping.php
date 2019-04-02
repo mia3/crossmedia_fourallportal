@@ -65,19 +65,24 @@ class FalMapping extends AbstractMapping
 
         switch ($event->getEventType()) {
             case 'delete':
-                if (!$object) {
-                    // push back event.
-                    return;
+                if (!$object && !$record) {
+                    // Object is already deleted, return false meaning no deferral after processing.
+                    return false;
                 }
 
                 // Do reference checking because references to sys_file are extremely prone to throwing exceptions if
                 // a file is suddenly removed. The repository does not complain about such cases so we check it here.
                 // Failures (as in: references that block deletion) cause a DeferralException which cases the event to
                 // be continuously retried until it either fails because of TTL, or references are removed.
-                $this->performSanityCheckBeforeDeletion($record);
+                if ($record) {
+                    $this->performSanityCheckBeforeDeletion($record);
+                }
 
-                $object->delete();
-                $repository->remove($object);
+                if ($object) {
+                    $object->delete();
+                    $repository->remove($object);
+                }
+
                 break;
             case 'update':
             case 'create':
@@ -444,7 +449,7 @@ class FalMapping extends AbstractMapping
                 $status['class'] = 'danger';
             }
             $paths[] = $result['properties']['data_shellpath']['value'] . $result['properties']['data_name']['value'];
-       }
+        }
         if (empty($module->getShellPath())) {
             $status['class'] = 'danger';
             $messages['shellpath_missing'] = '
