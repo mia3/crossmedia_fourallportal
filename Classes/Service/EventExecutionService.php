@@ -17,6 +17,8 @@ use TYPO3\CMS\Extbase\Mvc\ResponseInterface;
 use TYPO3\CMS\Extbase\Object\ObjectManagerInterface;
 use TYPO3\CMS\Extbase\Persistence\Generic\PersistenceManager;
 use TYPO3\CMS\Extbase\Persistence\PersistenceManagerInterface;
+use TYPO3\CMS\Extbase\Scheduler\Task;
+use TYPO3\CMS\Scheduler\Scheduler;
 
 class EventExecutionService implements SingletonInterface
 {
@@ -457,16 +459,15 @@ class EventExecutionService implements SingletonInterface
     protected function resetSchedulerTask($requiredAge)
     {
         $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('tx_scheduler_task');
-        $queryBuilder->select('uid', 'serialized_task_object')->from('tx_scheduler_task');
+        $queryBuilder->select('uid')->from('tx_scheduler_task');
         $result = $queryBuilder->execute();
         $deadAge = time() - $requiredAge;
+        $scheduler = GeneralUtility::makeInstance(Scheduler::class);
         while (($taskRecord = $result->fetch())) {
-            /** @var Task $task */
-            $task = unserialize($taskRecord['serialized_task_object']);
-            $task->__construct();
-            if ($task->isExecutionRunning() && $task->getCommandIdentifier() === 'fourallportal:fourallportal:sync' && $task->getExecutionTime() <= $deadAge) {
-                $task->setRunOnNextCronJob(true);
+            $task = $scheduler->fetchTask($taskRecord['uid']);
+            if ($task->isExecutionRunning() && $task instanceof Task && $task->getCommandIdentifier() === 'fourallportal:fourallportal:sync' && $task->getExecution()->getStart() <= $deadAge) {
                 $task->unmarkAllExecutions();
+                $task->setRunOnNextCronJob(true);
                 $task->save();
             }
         }
