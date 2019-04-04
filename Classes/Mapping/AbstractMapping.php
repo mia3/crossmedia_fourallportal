@@ -120,9 +120,9 @@ abstract class AbstractMapping implements MappingInterface
                     $mappingProblemsOccurred = $mappingProblemsOccurred ?: $propertyMappingProblemsOccurred;
                 }
             } catch (PropertyNotAccessibleException $error) {
-                $this->logProblem($error->getMessage());
+                $this->logProblem('Error mapping ' . $module->getModuleName() . ':' . $object->getRemoteId() . ':' . $importedName .' - ' . $error->getMessage());
             } catch (DeferralException $error) {
-                $this->logProblem($error->getMessage());
+                $this->logProblem('Error mapping ' . $module->getModuleName() . ':' . $object->getRemoteId() . ':' . $importedName .' - ' . $error->getMessage());
             }
         }
         return $mappingProblemsOccurred;
