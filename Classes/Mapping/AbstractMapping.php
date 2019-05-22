@@ -170,7 +170,7 @@ abstract class AbstractMapping implements MappingInterface
         $languageUids = array_column($pimRecords, 'sys_language_uid');
         $pids = array_column($pimRecords, 'pid');
         $pid = reset($pids);
-        if (count(array_unique($pids) !== count($pids))) {
+        if (count(array_unique($pids)) !== count($pids)) {
             // One or more records do not have the right pid. Delete those that differ if their language UID is non-zero.
             $encountered = [];
             foreach ($pimRecords as $index => &$record) {
@@ -185,7 +185,7 @@ abstract class AbstractMapping implements MappingInterface
                 }
             }
         }
-        if (count(array_unique($languageUids) !== count($languageUids))) {
+        if (count(array_unique($languageUids)) !== count($languageUids)) {
             // One or more records share the same language UID. We may have to remove some records.
             $encountered = [];
             foreach ($pimRecords as $index => $record) {
