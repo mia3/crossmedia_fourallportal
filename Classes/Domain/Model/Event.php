@@ -413,4 +413,32 @@ class Event extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
         ];
         return $map[$eventTypeId];
     }
+
+    public function getMostRecentObjectLog(): string
+    {
+        return (string)implode(PHP_EOL, array_reverse(explode(PHP_EOL, shell_exec('tail -n 1000 ' . $this->getObjectLogFilePath()))));
+    }
+
+    public function getMostRecentEventLog(): string
+    {
+        return (string)implode(PHP_EOL, array_reverse(explode(PHP_EOL, shell_exec('tail -n 1000 ' . $this->getEventLogFilePath()))));
+    }
+
+    public function getObjectLogFilePath(): string
+    {
+        return sprintf(
+            'typo3temp/var/logs/fourallportal/objects/%s/%s.log',
+            $this->getModule()->getModuleName(),
+            $this->getObjectId()
+        );
+    }
+
+    public function getEventLogFilePath(): string
+    {
+        return sprintf(
+            'typo3temp/var/logs/fourallportal/events/%s/%s.log',
+            $this->getModule()->getModuleName(),
+            $this->getObjectId()
+        );
+    }
 }

@@ -61,6 +61,7 @@ class FalMapping extends AbstractMapping
             $object = $repository->findByUid($record['uid']);
         }
 
+        $objectLog = $this->getEventAndObjectSpecificLogger($event);
         $deferAfterProcessing = false;
 
         switch ($event->getEventType()) {
@@ -83,11 +84,14 @@ class FalMapping extends AbstractMapping
                     $repository->remove($object);
                 }
 
+                $objectLog->info(sprintf('File %s:%d was deleted', $this->getTableName(), $record['uid']));
+
                 break;
             case 'update':
             case 'create':
                 $object = $this->downloadFileAndGetFileObject($objectId, $data, $event);
                 $deferAfterProcessing = $this->mapPropertiesFromDataToObject($data, $object, $event->getModule());
+                $objectLog->info(sprintf('File %s:%d was updated', $this->getTableName(), $record['uid']));
                 break;
             default:
                 throw new \RuntimeException('Unknown event type: ' . $event->getEventType());
@@ -97,6 +101,10 @@ class FalMapping extends AbstractMapping
 
         if ($object) {
             $this->processRelationships($object, $data, $event);
+        }
+
+        if ($deferAfterProcessing) {
+            $objectLog->notice(sprintf('Event %d was deferred', $event->getEventId()));
         }
 
         return $deferAfterProcessing;

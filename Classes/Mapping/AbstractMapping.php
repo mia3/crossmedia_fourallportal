@@ -7,7 +7,13 @@ use Crossmedia\Fourallportal\Domain\Model\Module;
 use Crossmedia\Fourallportal\Service\ApiClient;
 use Crossmedia\Fourallportal\TypeConverter\PimBasedTypeConverterInterface;
 use Crossmedia\Fourallportal\ValueReader\ResponseDataFieldValueReader;
+use Psr\Log\LoggerInterface;
+use TYPO3\CMS\Core\Database\ConnectionPool;
+use TYPO3\CMS\Core\Log\Exception;
+use TYPO3\CMS\Core\Log\Logger;
+use TYPO3\CMS\Core\Log\LogLevel;
 use TYPO3\CMS\Core\Log\LogManager;
+use TYPO3\CMS\Core\Log\Writer\FileWriter;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Domain\Model\FileReference;
 use TYPO3\CMS\Extbase\DomainObject\AbstractEntity;
@@ -42,6 +48,14 @@ abstract class AbstractMapping implements MappingInterface
      */
     public function import(array $data, Event $event)
     {
+        $logger = $this->getEventAndObjectSpecificLogger($event);
+        if ($this->sanityCheckAndAutoRepair($data, $event, $logger)) {
+            // A failed sanity check may mean DB contents have been repaired.
+            // To be safe, we defer the event once so the next time it gets
+            // processed the session will be clean.
+            return true;
+        }
+
         $objectId = $event->getObjectId();
         $repository = $this->getObjectRepository();
         $query = $repository->createQuery();
@@ -61,11 +75,29 @@ abstract class AbstractMapping implements MappingInterface
                     return;
                 }
                 $this->removeObjectFromRepository($object);
+                $logger->log(
+                    LogLevel::INFO,
+                    sprintf(
+                        'Object %s was deleted by event %s:%d',
+                        $event->getObjectId(),
+                        $event->getModule()->getModuleName(),
+                        $event->getEventId()
+                    )
+                );
                 unset($object);
                 break;
             case 'update':
             case 'create':
                 $deferAfterProcessing = $this->importObjectWithDimensionMappings($data, $object, $event);
+                $logger->log(
+                    LogLevel::INFO,
+                    sprintf(
+                        'Object %s was updated by event %s:%d',
+                        $event->getObjectId(),
+                        $event->getModule()->getModuleName(),
+                        $event->getEventId()
+                    )
+                );
                 break;
             default:
                 throw new \RuntimeException('Unknown event type: ' . $event->getEventType());
@@ -75,7 +107,123 @@ abstract class AbstractMapping implements MappingInterface
             $this->processRelationships($object, $data, $event);
         }
 
+        if ($deferAfterProcessing) {
+            $logger->notice(sprintf('Event %d was deferred', $event->getEventId()));
+        }
+
         return $deferAfterProcessing;
+    }
+
+    /**
+     * @param Event $event
+     * @return LoggerInterface
+     */
+    protected function getEventAndObjectSpecificLogger(Event $event): LoggerInterface
+    {
+        $loggerName = '4ap_object_' . $event->getObjectId();
+        $logger = new Logger($loggerName);
+        $logger->addWriter(LogLevel::INFO, new FileWriter(['logFile' => $event->getObjectLogFilePath()]));
+        $logger->addWriter(LogLevel::INFO, new FileWriter(['logFile' => $event->getEventLogFilePath()]));
+        return $logger;
+    }
+
+    /**
+     * Sanity check (local) data before allowing $event to be
+     * processed. Returning TRUE defers the event.
+     *
+     * Happens before the Extbase persistence is engaged.
+     *
+     * Your sanity check should NOT use Extbase persistence
+     * as this will cause the session to hold on to the objects
+     * you load.
+     *
+     * If your sanity check was unable to repair whichever
+     * problems it detected, make sure you log this via the
+     * provided object logger!
+     *
+     * @param array $data
+     * @param Event $event
+     * @return bool
+     */
+    protected function sanityCheckAndAutoRepair(array $data, Event $event, LoggerInterface $objectLog): bool
+    {
+        $objectId = $event->getObjectId();
+        $tableName = $this->getTableName();
+        $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable($tableName);
+        $queryBuilder->getRestrictions()->removeAll();
+        $pimRecords = $queryBuilder->select('*')
+            ->from($tableName)
+            ->where($queryBuilder->expr()->eq('remote_id', $queryBuilder->createNamedParameter($objectId)))
+            ->orderBy('sys_language_uid', 'ASC')
+            ->execute()
+            ->fetchAll();
+        $defer = false;
+
+        if (empty($pimRecords)) {
+            return $defer;
+        }
+
+        // Native check 1: Verify that all records from table associated with object have the same "pid",
+        // have the right "l10n_parent" for translated records, and does not contain more than one record
+        // for each unique language. Attempt to repair by deleting records (which will then be recreated).
+        // Log anything that might be wrong/fixed.
+        $languageUids = array_column($pimRecords, 'sys_language_uid');
+        $pids = array_column($pimRecords, 'pid');
+        $pid = reset($pids);
+        if (count(array_unique($pids) !== count($pids))) {
+            // One or more records do not have the right pid. Delete those that differ if their language UID is non-zero.
+            $encountered = [];
+            foreach ($pimRecords as $index => &$record) {
+                if (in_array($record['pid'], $encountered) && $record['sys_language_uid'] > 0) {
+                    $objectLog->info(sprintf('Record %s from table %s has the wrong pid, setting it to %d', $record['uid'], $tableName, $pid));
+                    $record['pid'] = $pid;
+                    $this->updateRecord($tableName, $record, $objectLog);
+                    $defer = true;
+                    unset($pimRecords[$index]);
+                } else {
+                    $encountered[] = $record['pid'];
+                }
+            }
+        }
+        if (count(array_unique($languageUids) !== count($languageUids))) {
+            // One or more records share the same language UID. We may have to remove some records.
+            $encountered = [];
+            foreach ($pimRecords as $index => $record) {
+                if ($record['deleted']) {
+                    $objectLog->info(sprintf('Record %s from table %s is soft-deleted; hard-delete it', $record['uid'], $tableName));
+                    $this->hardDeleteRecord($tableName, $record, $objectLog);
+                    continue;
+                }
+                if (in_array($record['sys_language_uid'], $encountered)) {
+                    $objectLog->info(sprintf('Record %s from table %s is a language duplicate', $record['uid'], $tableName));
+                    $this->hardDeleteRecord($tableName, $record, $objectLog);
+                    $defer = true;
+                    unset($pimRecords[$index]);
+                } else {
+                    $encountered[] = $record['sys_language_uid'];
+                }
+            }
+        }
+
+        return $defer;
+    }
+
+    protected function updateRecord(string $table, array $record, LoggerInterface $objectLog)
+    {
+        $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable($table);
+        $queryBuilder->getRestrictions()->removeAll();
+        $queryBuilder->delete($table)->where($queryBuilder->expr()->eq('uid', $record['uid']));
+        $queryBuilder->execute();
+        $objectLog->info(sprintf('Record %s from table %s was updated', $record['uid'], $table));
+    }
+
+    protected function hardDeleteRecord(string $table, array $record, LoggerInterface $objectLog)
+    {
+        $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable($table);
+        $queryBuilder->getRestrictions()->removeAll();
+        $queryBuilder->delete($table)->where($queryBuilder->expr()->eq('uid', $record['uid']));
+        $queryBuilder->execute();
+        $objectLog->info(sprintf('Record %s was deleted from table %s', $record['uid'], $table));
     }
 
     protected function removeObject(DomainObjectInterface $object)
