@@ -170,12 +170,12 @@ abstract class AbstractMapping implements MappingInterface
         $languageUids = array_column($pimRecords, 'sys_language_uid');
         $pids = array_column($pimRecords, 'pid');
         $pid = reset($pids);
-        if (count(array_unique($pids)) !== count($pids)) {
+        if (count(array_unique($pids)) !== 1) {
             // One or more records do not have the right pid. Delete those that differ if their language UID is non-zero.
             $encountered = [];
             foreach ($pimRecords as $index => &$record) {
-                if (in_array($record['pid'], $encountered) && $record['sys_language_uid'] > 0) {
-                    $objectLog->info(sprintf('Record %s from table %s has the wrong pid, setting it to %d', $record['uid'], $tableName, $pid));
+                if (!in_array($record['pid'], $encountered) && $record['sys_language_uid'] > 0) {
+                    $objectLog->info(sprintf('Record %s from table %s has the wrong pid %d, setting it to %d', $record['uid'], $tableName, $record['pid'], $pid));
                     $record['pid'] = $pid;
                     $this->updateRecord($tableName, $record, $objectLog);
                     $defer = true;
