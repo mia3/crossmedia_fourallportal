@@ -444,6 +444,11 @@ TEMPLATE;
             return $a['name'] <=> $b['name'];
         });
 
+        $validModuleNames = [];
+        foreach ($module->getServer()->getModules() as $configuredModule) {
+            $validModuleNames[] = $configuredModule->getModuleName();
+        }
+
         foreach ($fieldsAndRelations as $originalName => $fieldConfiguration) {
 
             // We need to reset a possibly overridden types so they use the *module* configuration's list of fields and
@@ -457,12 +462,19 @@ TEMPLATE;
             echo 'Generating: ' . $module->getModuleName() . '->' . $entityClassName . '->' . $propertyName;
 
             try {
-                if (isset($map[$fieldName])) {
+                if (isset($fieldConfiguration['child']) && !in_array($fieldConfiguration['child'], $validModuleNames)) {
+                    echo ' - skipped; is a reference to undefined module ' . var_export($fieldConfiguration['child'], true) . PHP_EOL;
+                    continue;
+                } elseif (($map[$fieldName] ?? false) !== false) {
                     // This property is explicitly mapped in the mapping array, indicating it is manually
                     // added to the sub-class of the abstract class we are generating, thus needs to be skipped.
-                    echo ' - skipped; has custom mapping' . PHP_EOL;
+                    echo ' - skipped; has custom mapping to ' . var_export($map[$fieldName], true) . PHP_EOL;
                     continue;
-                } elseif (!($map[$fieldName] ?? false) && (preg_match('/[^a-z0-9_]/i', $fieldName) || preg_match('/[^a-z]/i', $fieldName{0}))) {
+                } elseif (MappingRegister::resolvePropertyValueSetter($module->getMappingClass(), $fieldName)) {
+                    // Properties which are mapped using ValueSetter implementations must be skipped.
+                    echo ' - skipped; has custom value setter' . PHP_EOL;
+                    continue;
+                } elseif (preg_match('/[^a-z0-9_]/i', $fieldName) || preg_match('/[^a-z]/i', $fieldName{0}) && ($map[$fieldName] ?? false) !== false) {
                     // Property uses a name that is impossible to express as SQL type and it was NOT defined in
                     // the property map for the class. This must yield an exception.
                     echo ' - skipped; field name is invalid' . PHP_EOL;
@@ -477,10 +489,6 @@ TEMPLATE;
                             $entityClassName
                         )
                     );
-                } elseif (MappingRegister::resolvePropertyValueSetter($module->getMappingClass(), $fieldName)) {
-                    // Properties which are mapped using ValueSetter implementations must be skipped.
-                    echo ' - skipped; has custom value setter' . PHP_EOL;
-                    continue;
                 }
 
                 list ($type, $schema, $tca) = $this->guessLocalTypesFromRemoteField($fieldConfiguration, $module->getModuleName());
@@ -493,8 +501,12 @@ TEMPLATE;
                     'schema' => $schema,
                     'config' => $tca
                 ];
+            } catch (UndefinedModuleException $error) {
+                echo ' !!!SKIPPED!!! ' . $error->getMessage();
             } catch (\RuntimeException $error) {
-                echo '  xxx ' . $error->getMessage();
+                echo ' !!!SKIPPED!!! ' . $error->getMessage();
+                #var_dump($fieldConfiguration);
+                #var_dump($fieldsAndRelations[$fieldName]);
                 if (Bootstrap::getInstance()->getApplicationContext()->isDevelopment()) {
                     throw $error;
                 }
@@ -597,7 +609,7 @@ TEMPLATE;
                     $relatedModule = $fieldConfiguration['parent'];
                 }
                 if (!isset($modules[$relatedModule])) {
-                    throw new \RuntimeException('Property "' . $fieldConfiguration['name'] . '" points to module "' . $relatedModule . '" which is not defined');
+                    throw new UndefinedModuleException('Property "' . $fieldConfiguration['name'] . '" points to module "' . $relatedModule . '" which is not defined');
                 }
                 $dataMapper = GeneralUtility::makeInstance(ObjectManager::class)->get(DataMapper::class);
                 $entityNameParent = $modules[$currentSideModuleName]->getMapper()->getEntityClassName();
@@ -621,7 +633,7 @@ TEMPLATE;
                     $relatedModule = $fieldConfiguration['parent'];
                 }
                 if (!isset($modules[$relatedModule])) {
-                    throw new \RuntimeException('Property "' . $fieldConfiguration['name'] . '" points to module "' . $relatedModule . '" which is not defined');
+                    throw new UndefinedModuleException('Property "' . $fieldConfiguration['name'] . '" points to module "' . $relatedModule . '" which is not defined');
                 }
                 $dataMapper = GeneralUtility::makeInstance(ObjectManager::class)->get(DataMapper::class);
                 $entityNameParent = $modules[$currentSideModuleName]->getMapper()->getEntityClassName();
@@ -723,7 +735,7 @@ TEMPLATE;
                 $tableNameParent = $dataMapper->getDataMap($entityNameParent)->getTableName();
             }
         } catch (\RuntimeException $error) {
-            throw new \RuntimeException(
+            throw new UndefinedModuleException(
                 sprintf(
                     'Field "%s" uses module "%s" as parent in a relation, but the parent module is unknown to TYPO3. ' .
                     'Please either configure a connector that uses the module, create a manual mapping for the field ' .
@@ -739,7 +751,7 @@ TEMPLATE;
             $entityNameChild = $modules[$relatedModule]->getMapper()->getEntityClassName();
             $tableNameChild = $dataMapper->getDataMap($entityNameChild)->getTableName();
         } catch (\RuntimeException $error) {
-            throw new \RuntimeException(
+            throw new UndefinedModuleException(
                 sprintf(
                     'Field "%s" uses module "%s" as child in a relation, but the child module is unknown to TYPO3. ' .
                     'Please either configure a connector that uses the module, create a manual mapping for the field ' .
@@ -855,7 +867,7 @@ TEMPLATE;
         }
 
         if (!($tca['foreign_table'] ?? false) && ($tca['type'] ?? false) !== 'group') {
-            throw new \RuntimeException(
+            throw new UndefinedModuleException(
                 sprintf(
                     'Field "%s" defines a CEExternalId or CEExternalIdList which does not configure a related module. ' .
                     'Normally this would mean that this field should be mapped to a plain string value, but due to the ' .
@@ -870,12 +882,12 @@ TEMPLATE;
 
     /**
      * @param string $moduleName
-     * @throws \RuntimeException
+     * @throws UndefinedModuleException
      */
     protected function validatePresenceOfConfiguredConnectorForModule($moduleName)
     {
         if (empty($this->getAllConfiguredModules()[$moduleName])) {
-            throw new \RuntimeException(sprintf('Module "%s" is unknown to TYPO3, make sure it is configured!', $moduleName));
+            throw new UndefinedModuleException(sprintf('Module "%s" is unknown to TYPO3, make sure it is configured!', $moduleName));
         }
     }
 
