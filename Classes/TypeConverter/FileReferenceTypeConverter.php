@@ -55,9 +55,6 @@ class FileReferenceTypeConverter extends AbstractUuidAwareObjectTypeConverter im
      * Converts an input remote ID to a FileReference pointing to the
      * File object which has the remote ID.
      *
-     * If a File object with the remote ID is not found, the file gets
-     * downloaded and a FileReference to the new File is returned.
-     *
      * @param mixed $source
      * @param string $targetType
      * @param array $convertedChildProperties
@@ -68,7 +65,6 @@ class FileReferenceTypeConverter extends AbstractUuidAwareObjectTypeConverter im
     {
         $dataMap = $this->objectManager->get(DataMapFactory::class)->buildDataMap(get_class($this->parentObject));
         $resourceFactory = ResourceFactory::getInstance();
-        $model = new FileReference();
 
         $systemLanguageUid = (int)$this->parentObject->_getProperty('_languageUid');
         $fieldName = $dataMap->getColumnMap($this->propertyName)->getColumnName(); // GeneralUtility::camelCaseToLowerCaseUnderscored($this->propertyName);
@@ -82,7 +78,7 @@ class FileReferenceTypeConverter extends AbstractUuidAwareObjectTypeConverter im
         $queryBuilder->getRestrictions()->removeAll()->add(GeneralUtility::makeInstance(DeletedRestriction::class));
         $query = $queryBuilder->select('r.*')->from('sys_file', 'f')->from('sys_file_reference', 'r')->where(
             sprintf(
-                'r.uid_local = f.uid AND f.remote_id = \'%s\' AND r.tablenames = \'%s\' AND r.table_local = \'sys_file\' AND r.fieldname = \'%s\' AND r.uid_foreign = %d AND r.sys_language_uid = %d',
+                'r.uid_local = f.uid AND f.remote_id = \'%s\' AND r.tablenames = \'%s\' AND r.fieldname = \'%s\' AND r.uid_foreign = %d AND r.sys_language_uid = %d',
                 $source,
                 $dataMap->getTableName(),
                 $fieldName,
@@ -91,24 +87,9 @@ class FileReferenceTypeConverter extends AbstractUuidAwareObjectTypeConverter im
             )
         )->setMaxResults(1);
         $references = $query->execute()->fetchAll();
+        $referenceRecord = null;
         if (isset($references[0]['uid'])) {
-            $referenceProperties = $references[0];
-            /*
-            // File reference already exists - find the reference to re-use
-            $propertyValue = ObjectAccess::getProperty($this->parentObject, $this->propertyName);
-            if ($propertyValue instanceof ObjectStorage) {
-                // The property is a collection of references - iterate and find the right one to use:
-                foreach ($propertyValue as $candidate) {
-                    if ($candidate->getOriginalResource()->getUid() === $references[0]['uid']) {
-                        return $candidate;
-                    }
-                }
-                // If we reach this point, a reference existed but was either hidden or deleted; so we allow
-                // a new one to be created.
-            } else {
-                return $propertyValue;
-            }
-            */
+            return $this->fetchObjectFromPersistence((int) $references[0]['uid'], $targetType);
         } else {
 
             // Lookup no. 2: try to find a sys_file with remote ID=$source and use it as target for a new
@@ -133,7 +114,7 @@ class FileReferenceTypeConverter extends AbstractUuidAwareObjectTypeConverter im
             // File reference object needs to be created with the exact composition of this array. Not
             // passing either one of these parameters causes an invalid file reference to be written.
             $referenceProperties = [
-                'pid' => $this->parentObject->getPid(),
+                //'pid' => $this->parentObject->getPid(),
                 'tablenames' => $dataMap->getTableName(),
                 'table_local' => 'sys_file',
                 'fieldname' => $fieldName,
@@ -144,7 +125,6 @@ class FileReferenceTypeConverter extends AbstractUuidAwareObjectTypeConverter im
 
         }
 
-        /*
         if ($systemLanguageUid > 0) {
             // Select the original language version of this particular file reference so the UID can
             // be used as t3_origuid and l10n_parent value in the localized reference's record.
@@ -167,13 +147,12 @@ class FileReferenceTypeConverter extends AbstractUuidAwareObjectTypeConverter im
                 $referenceProperties['uid_foreign'] = $this->parentObject->_getProperty('_localizedUid');
             }
         }
-        */
 
         $reference = $resourceFactory->createFileReferenceObject($referenceProperties);
 
         if (!isset($reference)) {
             throw new DeferralException(
-                'Unable to map ' . $this->propertyName . ' on ' . get_class($this->parentObject) . ':' . $parentObjectId .
+                'Unable to map ' . $this->propertyName . ' on ' . get_class($this->parentObject) . ':' . $this->parentObject->getUid() .
                 ' - Asset ' . $source . ' does not appear to exist (yet).',
                 1527167262
             );
@@ -181,12 +160,15 @@ class FileReferenceTypeConverter extends AbstractUuidAwareObjectTypeConverter im
 
         // New Extbase model FileReference instance is fitted with target and returned. The resulting
         // object persists correctly because the $reference above has had all properties manually set.
+        $model = new FileReference();
+        $model->_setProperty('uid', $referenceRecord['uid'] ?? null);
+        $model->_memorizeCleanState();
         $model->setOriginalResource($reference);
         $model->_setProperty('_languageUid', $systemLanguageUid);
         if ($systemLanguageUid > 0 && ($originalLanguageReferenceRecord['uid'] ?? false)) {
-            //$model->_setProperty('_localizedUid', $reference->getUid());
+            $model->_setProperty('_localizedUid', $reference->getUid());
         }
-        $model->setPid($this->parentObject->getPid());
+        //$model->setPid($this->parentObject->getPid());
         return $model;
     }
 

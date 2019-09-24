@@ -212,18 +212,23 @@ abstract class AbstractMapping implements MappingInterface
     {
         $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable($table);
         $queryBuilder->getRestrictions()->removeAll();
-        $queryBuilder->delete($table)->where($queryBuilder->expr()->eq('uid', $record['uid']));
-        $queryBuilder->execute();
+        $query = $queryBuilder->update($table)->where($queryBuilder->expr()->eq('uid', $record['uid']));
+        foreach ($record as $key => $value) {
+            $query->set($key, $value);
+        }
+        $query->execute();
         $objectLog->info(sprintf('Record %s from table %s was updated', $record['uid'], $table));
     }
 
-    protected function hardDeleteRecord(string $table, array $record, LoggerInterface $objectLog)
+    protected function hardDeleteRecord(string $table, array $record, ?LoggerInterface $objectLog = null)
     {
         $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable($table);
         $queryBuilder->getRestrictions()->removeAll();
         $queryBuilder->delete($table)->where($queryBuilder->expr()->eq('uid', $record['uid']));
         $queryBuilder->execute();
-        $objectLog->info(sprintf('Record %s was deleted from table %s', $record['uid'], $table));
+        if ($objectLog) {
+            $objectLog->info(sprintf('Record %s was deleted from table %s', $record['uid'], $table));
+        }
     }
 
     protected function removeObject(DomainObjectInterface $object)
@@ -398,8 +403,8 @@ abstract class AbstractMapping implements MappingInterface
             $this->logProblem(
                 sprintf(
                     'Property "%s" on object "%s->%s" does not allow NULL as value, but NULL was resolved. Please verify PIM response data consistency!',
-                    get_class($object),
                     $propertyName,
+                    get_class($object),
                     method_exists($object, 'getRemoteId') ? $object->getRemoteId() : $object->getUid()
                 )
             );
@@ -655,6 +660,8 @@ abstract class AbstractMapping implements MappingInterface
             $recordUid = $insertedRecordUid;
         }
 
+        $this->persist();;
+
         $entityClassName = $event->getModule()->getMapper()->getEntityClassName();
         $session = GeneralUtility::makeInstance(ObjectManager::class)->get(Session::class);
         if ($session->hasIdentifier($recordUid, $entityClassName)) {
@@ -707,7 +714,9 @@ abstract class AbstractMapping implements MappingInterface
      */
     protected function persist()
     {
-        GeneralUtility::makeInstance(ObjectManager::class)->get(PersistenceManager::class)->persistAll();
+        $persistenceManager = GeneralUtility::makeInstance(ObjectManager::class)->get(PersistenceManager::class);
+        $persistenceManager->persistAll();
+        #$persistenceManager->clearState();
     }
 
     public function getTableName()
@@ -760,11 +769,9 @@ abstract class AbstractMapping implements MappingInterface
         // has not configured them, properties cannot map correctly).
         $rootObjectMappingProblemsOccurred = $this->mapPropertiesFromDataToObject($data, $object, $event->getModule(), $defaultDimensionMapping);
         $this->getObjectRepository()->update($object);
-        $mappingProblemsOccurred = $mappingProblemsOccurred ?: $rootObjectMappingProblemsOccurred;
         $this->persist();
 
-        $persistenceSession = GeneralUtility::makeInstance(ObjectManager::class)->get(Session::class);
-        $persistenceSession->unregisterObject($object);
+        $mappingProblemsOccurred = $mappingProblemsOccurred ?: $rootObjectMappingProblemsOccurred;
 
         if ($defaultDimensionMapping === null || !$event->getModule()->getContainsDimensions()) {
             // This return is in place for TYPO3 configurations that don't contain dimension mapping. If the PIM wants
@@ -776,6 +783,9 @@ abstract class AbstractMapping implements MappingInterface
             return $mappingProblemsOccurred;
         }
 
+        $persistenceSession = GeneralUtility::makeInstance(ObjectManager::class)->get(Session::class);
+        $persistenceSession->unregisterObject($object);
+
         foreach ($translationDimensionMappings as $translationDimensionMapping) {
 
             if (!$translationDimensionMapping->isActive()) {
@@ -783,11 +793,21 @@ abstract class AbstractMapping implements MappingInterface
                 continue;
             }
 
+            #$persistenceSession->destroy();
             $languageUid = $translationDimensionMapping->getLanguage();
 
+            /*
             $GLOBALS['TSFE']->sys_language_content = $languageUid;
             $GLOBALS['TSFE']->sys_page->sys_language_uid = $languageUid;
             $GLOBALS['TSFE']->config['sys_language_uid'] = $languageUid;
+            $GLOBALS['TSFE']->settingLanguage();
+            */
+            $GLOBALS['TSFE'] = new TypoScriptFrontendController($GLOBALS['TYPO3_CONF_VARS'], $event->getModule()->getStoragePid(), 0);
+            $GLOBALS['TSFE']->sys_page = new PageRepository();
+            $GLOBALS['TSFE']->sys_page->sys_language_uid = $languageUid;
+            $GLOBALS['TSFE']->getPageAndRootline();
+            $GLOBALS['TSFE']->sys_language_content = $languageUid;
+            $GLOBALS['TSFE']->config['sys_language_uid'] = 0;
             $GLOBALS['TSFE']->settingLanguage();
 
             $existingRow = $GLOBALS['TYPO3_DB']->exec_SELECTgetSingleRow(
@@ -801,9 +821,13 @@ abstract class AbstractMapping implements MappingInterface
             $objectMappingProblemsOccurred = $this->mapPropertiesFromDataToObject($data, $translationObject, $event->getModule(), $translationDimensionMapping);
             $mappingProblemsOccurred = $mappingProblemsOccurred ?: $objectMappingProblemsOccurred;
             $this->getObjectRepository()->update($translationObject);
+            $this->persist();
+            $persistenceSession->unregisterObject($translationObject);
         }
 
-        $this->persist();
+        #$persistenceSession->destroy();
+        #$persistenceSession->registerObject($event, get_class($event) . ':' . $event->getUid());
+        GeneralUtility::makeInstance(ObjectManager::class)->get(Session::class)->registerObject($event, get_class($event) . ':' . $event->getUid());
 
         return $mappingProblemsOccurred;
     }

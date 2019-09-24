@@ -9,10 +9,11 @@ use TYPO3\CMS\Extbase\Persistence\Generic\Mapper\DataMapper;
 use TYPO3\CMS\Extbase\Persistence\RepositoryInterface;
 use TYPO3\CMS\Extbase\Property\PropertyMappingConfigurationInterface;
 use TYPO3\CMS\Extbase\Property\TypeConverter\AbstractTypeConverter;
+use TYPO3\CMS\Extbase\Property\TypeConverter\PersistentObjectConverter;
 use TYPO3\CMS\Extbase\Property\TypeConverterInterface;
 use TYPO3\CMS\Extbase\Reflection\ObjectAccess;
 
-abstract class AbstractUuidAwareObjectTypeConverter extends AbstractTypeConverter implements TypeConverterInterface, PimBasedTypeConverterInterface
+abstract class AbstractUuidAwareObjectTypeConverter extends PersistentObjectConverter implements TypeConverterInterface, PimBasedTypeConverterInterface
 {
     /**
      * @var AbstractEntity
@@ -86,7 +87,9 @@ abstract class AbstractUuidAwareObjectTypeConverter extends AbstractTypeConverte
         $query->getQuerySettings()->setIgnoreEnableFields(true);
         //$query->getQuerySettings()->setRespectSysLanguage(false);
         $query->matching($query->equals('uid', $uid));
-        return $query->execute()->getFirst();
+        $object = $query->execute()->getFirst();
+        $object->_memorizeCleanState();
+        return $object;
     }
 
     protected function getTableName(string $targetType) {
