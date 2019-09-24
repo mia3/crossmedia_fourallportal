@@ -598,6 +598,8 @@ TEMPLATE;
             case 'MANY_TO_MANY':
             case 'ONE_TO_MANY':
             case 'MANY_TO_ONE':
+            //case 'ONE_TO_ONE':
+            case 'CEExternalId':
                 $modules = $this->getAllConfiguredModules();
                 if (!empty($fieldConfiguration['modules'])) {
                     $relatedModule = reset($fieldConfiguration['modules']);
@@ -620,7 +622,7 @@ TEMPLATE;
                 $sqlType = 'int(11) default 0 NOT NULL';
                 break;
             case 'CEId':
-            case 'CEExternalId':
+            //case 'CEExternalId':
             case 'ONE_TO_ONE':
                 $modules = $this->getAllConfiguredModules();
                 if (!empty($fieldConfiguration['modules'])) {
@@ -811,13 +813,30 @@ TEMPLATE;
                 break;
         }
 
+        /*
         if (($tca['foreign_table'] ?? null) === 'sys_file_reference' && $fieldType === 'ONE_TO_ONE') {
-            $tca['type'] = 'group';
-            $tca['internal_type'] = 'db';
-            $tca['foreign_table'] = 'sys_file_reference';
-            $tca['allowed'] = 'sys_file_reference';
+            $tca['type'] = 'inline';
+            $tca = array_merge(
+                $tca,
+                [
+                    'foreign_table' => 'sys_file_reference',
+                    'foreign_field' => 'uid_foreign',
+                    'foreign_sortby' => 'sorting_foreign',
+                    'foreign_table_field' => 'tablenames',
+                    'foreign_match_fields' =>
+                        [
+                            'fieldname' => 'product_images',
+                            'tablenames' => 'tx_syzygyproducts_domain_model_productdetail',
+                            'table_local' => 'sys_file',
+                        ],
+                    'foreign_label' => 'uid_local',
+                    'foreign_selector' => 'uid_local',
+                ]
+            );
             unset($tca['renderType']);
-        } elseif (($tca['foreign_table'] ?? null) === 'sys_file_reference' && $fieldType !== 'ONE_TO_ONE') {
+        } else
+        */
+        if (($tca['foreign_table'] ?? null) === 'sys_file_reference') {
             $tca = \TYPO3\CMS\Core\Utility\ExtensionManagementUtility::getFileFieldTCAConfig(
                 $fieldConfiguration['name'],
                 [
