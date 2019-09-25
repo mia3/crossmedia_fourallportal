@@ -84,12 +84,18 @@ CREATE TABLE tx_fourallportal_domain_model_complextype (
 	crdate int(11) unsigned DEFAULT '0' NOT NULL,
 	cruser_id int(11) unsigned DEFAULT '0' NOT NULL,
 	deleted smallint(5) unsigned DEFAULT '0' NOT NULL,
+    sys_language_uid INT(11) DEFAULT '0' NOT NULL,
+    l10n_state TEXT DEFAULT NULL,
+    l10n_parent INT(11) DEFAULT '0' NOT NULL,
+    l10n_diffsource mediumblob,
 
 	PRIMARY KEY (uid),
 	KEY parent (pid),
 	KEY field_name (field_name),
 	KEY table_name (table_name),
 	KEY name (name),
+	KEY sys_language_uid (sys_language_uid),
+	KEY l10n_parent (l10n_parent),
 
 );
 

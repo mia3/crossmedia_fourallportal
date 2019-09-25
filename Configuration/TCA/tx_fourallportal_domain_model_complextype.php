@@ -7,6 +7,9 @@ return [
         'crdate' => 'crdate',
         'cruser_id' => 'cruser_id',
         'rootLevel' => 1,
+        'languageField' => 'sys_language_uid',
+        'transOrigPointerField' => 'l10n_parent',
+        'transOrigDiffSourceField' => 'l10n_diffsource',
         'delete' => 'deleted',
         'searchFields' => 'event_id,event_type,status,skip_until,object_id,module',
         'iconfile' => 'EXT:fourallportal/Resources/Public/Icons/tx_fourallportal_domain_model_complextype.gif'
@@ -108,7 +111,5 @@ return [
                 'type' => 'passthrough',
             ]
         ],
-
-
     ],
 ];
