@@ -188,6 +188,10 @@ class EventExecutionService implements SingletonInterface
                 $module->setModuleName($connectorConfig['moduleConfig']['module_name']);
             }
 
+            if (in_array($module->getModuleName(), $exclude)) {
+                continue;
+            }
+
             /** @var Module $configuredModule */
             if ($fullSync && $module->getLastReceivedEventId() > 0) {
                 $module->setLastReceivedEventId(0);
@@ -301,6 +305,9 @@ class EventExecutionService implements SingletonInterface
         foreach ($events as $event) {
             if (!$parameters->shouldContinue()) {
                 break;
+            }
+            if (in_array($event->getModule()->getModuleName(), explode(',', $parameters->getExclude()))) {
+                continue;
             }
             if (!$event->getModule()->getServer()->isActive()) {
                 $this->logProblem(
