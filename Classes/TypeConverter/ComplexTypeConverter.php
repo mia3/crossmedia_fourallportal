@@ -101,6 +101,7 @@ class ComplexTypeConverter extends AbstractUuidAwareObjectTypeConverter implemen
         $templateComplexType->setParentUid($this->parentObject->getUid());
         $templateComplexType->setLabel($source['unit']);
         $templateComplexType->_setProperty('_languageUid', $this->parentObject->_getProperty('_languageUid'));
+        $this->getRepository()->add($templateComplexType);
 
         return $templateComplexType;
     }
@@ -110,12 +111,16 @@ class ComplexTypeConverter extends AbstractUuidAwareObjectTypeConverter implemen
      */
     protected function getMapper()
     {
-        $targetEntityClassName = get_class($this->parentObject);
-        foreach (MappingRegister::getMappings() as $className) {
-            $mapper = GeneralUtility::makeInstance(ObjectManager::class)->get($className);
-            if ($mapper->getEntityClassName() === $targetEntityClassName) {
-                return $mapper;
+        static $mappers = [];
+        if (empty($mappers)) {
+            foreach (MappingRegister::getMappings() as $className) {
+                $mapper = GeneralUtility::makeInstance(ObjectManager::class)->get($className);
+                $mappers[$mapper->getEntityClassName()] = $mapper;
             }
+        }
+        $targetEntityClassName = get_class($this->parentObject);
+        if (isset($mappers[$targetEntityClassName])) {
+            return $mappers[$targetEntityClassName];
         }
         throw new \RuntimeException(sprintf('No valid MappingInterface found for class "%s"', $targetEntityClassName));
     }
@@ -125,7 +130,11 @@ class ComplexTypeConverter extends AbstractUuidAwareObjectTypeConverter implemen
      */
     protected function getModuleRepository()
     {
-        return GeneralUtility::makeInstance(ObjectManager::class)->get(ModuleRepository::class);
+        static $repository = null;
+        if ($repository === null) {
+            $repository = GeneralUtility::makeInstance(ObjectManager::class)->get(ModuleRepository::class);
+        }
+        return $repository;
     }
 
     /**
@@ -133,7 +142,11 @@ class ComplexTypeConverter extends AbstractUuidAwareObjectTypeConverter implemen
      */
     protected function getRepository()
     {
-        return GeneralUtility::makeInstance(ObjectManager::class)->get(ComplexTypeRepository::class);
+        static $repository = null;
+        if ($repository === null) {
+            $repository = GeneralUtility::makeInstance(ObjectManager::class)->get(ComplexTypeRepository::class);
+        }
+        return $repository;
     }
 
 }

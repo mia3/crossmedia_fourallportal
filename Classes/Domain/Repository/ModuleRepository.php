@@ -17,4 +17,16 @@ namespace Crossmedia\Fourallportal\Domain\Repository;
  */
 class ModuleRepository extends \TYPO3\CMS\Extbase\Persistence\Repository
 {
+    public function findOneByMappingClass($mappingClass)
+    {
+        static $modulesByMappingClass = [];
+        if (empty($modulesByMappingClass)) {
+            $query = $this->createQuery();
+            $query->equals('server.active', 1);
+            foreach ($query->execute() as $module) {
+                $modulesByMappingClass[$module->getMappingClass()] = $module;
+            }
+        }
+        return $modulesByMappingClass[$mappingClass] ?? null;
     }
+}

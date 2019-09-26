@@ -87,7 +87,6 @@ class FileReferenceTypeConverter extends AbstractUuidAwareObjectTypeConverter im
             )
         )->setMaxResults(1);
         $references = $query->execute()->fetchAll();
-        $referenceRecord = null;
         if (isset($references[0]['uid'])) {
             return $this->fetchObjectFromPersistence((int) $references[0]['uid'], $targetType);
         } else {
@@ -161,7 +160,6 @@ class FileReferenceTypeConverter extends AbstractUuidAwareObjectTypeConverter im
         // New Extbase model FileReference instance is fitted with target and returned. The resulting
         // object persists correctly because the $reference above has had all properties manually set.
         $model = new FileReference();
-        $model->_setProperty('uid', $referenceRecord['uid'] ?? null);
         $model->_memorizeCleanState();
         $model->setOriginalResource($reference);
         $model->_setProperty('_languageUid', $systemLanguageUid);

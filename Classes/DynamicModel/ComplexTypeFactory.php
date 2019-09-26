@@ -73,7 +73,7 @@ class ComplexTypeFactory
      */
     public static function createComplexTypeTemplate($type, $name, $label, $fieldName, array $match)
     {
-        $complexType = new \Crossmedia\Fourallportal\Domain\Model\ComplexType();
+        $complexType = new ComplexType();
         $complexType->setType($type);
         $complexType->setName($name);
         $complexType->setLabel($label);
