@@ -810,10 +810,17 @@ abstract class AbstractMapping implements MappingInterface
             $GLOBALS['TSFE']->config['sys_language_uid'] = 0;
             $GLOBALS['TSFE']->settingLanguage();
 
+            // the soft delete feature needs to be taken into account, otherwise a deleted record might be updated
+            // and thus will not have any effect in the frontend and backend
+            $softDeleteField = $this->getSoftDeleteFieldForTable($this->getTableName());
+            if ($softDeleteField !== '') {
+                $softDeleteField = ' AND ' . $softDeleteField . ' = 0';
+            }
+
             $existingRow = $GLOBALS['TYPO3_DB']->exec_SELECTgetSingleRow(
                 'uid,l10n_parent,sys_language_uid',
                 $this->getTableName(),
-                'sys_language_uid = ' . $languageUid . ' AND l10n_parent = ' . $object->getUid()
+                'sys_language_uid = ' . $languageUid . ' AND l10n_parent = ' . $object->getUid() . $softDeleteField
             );
 
             $translationObject = $this->createObject($event, $languageUid, $object->getUid(), $existingRow);
@@ -830,6 +837,14 @@ abstract class AbstractMapping implements MappingInterface
         GeneralUtility::makeInstance(ObjectManager::class)->get(Session::class)->registerObject($event, get_class($event) . ':' . $event->getUid());
 
         return $mappingProblemsOccurred;
+    }
+
+    protected function getSoftDeleteFieldForTable(string $tablename): string
+    {
+        if (! empty($GLOBALS['TCA'][$tablename]['ctrl']['delete'])) {
+            return $GLOBALS['TCA'][$tablename]['ctrl']['delete'];
+        }
+        return '';
     }
 
     protected function logProblem($message)
