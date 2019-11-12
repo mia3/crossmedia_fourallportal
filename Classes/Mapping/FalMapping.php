@@ -79,7 +79,7 @@ class FalMapping extends AbstractMapping
                     $this->performSanityCheckBeforeDeletion($record);
                 }
 
-                if ($object) {
+                if ($object && !$object->isMissing() && !$object->isDeleted()) {
                     $object->delete();
                     $repository->remove($object);
                 }
