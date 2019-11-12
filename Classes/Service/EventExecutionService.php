@@ -407,6 +407,7 @@ class EventExecutionService implements SingletonInterface
     {
         $event = new Event();
         $event->setModule($module);
+        $event->setCrdate(strtotime($result['mod_time']));
         $event->setEventId($result['id']);
         $event->setObjectId($result['object_id']);
         $event->setEventType(Event::resolveEventType($result['event_type']));

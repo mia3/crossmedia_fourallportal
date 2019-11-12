@@ -118,7 +118,7 @@ class EventController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionController
             $query->matching($query->logicalAnd($constraints));
         }
 
-        $query->setOrderings(['module.sorting' => 'ASC', 'event_id' => 'ASC']);
+        $query->setOrderings(['crdate' => 'ASC']);
 
         return $query->execute();
     }

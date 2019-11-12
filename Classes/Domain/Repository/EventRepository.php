@@ -23,8 +23,7 @@ class EventRepository extends \TYPO3\CMS\Extbase\Persistence\Repository
         $query->matching($query->equals('status', $status));
         $query->setOrderings(
             [
-                'module.sorting' => 'ASC',
-                'event_id' => 'ASC',
+                'crdate' => 'ASC',
             ]
         );
         return $query->execute();
