@@ -515,7 +515,9 @@ class EventExecutionService implements SingletonInterface
             $event->getEventType() . ' ' . $event->getObjectId() . PHP_EOL
         );
 
-        $this->response->send();
+        if (method_exists($this->response, 'send')) {
+            $this->response->send();
+        }
         $client = $event->getModule()->getServer()->getClient();
         try {
 
