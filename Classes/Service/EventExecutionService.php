@@ -405,13 +405,25 @@ class EventExecutionService implements SingletonInterface
      */
     protected function queueEvent($module, $result)
     {
-        $event = new Event();
+        $event = $this->eventRepository->findOneByModuleAndEventId($module, (int) $result['id']);
+        $new = false;
+        if (!$event) {
+            $event = new Event();
+            $new = true;
+        }
+
         $event->setModule($module);
         $event->setCrdate(strtotime($result['mod_time']));
         $event->setEventId($result['id']);
         $event->setObjectId($result['object_id']);
         $event->setEventType(Event::resolveEventType($result['event_type']));
-        $this->eventRepository->add($event);
+        $event->setStatus('pending');
+
+        if ($new) {
+            $this->eventRepository->add($event);
+        } else {
+            $this->eventRepository->update($event);
+        }
 
         return $event;
     }
