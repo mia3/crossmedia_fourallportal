@@ -410,6 +410,8 @@ class EventExecutionService implements SingletonInterface
         if (!$event) {
             $event = new Event();
             $new = true;
+        } elseif ($event->getStatus() === 'claimed') {
+            return $event;
         }
 
         $event->setModule($module);

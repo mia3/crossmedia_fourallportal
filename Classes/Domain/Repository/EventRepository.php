@@ -1,6 +1,8 @@
 <?php
 namespace Crossmedia\Fourallportal\Domain\Repository;
 
+use Crossmedia\Fourallportal\Domain\Model\Module;
+
 /***
  *
  * This file is part of the "4AllPortal Connector" Extension for TYPO3 CMS.
@@ -27,5 +29,17 @@ class EventRepository extends \TYPO3\CMS\Extbase\Persistence\Repository
             ]
         );
         return $query->execute();
+    }
+
+    public function findOneByModuleAndEventId(Module $module, int $eventId)
+    {
+        $query = $this->createQuery();
+        $query->matching(
+            $query->logicalAnd(
+                $query->equals('module', $module->getUid()),
+                $query->equals('eventId', $eventId)
+            )
+        );
+        return $query->execute()->getFirst();
     }
 }
