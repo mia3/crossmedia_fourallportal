@@ -278,6 +278,7 @@ class EventExecutionService implements SingletonInterface
             }
         }
 
+        $deferredEvents = [];
         foreach ($this->eventRepository->findByStatus('deferred') as $event) {
             if (!$parameters->shouldContinue()) {
                 break;
@@ -288,7 +289,7 @@ class EventExecutionService implements SingletonInterface
             if (!in_array($event->getModule(), $activeModules)) {
                 continue;
             }
-            $deferredEvents[$event->getModule()->getModuleName()][$event->getObjectId()][] = $event;
+            $deferredEvents[] = $event;
             if ($event->getNextRetry() < time()) {
                 $this->processEvent($event, false);
                 $parameters->countExecutedEvent();
@@ -298,6 +299,14 @@ class EventExecutionService implements SingletonInterface
         /** @var Event[] $pending */
         $pending = $this->eventRepository->findByStatus('pending')->toArray();
         $this->processEvents($parameters, $pending);
+
+        // Trigger post-execution hook
+        if (is_array($GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['fourallportal']['postEventExecution'] ?? null)) {
+            $allEvents = array_merge($deferredEvents, $pending);
+            foreach ($GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['fourallportal']['postEventExecution'] as $postExecutionHookClass) {
+                $postExecutionHookClass->postEventExecution($allEvents);
+            }
+        }
     }
 
     protected function processEvents(SyncParameters $parameters, array $events)
