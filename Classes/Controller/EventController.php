@@ -14,6 +14,7 @@ namespace Crossmedia\Fourallportal\Controller;
 
 use Crossmedia\Fourallportal\Domain\Dto\SyncParameters;
 use Crossmedia\Fourallportal\Domain\Model\Event;
+use Crossmedia\Fourallportal\Hook\EventExecutionHookInterface;
 use Crossmedia\Fourallportal\Response\CollectingResponse;
 use Crossmedia\Fourallportal\Service\EventExecutionService;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
@@ -166,6 +167,14 @@ class EventController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionController
         $this->eventExecutionService->processEvent($event, false);
 
         $message = $fakeResponse->getCollected() ?: 'No output from action';
+
+        if (is_array($GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['fourallportal']['postEventExecution'] ?? null)) {
+            foreach ($GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['fourallportal']['postEventExecution'] as $postExecutionHookClass) {
+                /** @var EventExecutionHookInterface $postExecutionHookInstance */
+                $postExecutionHookInstance = GeneralUtility::makeInstance($postExecutionHookClass);
+                $postExecutionHookInstance->postSingleManualEventExecution($event);
+            }
+        }
 
         $this->addFlashMessage($message, 'Executed event ' . $event->getEventId());
 
