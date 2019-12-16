@@ -304,7 +304,7 @@ class EventExecutionService implements SingletonInterface
         if (is_array($GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['fourallportal']['postEventExecution'] ?? null)) {
             $allEvents = array_merge($deferredEvents, $pending);
             foreach ($GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['fourallportal']['postEventExecution'] as $postExecutionHookClass) {
-                $postExecutionHookClass->postEventExecution($allEvents);
+                GeneralUtility::makeInstance($postExecutionHookClass)->postEventExecution($allEvents);
             }
         }
     }
