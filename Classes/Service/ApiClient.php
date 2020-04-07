@@ -542,7 +542,7 @@ class ApiClient
     public function getLastResponse()
     {
         $response = static::$lastResponse;
-        $response['headers'] = trim(implode('', $response['headers']));
+        $response['headers'] = trim(implode('', $response['headers'] ?? []));
         $decoded = json_decode($response['response'], true);
         if ($decoded) {
             $response['response'] = json_encode($decoded, JSON_PRETTY_PRINT);
