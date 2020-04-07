@@ -502,7 +502,7 @@ abstract class AbstractMapping implements MappingInterface
         $messages = [];
         // Verify the local mapping configuration exists and points to correct properties
         $entityClass = $this->getEntityClassName();
-        $map = MappingRegister::resolvePropertyMapForMapper(static::class);
+        $map = MappingRegister::resolvePropertyMapForMapper(get_class($this));
         $messages['property_checks'] = '<h4>
                 Property mapping checks
             </h4>';
@@ -511,46 +511,48 @@ abstract class AbstractMapping implements MappingInterface
                 '<p class="text-warning">This connector has no mapping information - fields will be mapped 1:1 to properties on %s</p>',
                 $entityClass
             );
-        } else {
-            $messages[] = '<ol>';
-            foreach ($map as $sourcePropertyName => $destinationPropertyName) {
-                if (!$destinationPropertyName) {
+        }
+
+        foreach ($module->getModuleConfiguration()['field_conf'] as $sourcePropertyName => $fieldConfiguration) {
+            $destinationPropertyName = GeneralUtility::underscoredToLowerCamelCase($sourcePropertyName);
+            if (isset($map[$sourcePropertyName])) {
+                if (!$map[$sourcePropertyName]) {
+                    // Property is ignored, does not have to be analysed.
                     $messages[] = '<li class="text-warning">';
                     $messages[] = $sourcePropertyName;
                     $messages[] = ' is ignored!';
                     $messages[] = '</li>';
                     continue;
-                }
-                $propertyExists = property_exists($entityClass, $destinationPropertyName);
-                if ($propertyExists) {
-                    $messages[] = '<li class="text-success">';
                 } else {
-                    $messages[] = '<li class="text-danger">';
+                    $destinationPropertyName = $map[$sourcePropertyName];
                 }
-                $messages[] = $sourcePropertyName;
-                $messages[] = ' is manually mapped to ' . $entityClass . '->' . $destinationPropertyName;
-                if (!$propertyExists) {
-                    $status['class'] = 'warning';
-                    $messages[] = sprintf(' - property does not exist, will cause errors if <strong>%s</strong> is included in data!', $sourcePropertyName);
-                }
-                $messages[] = '</li>';
             }
-        }
 
-        foreach ((new \ReflectionClass($entityClass))->getProperties() as $reflectionProperty) {
-            $name = $reflectionProperty->getName();
-            if (in_array($name, $map)) {
-                continue;
+            $propertyExists = property_exists($entityClass, $destinationPropertyName);
+            if ($propertyExists) {
+                $messages[] = '<li class="text-success">';
+            } elseif (!class_exists($destinationPropertyName) || !is_a($destinationPropertyName, ValueSetterInterface::class, true)) {
+                $messages[] = '<li class="text-danger">';
+                $messages[] = sprintf(
+                    'Property <strong>%s</strong> does not exist; the field <strong>%s</strong> needs to be mapped or ignored.',
+                    $destinationPropertyName,
+                    $sourcePropertyName
+                );
+            } else {
+                $messages[] = '<li>';
+                $messages[] = '<strong>' . $sourcePropertyName . '</strong> will be set with custom value setter: ' . $destinationPropertyName;
             }
-            $setterMethod = 'set' . ucfirst($name);
+
+            $setterMethod = 'set' . ucfirst($destinationPropertyName);
             if (method_exists($entityClass, $setterMethod)) {
                 $messages[] = sprintf(
-                    '<li><strong>%s</strong> will map to <strong>%s->%s</strong></li>',
-                    GeneralUtility::camelCaseToLowerCaseUnderscored($name),
-                    $reflectionProperty->getDeclaringClass()->getNamespaceName(),
-                    $name
+                    '<strong>%s</strong> will map to <strong>%s</strong></li>',
+                    $sourcePropertyName,
+                    $destinationPropertyName
                 );
             }
+
+            $messages[] = '</li>';
         }
         $messages[] = '</ol>';
 

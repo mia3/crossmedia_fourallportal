@@ -93,12 +93,14 @@ class ServerController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
                             <h2 class="text-danger">WARNING</h2>
                             <p>The config hash "' . $config['config_hash'] . '" does not match the persisted config hash
                             "' . $currentConfigurationHash . '" which indicates the PIM schema has changed. To update
-                            compatibility you can use the CLI command <code>fourallportal:pinschema</code>. 
+                            compatibility you can use the CLI command <code>fourallportal:pinschema</code>.
                         ';
                     } else {
                         $description = '
                             <strong>Module Name:</strong> ' . $config['moduleConfig']['module_name'] . '<br />
                             <strong>Config Hash:</strong> ' . $config['config_hash'] . '<br />
+                            <strong>Entity class:</strong> ' . $module->getMapper()->getEntityClassName() . '<br />
+                            <strong>Test object UUID:</strong> ' . $module->getTestObjectUuid() . '<br />
                         ';
                     }
                     $description .= '<h4>Fields</h4><table>';
@@ -114,7 +116,6 @@ class ServerController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
 
                     $moduleStatus = [
                         'title' => 'connector: ' . $module->getConnectorName(),
-                        'class' => 'success',
                         'description' => $description,
                     ];
 
