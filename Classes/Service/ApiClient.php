@@ -15,11 +15,6 @@ class ApiClient
     /**
      * @var string
      */
-    protected $customer;
-
-    /**
-     * @var string
-     */
     protected $sessionId;
 
     /**
