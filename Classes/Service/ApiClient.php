@@ -208,6 +208,7 @@ class ApiClient
         curl_setopt($ch, CURLOPT_FILE, $fp);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
         curl_setopt($ch, CURLOPT_WRITEHEADER, $headerBuff);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, (bool)$this->extensionConfiguration['verifyPeer']);
 
         //echo '  sending request...' . PHP_EOL;
 
@@ -408,6 +409,7 @@ class ApiClient
         curl_setopt($ch, CURLOPT_POST, 1);
         curl_setopt($ch, CURLOPT_TIMEOUT, (int)$this->extensionConfiguration['clientConnectTimeout']);
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, (int)$this->extensionConfiguration['clientTransferTimeout']);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, (bool)$this->extensionConfiguration['verifyPeer']);
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
@@ -481,6 +483,7 @@ class ApiClient
         curl_setopt($ch, CURLOPT_TIMEOUT, (int)$this->extensionConfiguration['clientConnectTimeout']);
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, (int)$this->extensionConfiguration['clientTransferTimeout']);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, (bool)$this->extensionConfiguration['verifyPeer']);
         static::$lastResponse['headers'] = [];
         static::$lastResponse['response'] = $result = curl_exec($ch);
         static::$lastResponse['uri'] = $uri;

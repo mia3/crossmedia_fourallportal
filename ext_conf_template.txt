@@ -6,3 +6,6 @@ clientTransferTimeout = 60
 
 # cat=basic/timeout/30; type=int; label=TTL for deferred events;Duration in number of seconds through which deferred events will be retried - after this limit is reached, the event fails.
 eventDeferralTTL = 86400
+
+# cat=basic/ssl/verify; type=int; label=TTL for deferred events;Duration in number of seconds through which deferred events will be retried - after this limit is reached, the event fails.
+verifyPeer = 1
