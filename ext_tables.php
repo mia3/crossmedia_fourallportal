@@ -19,7 +19,7 @@ call_user_func(
                 ],
                 [
                     'access' => 'user,group',
-                    'icon'   => 'EXT:fourallportal/Resources/Public/Icons/user_mod_fourallportal.svg',
+                    'icon'   => 'EXT:fourallportal/Resources/Public/Icons/Extension.svg',
                     'labels' => 'LLL:EXT:fourallportal/Resources/Private/Language/locallang_fourallportal.xlf',
                 ]
             );
