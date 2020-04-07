@@ -229,9 +229,21 @@ class Server extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
     {
         // http://[DOMAIN]/[CUSTOMER_NAME]/dataservice
         return sprintf(
-            '%s/%s/dataservice',
-            rtrim($this->getDomain(), '/'),
-            ltrim($this->getCustomerName(), '/')
+            '%s/service/object_image/get',
+            rtrim($this->getDomain(), '/')#,
+            #ltrim($this->getCustomerName(), '/')
+        );
+    }
+
+    /**
+     * @return string
+     */
+    public function getLoginUrl()
+    {
+        // http://[DOMAIN]/service/usermanagement/login
+        return sprintf(
+            '%s/service/usermanagement/login',
+            rtrim($this->getDomain(), '/')
         );
     }
 
@@ -240,11 +252,10 @@ class Server extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
      */
     public function getRestUrl()
     {
-        // http://[DOMAIN]/[CUSTOMER_NAME]/rest/PAPRemoteService
+        // http://[DOMAIN]/rest/PAPRemoteService
         return sprintf(
-            '%s/%s/rest/',
-            rtrim($this->getDomain(), '/'),
-            ltrim($this->getCustomerName(), '/')
+            '%s/rest/',
+            rtrim($this->getDomain(), '/')
         );
     }
 

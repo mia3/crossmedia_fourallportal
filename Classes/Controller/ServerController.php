@@ -77,11 +77,11 @@ class ServerController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
         $status = [];
         $client = $server->getClient();
         try {
-            $loginSuccessfull = $client->login();
+            $sessionId = $client->login();
             $status[] = [
                 'title' => 'login',
-                'class' => $loginSuccessfull ? 'success' : 'danger',
-                'description' => $loginSuccessfull ? 'Login Successfull' : 'Login failed',
+                'class' => $sessionId ? 'success' : 'danger',
+                'description' => $sessionId ? 'Login Successful. Session ID: ' . $sessionId : 'Login failed',
             ];
             foreach ($server->getModules() as $module) {
                 /** @var Module $module */

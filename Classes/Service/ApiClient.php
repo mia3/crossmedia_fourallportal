@@ -68,17 +68,18 @@ class ApiClient
     public function login()
     {
         $response = $this->doPostRequest(
-            $uri = $this->server->getRestUrl() . 'LoginRemoteService/login',
+            $uri = $this->server->getLoginUrl(),
             [
-                $this->server->getUsername(),
-                urlencode($this->server->getPassword()),
-                $this->server->getCustomerName(),
-            ]
+                'username' => $this->server->getUsername(),
+                'password' => base64_encode($this->server->getPassword()),
+                'language' => 'en_US',
+            ],
+            false
         );
-        if (isset($response['result']['sessionID'])) {
-            $this->sessionId = $response['result']['sessionID'];
+        if (isset($response['session'])) {
+            $this->sessionId = $response['session'];
 
-            return true;
+            return $this->sessionId;
         }
 
         return false;
@@ -404,14 +405,14 @@ class ApiClient
     public function doPostRequest($uri, $data, $persist = true)
     {
         $ch = curl_init($uri);
-        curl_setopt($ch, CURLOPT_POST, 0);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 0);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_TIMEOUT, (int)$this->extensionConfiguration['clientConnectTimeout']);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, (int)$this->extensionConfiguration['clientTransferTimeout']);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
             'Content-Type: application/json',
         ]);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
         $response = curl_exec($ch);
         if ($persist) {
             curl_setopt($ch, CURLOPT_HEADERFUNCTION, array(&$this, 'catchResponseHeaderCallback'));
@@ -476,9 +477,9 @@ class ApiClient
     public function doGetRequest($uri)
     {
         $ch = curl_init($uri);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 0);
         curl_setopt($ch, CURLOPT_VERBOSE, true);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 60);
+        curl_setopt($ch, CURLOPT_TIMEOUT, (int)$this->extensionConfiguration['clientConnectTimeout']);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, (int)$this->extensionConfiguration['clientTransferTimeout']);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         static::$lastResponse['headers'] = [];
         static::$lastResponse['response'] = $result = curl_exec($ch);
