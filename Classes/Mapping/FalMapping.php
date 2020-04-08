@@ -424,19 +424,19 @@ class FalMapping extends AbstractMapping
      */
     public function check(ApiClient $client, Module $module, array $status)
     {
-        $events = $client->getEvents($module->getConnectorName(), 0);
-        $ids = [];
-        foreach($events as $event) {
-            if ($event['event_type'] === 0) {
-                continue;
-            }
-            $ids[] = $event['object_id'];
-            if (count($ids) == 3) {
-                break;
-            }
-        }
+        $status = parent::check($client, $module, $status);
+
+        $ids = [$module->getTestObjectUuid()];
         $messages = [];
-        $beans = $client->getBeans($ids, $module->getConnectorName());
+
+        try {
+            $beans = $client->getBeans($ids, $module->getConnectorName());
+        } catch (\RuntimeException $error) {
+            $status['description'] = $error->getMessage();
+            $status['class'] = 'danger';
+            return $status;
+        }
+
         $paths = [];
         $status['description'] .= '
             <h3>FalMapping</h3>
@@ -447,60 +447,49 @@ class FalMapping extends AbstractMapping
         $files = $beans['result'] ?? [];
 
         foreach($files as $result) {
-            if (!isset($result['properties']['data_name']['value'])) {
+            if (!isset($result['properties']['name']['value'])) {
                 $status['class'] = 'danger';
                 $messages['data_name'] = '<p><strong class="text-danger">Connector does not provide required "data_name" property</strong></p>';
             }
-            if (!isset($result['properties']['data_shellpath']['value'])) {
-                $messages['data_shellpath'] = '<p><strong class="text-danger">Connector does not provide required "data_shellpath" property</strong></p>';
-                $status['class'] = 'danger';
-            }
-            $paths[] = $result['properties']['data_shellpath']['value'] . $result['properties']['data_name']['value'];
-        }
-        if (empty($module->getShellPath())) {
-            $status['class'] = 'danger';
-            $messages['shellpath_missing'] = '
-                <p>
-                    <strong class="text-danger">Missing ShellPath in ModuleConfig</strong><br />
-                </p>
-            ';
-        } elseif (strpos($paths[0], $module->getShellPath()) !== 0) {
-            $status['class'] = 'danger';
-            $messages['shellpath_mismatch'] = sprintf('
-                <p>
-                    <strong class="text-danger">Shell path of module does not match base path of returned file. Expected base path "%s" but path of returned file was "%s"</strong><br />
-                </p>
-            ', $module->getShellPath(), $paths[0]);
-        } else {
-            $messages['shellpath_good'] = '
-                <p>
-                    <strong class="text-success">Shell path checks successful: path is configured and matches base path of probed File result.</strong><br />
-                </p>
-            ';
+            $paths[] = $result['properties']['data_shellpath']['value'] . $result['properties']['name']['value'];
         }
         if (count($files)) {
-            $temporaryFile = $client->saveDerivate(GeneralUtility::tempnam('derivative_'), $ids[0]);
-            if (!file_exists($temporaryFile) || !filesize($temporaryFile)) {
+            try {
+                $temporaryFile = $client->saveDerivate(GeneralUtility::tempnam('derivative_'), $ids[0]);
+                if (!file_exists($temporaryFile) || !filesize($temporaryFile)) {
+                    $status['class'] = 'danger';
+                    $messages['derivative_download_failed'] = sprintf('
+                        <p>
+                            <strong class="text-danger">ApiClient was unable to download derivative with ID %s. Errors have been logged or are displayed above.</strong><br />
+                        </p>
+                    ', $ids[0]);
+                } else {
+                    $publicTempFile = PATH_site . 'typo3temp/assets/images/' . basename($temporaryFile);
+                    rename($temporaryFile, $publicTempFile);
+                    $temporaryFileRelativePath = substr($publicTempFile, strlen(PATH_site) - 1);
+                    $receivedBytes = filesize($publicTempFile);
+                    $messages['derivative_download_success'] = sprintf(
+                        '
+                            <p>
+                                <strong class="text-success">Derivative was downloaded from API. Received %d bytes.</strong><br />
+                            </p>
+                            <p>
+                                <img src="%s" alt="%s" height="200" />
+                            </p>
+                        ',
+                        $receivedBytes,
+                        $temporaryFileRelativePath,
+                        $temporaryFileRelativePath
+                    );
+                }
+            } catch (\RuntimeException $error) {
                 $status['class'] = 'danger';
-                $messages['derivative_download_failed'] = sprintf('
-                    <p>
-                        <strong class="text-danger">ApiClient was unable to download derivative with ID %s. Errors have been logged or are displayed above.</strong><br />
-                    </p>
-                ', $ids[0]);
-            } else {
-                $receivedBytes = filesize($temporaryFile);
-                $messages['derivative_download_success'] = sprintf('
-                    <p>
-                        <strong class="text-success">Derivative was downloaded from API. Received %d bytes.</strong><br />
-                    </p>
-                ', $receivedBytes);
+                $messages['derivative_download_failed'] = $error->getMessage();
             }
-            $messages[] = '<p>
-                    <strong>Paths of the 3 first Files:</strong><br />
-                    ' . implode('<br />', $paths) . '
-                </p>';
+            $messages[] = '<p>' . implode('<br />', $paths) . '</p>';
         }
         $status['description'] .= implode(chr(10), $messages);
+
         return $status;
     }
 
