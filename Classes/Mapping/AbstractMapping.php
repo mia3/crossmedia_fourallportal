@@ -59,7 +59,7 @@ abstract class AbstractMapping implements MappingInterface
      */
     public function import(array $data, Event $event)
     {
-        if ($this->sanityCheckAndAutoRepair($data, $event, $logger)) {
+        if ($this->sanityCheckAndAutoRepair($data, $event)) {
             // A failed sanity check may mean DB contents have been repaired.
             // To be safe, we defer the event once so the next time it gets
             // processed the session will be clean.
@@ -92,7 +92,8 @@ abstract class AbstractMapping implements MappingInterface
                         $event->getObjectId(),
                         $event->getModule()->getModuleName(),
                         $event->getEventId()
-                    )
+                    ),
+                    'tstamp'
                 );
                 unset($object);
                 break;
@@ -106,7 +107,8 @@ abstract class AbstractMapping implements MappingInterface
                         $event->getObjectId(),
                         $event->getModule()->getModuleName(),
                         $event->getEventId()
-                    )
+                    ),
+                    'tstamp'
                 );
                 break;
             default:
@@ -142,7 +144,7 @@ abstract class AbstractMapping implements MappingInterface
      * @param Event $event
      * @return bool
      */
-    protected function sanityCheckAndAutoRepair(array $data, Event $event, LoggerInterface $objectLog): bool
+    protected function sanityCheckAndAutoRepair(array $data, Event $event): bool
     {
         $objectId = $event->getObjectId();
         $tableName = $this->getTableName();
@@ -172,9 +174,11 @@ abstract class AbstractMapping implements MappingInterface
             $encountered = [];
             foreach ($pimRecords as $index => &$record) {
                 if (!in_array($record['pid'], $encountered) && $record['sys_language_uid'] > 0) {
-                    $objectLog->info(sprintf('Record %s from table %s has the wrong pid %d, setting it to %d', $record['uid'], $tableName, $record['pid'], $pid));
+                    $message = sprintf('Record %s from table %s has the wrong pid %d, setting it to %d', $record['uid'], $tableName, $record['pid'], $pid);
+                    $this->loggingService->logEventActivity($event, $message);
+                    $this->loggingService->logObjectActivity($data['result'][0]['id'], $message, 'pid');
                     $record['pid'] = $pid;
-                    $this->updateRecord($tableName, $record, $objectLog);
+                    $this->updateRecord($tableName, $record);
                     $defer = true;
                     unset($pimRecords[$index]);
                 } else {
@@ -187,13 +191,17 @@ abstract class AbstractMapping implements MappingInterface
             $encountered = [];
             foreach ($pimRecords as $index => $record) {
                 if ($record['deleted']) {
-                    $objectLog->info(sprintf('Record %s from table %s is soft-deleted; hard-delete it', $record['uid'], $tableName));
-                    $this->hardDeleteRecord($tableName, $record, $objectLog);
+                    $message = sprintf('Record %s from table %s is soft-deleted; hard-delete it', $record['uid'], $tableName);
+                    $this->loggingService->logEventActivity($event, $message);
+                    $this->loggingService->logObjectActivity($data['result'][0]['id'], $message, 'uid');
+                    $this->hardDeleteRecord($tableName, $record);
                     continue;
                 }
                 if (in_array($record['sys_language_uid'], $encountered)) {
-                    $objectLog->info(sprintf('Record %s from table %s is a language duplicate', $record['uid'], $tableName));
-                    $this->hardDeleteRecord($tableName, $record, $objectLog);
+                    $message = sprintf('Record %s from table %s is a language duplicate', $record['uid'], $tableName);
+                    $this->loggingService->logEventActivity($event, $message);
+                    $this->loggingService->logObjectActivity($data['result'][0]['id'], $message, 'uid');
+                    $this->hardDeleteRecord($tableName, $record);
                     $defer = true;
                     unset($pimRecords[$index]);
                 } else {
@@ -205,7 +213,7 @@ abstract class AbstractMapping implements MappingInterface
         return $defer;
     }
 
-    protected function updateRecord(string $table, array $record, LoggerInterface $objectLog)
+    protected function updateRecord(string $table, array $record)
     {
         $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable($table);
         $queryBuilder->getRestrictions()->removeAll();
@@ -214,18 +222,18 @@ abstract class AbstractMapping implements MappingInterface
             $query->set($key, $value);
         }
         $query->execute();
-        $objectLog->info(sprintf('Record %s from table %s was updated', $record['uid'], $table));
+        $message = sprintf('Record %s from table %s was updated', $record['uid'], $table);
+        $this->loggingService->logObjectActivity($record['remote_id'], $message, 'uid');
     }
 
-    protected function hardDeleteRecord(string $table, array $record, ?LoggerInterface $objectLog = null)
+    protected function hardDeleteRecord(string $table, array $record)
     {
         $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable($table);
         $queryBuilder->getRestrictions()->removeAll();
         $queryBuilder->delete($table)->where($queryBuilder->expr()->eq('uid', $record['uid']));
         $queryBuilder->execute();
-        if ($objectLog) {
-            $objectLog->info(sprintf('Record %s was deleted from table %s', $record['uid'], $table));
-        }
+        $message = sprintf('Record %s was deleted from table %s', $record['uid'], $table);
+        $this->loggingService->logObjectActivity($record['remote_id'], $message, 'uid');
     }
 
     protected function removeObject(DomainObjectInterface $object)
@@ -271,10 +279,10 @@ abstract class AbstractMapping implements MappingInterface
                 }
             } catch (PropertyNotAccessibleException $error) {
                 $message = 'Error mapping ' . $module->getModuleName() . ':' . $object->getRemoteId() . ':' . $importedName .' - ' . $error->getMessage();
-                $this->loggingService->logObjectActivity($data['result']['id'], $message, GeneralUtility::SYSLOG_SEVERITY_WARNING);
+                $this->loggingService->logObjectActivity($data['result'][0]['id'], $message, GeneralUtility::SYSLOG_SEVERITY_WARNING);
             } catch (DeferralException $error) {
                 $message = 'Error mapping ' . $module->getModuleName() . ':' . $object->getRemoteId() . ':' . $importedName .' - ' . $error->getMessage();
-                $this->loggingService->logObjectActivity($data['result']['id'], $message, GeneralUtility::SYSLOG_SEVERITY_WARNING);
+                $this->loggingService->logObjectActivity($data['result'][0]['id'], $message, GeneralUtility::SYSLOG_SEVERITY_WARNING);
             }
         }
         return $mappingProblemsOccurred;
@@ -513,48 +521,66 @@ abstract class AbstractMapping implements MappingInterface
             );
         }
 
+        $connectorConfiguration = $module->getConnectorConfiguration();
+        $loadedFields = array_keys($connectorConfiguration['fieldsToLoad']);
+        $fieldTypes = array_column($connectorConfiguration['fieldsToLoad'], 'type', 'name');
+
+        $messages[] = '<table class="table table-bordered table-striped">';
+        $messages[] = '<thead>';
+        $messages[] = '<tr>';
+        $messages[] = '<td>Source property</td>';
+        $messages[] = '<td>Destination</td>';
+        $messages[] = '<td>Loaded?</td>';
+        $messages[] = '<td>Type</td>';
+        $messages[] = '</tr>';
+        $messages[] = '</thead>';
+
         foreach ($module->getModuleConfiguration()['field_conf'] as $sourcePropertyName => $fieldConfiguration) {
             $destinationPropertyName = GeneralUtility::underscoredToLowerCamelCase($sourcePropertyName);
+            $class = '';
+
             if (isset($map[$sourcePropertyName])) {
                 if (!$map[$sourcePropertyName]) {
-                    // Property is ignored, does not have to be analysed.
-                    $messages[] = '<li class="text-warning">';
-                    $messages[] = $sourcePropertyName;
-                    $messages[] = ' is ignored!';
-                    $messages[] = '</li>';
-                    continue;
+                    $destinationPropertyName = 'ignored';
+                    $class = 'text-warning';
                 } else {
                     $destinationPropertyName = $map[$sourcePropertyName];
+                    $class = 'text-info';
                 }
             }
 
             $propertyExists = property_exists($entityClass, $destinationPropertyName);
-            if ($propertyExists) {
-                $messages[] = '<li class="text-success">';
-            } elseif (!class_exists($destinationPropertyName) || !is_a($destinationPropertyName, ValueSetterInterface::class, true)) {
-                $messages[] = '<li class="text-danger">';
-                $messages[] = sprintf(
-                    'Property <strong>%s</strong> does not exist; the field <strong>%s</strong> needs to be mapped or ignored.',
-                    $destinationPropertyName,
-                    $sourcePropertyName
-                );
-            } else {
-                $messages[] = '<li>';
-                $messages[] = '<strong>' . $sourcePropertyName . '</strong> will be set with custom value setter: ' . $destinationPropertyName;
-            }
-
             $setterMethod = 'set' . ucfirst($destinationPropertyName);
-            if (method_exists($entityClass, $setterMethod)) {
-                $messages[] = sprintf(
-                    '<strong>%s</strong> will map to <strong>%s</strong></li>',
-                    $sourcePropertyName,
+            $isCustomSetter = class_exists($destinationPropertyName) && is_a($destinationPropertyName, ValueSetterInterface::class, true);
+
+            if ($propertyExists) {
+                $class = 'text-success';
+            } elseif (!$isCustomSetter) {
+                $class = 'text-warning';
+                $destinationPropertyName = sprintf(
+                    'Field <strong>%s</strong> needs to be mapped or ignored.',
                     $destinationPropertyName
                 );
+            } elseif (method_exists($entityClass, $setterMethod)) {
+                $destinationPropertyName .= ' with setter ' . $setterMethod;
+            } elseif ($isCustomSetter) {
+                $destinationPropertyName = 'Custom value setter: ' . $destinationPropertyName;
+                $class = 'text-success';
+            } else {
+                $class = 'text-danger';
             }
 
-            $messages[] = '</li>';
+            $loaded = in_array($sourcePropertyName, $loadedFields, true) ? '<span class="fa fa-check"></span>' : '';
+            $type = isset($fieldTypes[$sourcePropertyName]) ? $fieldTypes[$sourcePropertyName] : 'undefined';
+
+            $messages[] = '<tr class="' . $class . '">';
+            $messages[] = '<td>' . $sourcePropertyName . '</td>';
+            $messages[] = '<td>' . $destinationPropertyName . '</td>';
+            $messages[] = '<td>' . $loaded . '</td>';
+            $messages[] = '<td>' . $type . '</td>';
+            $messages[] = '</tr>';
         }
-        $messages[] = '</ol>';
+        $messages[] = '</table>';
 
         $status['description'] .= implode(chr(10), $messages);
         return $status;
@@ -792,8 +818,9 @@ abstract class AbstractMapping implements MappingInterface
 
             if (!$translationDimensionMapping->isActive()) {
                 $this->loggingService->logObjectActivity(
-                    $data['result']['id'],
-                    'Dimension mapping ' . $translationDimensionMapping->getUid() . ' is configured to not use dimensions, skipping.',
+                    $data['result'][0]['id'],
+                    'Dimension mapping ' . $translationDimensionMapping->getUid() . ' is configured to not use dimensions, skipping translated version!',
+                    'sys_language_uid',
                     GeneralUtility::SYSLOG_SEVERITY_INFO
                 );
                 continue;

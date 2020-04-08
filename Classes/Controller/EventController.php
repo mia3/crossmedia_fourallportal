@@ -145,7 +145,7 @@ class EventController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionController
         $this->view->assign('event', $event);
         $this->view->assign('events', $events);
         $this->view->assign('eventLog', $this->loggingService->getEventActivity($event, 20));
-        $this->view->assign('objectLog', $this->loggingService->getObjectActivity($event->getObjectId(), 20));
+        $this->view->assign('objectLog', $this->loggingService->getObjectActivity($event->getObjectId(), 100));
         foreach ($events as $historicalEvent) {
             if ($historicalEvent->getEventType() === 'delete') {
                 $this->view->assign('deleted', ($historicalEvent->getStatus() === 'claimed'));

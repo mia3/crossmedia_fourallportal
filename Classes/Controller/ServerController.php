@@ -109,16 +109,6 @@ class ServerController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
                             <strong>Test object UUID:</strong> ' . $module->getTestObjectUuid() . '<br />
                         ';
                     }
-                    $description .= '<h4>Fields</h4><table>';
-                    foreach ($config['fieldsToLoad'] as $field) {
-                        $description .= '
-                            <tr>
-                                <th>' . (isset($field['name']) ? $field['name'] : $field['fieldName']) . ': </th>
-                                <td>' . (isset($field['type']) ? $field['type'] : $field['fieldType']) . '</td>
-                            </tr>
-                        ';
-                    }
-                    $description .= '</table>';
 
                     $moduleStatus = [
                         'title' => 'connector: ' . $module->getConnectorName(),
