@@ -3,6 +3,7 @@ namespace Crossmedia\Fourallportal\Service;
 
 use Crossmedia\Fourallportal\Domain\Model\Server;
 use Crossmedia\Fourallportal\Error\ApiException;
+use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 class ApiClient
 {
@@ -43,6 +44,11 @@ class ApiClient
     protected $extensionConfiguration = [];
 
     /**
+     * @var LoggingService
+     */
+    protected $loggingService;
+
+    /**
      * @param Server $server
      */
     public function __construct($server)
@@ -58,6 +64,7 @@ class ApiClient
         self::$sessionPool[] = $this;
         $this->initializeCreateMasks();
         $this->extensionConfiguration = (array) @unserialize($GLOBALS['TYPO3_CONF_VARS']['EXT']['extConf']['fourallportal']);
+        $this->loggingService = GeneralUtility::makeInstance(LoggingService::class);
     }
 
     public function login()
@@ -73,9 +80,11 @@ class ApiClient
         );
         if (isset($response['session'])) {
             $this->sessionId = $response['session'];
-
+            $this->loggingService->logConnectionActivity('login, session ID: ' . $this->sessionId);
             return $this->sessionId;
         }
+
+        $this->loggingService->logConnectionActivity('login FAILED', GeneralUtility::SYSLOG_SEVERITY_ERROR);
 
         return false;
     }
@@ -90,6 +99,7 @@ class ApiClient
                 ],
                 false
             );
+            $this->loggingService->logConnectionActivity('logout, session ID: ' . $this->sessionId);
             $this->sessionId = null;
         }
     }
@@ -115,6 +125,8 @@ class ApiClient
             false
         );
         $this->validateResponseCode($response);
+
+        $this->loggingService->logConnectionActivity('Retrieved connector configuration for ' . $connectorName);
         return $response['result'];
     }
 
@@ -139,6 +151,8 @@ class ApiClient
             false
         );
         $this->validateResponseCode($response);
+
+        $this->loggingService->logConnectionActivity('Retrieved module configuration for ' . $moduleName);
         return $response['result'];
     }
 
@@ -175,6 +189,8 @@ class ApiClient
     public function saveDerivate($filename, $objectId, $usage = null)
     {
         $query = array(
+            'module_name' => 'file',
+            'type' => 'weball',
             'session' => $this->sessionId,
             'apptype' => 'MAM',
             'clientType' => 'Web',
@@ -182,8 +198,6 @@ class ApiClient
             'id' => $objectId,
         );
         $uri = $this->server->getDataUrl() . '?' . http_build_query($query);
-
-        //echo '  fetching: ' . $uri . PHP_EOL;
 
         $temporaryFilename = tempnam(sys_get_temp_dir(), 'fal_mam-' . $objectId);
 
@@ -205,8 +219,6 @@ class ApiClient
         curl_setopt($ch, CURLOPT_WRITEHEADER, $headerBuff);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, (bool)$this->extensionConfiguration['verifyPeer']);
 
-        //echo '  sending request...' . PHP_EOL;
-
         curl_exec($ch);
 
         rewind($headerBuff);
@@ -219,19 +231,19 @@ class ApiClient
             $filename = substr($filename, 0, strrpos($filename, '/') + 1) . $matches[1];
         }
 
-        //echo '  data received (' . filesize($temporaryFilename) . ' bytes, code: ' . $info['http_code']  . ')' . PHP_EOL;
-
         if (preg_match('/Content-Length:[^0-9]*([0-9]+)/', $headers, $matches)) {
             $expectedFileSize = $matches[1];
         }
 
         if (!empty($curlError = curl_error($ch))) {
-            throw new ApiException('CURL Failed with the Error: ' . $curlError);
+            $message = 'CURL Failed with the Error: ' . $curlError;
+            $this->loggingService->logFileTransferActivity($uri, $temporaryFilename . ': ' . $message, GeneralUtility::SYSLOG_SEVERITY_ERROR);
+            throw new ApiException($message);
         }
 
         if ($info['http_code'] !== 200) {
             $errorMessage = sprintf('CURL response code was %d when fetching "%s": ', $info['http_code'], $uri);
-            //echo '  ' . $errorMessage . PHP_EOL;
+            $this->loggingService->logFileTransferActivity($uri, $temporaryFilename, GeneralUtility::SYSLOG_SEVERITY_ERROR);
             throw new \RuntimeException($errorMessage);
         }
 
@@ -240,7 +252,9 @@ class ApiClient
 
         if ($expectedFileSize > 0 && $expectedFileSize != filesize($temporaryFilename)) {
             unlink($temporaryFilename);
-            throw new ApiException('The downloaded file does not match the expected filesize');
+            $message = 'The downloaded file does not match the expected filesize';
+            $this->loggingService->logFileTransferActivity($uri, $temporaryFilename . ': ' . $message, GeneralUtility::SYSLOG_SEVERITY_ERROR);
+            throw new ApiException($message);
         }
 
         if (!file_exists(dirname($filename))) {
@@ -251,6 +265,7 @@ class ApiClient
         rename($temporaryFilename, $filename);
         chmod($filename, $this->fileCreateMask);
 
+        $this->loggingService->logFileTransferActivity($uri, $filename);
         return $filename;
     }
 
@@ -293,45 +308,14 @@ class ApiClient
         );
         switch ($response['code']) {
             case 0:
+                $this->loggingService->logConnectionActivity('Events fetched for ' . $connectorName . ' since event ID ' . $eventId);
                 return $response['result'];
                 break;
 
             default:
-                throw new ApiException($response['code'] . ': ' . $response['message']);
-        }
-    }
-
-    /**
-     * Start a synchronization
-     *
-     * Dieser Service liefert nicht alle IDs aus maximal 1000.
-     * Es sind alle Events ausgeliefert, sobald 0 Werte zurückgegeben werden.
-     *
-     * @apiparam session_id - Usersession
-     * @apiparam connector_name - Name des Connectors
-     * @apiparam event_id - Die Id des ersten Events
-     * @apiparam offset - offset der IDs
-     *
-     * @param string $connectorName
-     * @return array $events
-     * @throws ApiException
-     */
-    public function synchronize($connectorName = null)
-    {
-        $response = $this->doPostRequest(
-            $uri = $this->server->getRestUrl() . 'PAPRemoteService/synchronize',
-            [
-                $this->sessionId,
-                $connectorName
-            ]
-        );
-        switch ($response['code']) {
-            case 0:
-                return $response['result'];
-                break;
-
-            default:
-                throw new ApiException($response['code'] . ': ' . $response['message']);
+                $message = $response['code'] . ': ' . $response['message'];
+                $this->loggingService->logConnectionActivity($message, GeneralUtility::SYSLOG_SEVERITY_ERROR);
+                throw new ApiException($message);
         }
     }
 
@@ -383,11 +367,14 @@ class ApiClient
      */
     public function getRequest($method, $parameter)
     {
-        $uri = $this->server->getRestUrl() . $method . '?' . http_build_query(['parameter' => json_encode($parameter)]);
+        $encodedParameters = json_encode($parameter);
+        $uri = $this->server->getRestUrl() . $method . '?' . http_build_query(['parameter' => $encodedParameters]);
         $response = $this->doGetRequest($uri);
         $result = json_decode($response, true);
 
         $this->validateResponseCode($result);
+
+        $this->loggingService->logConnectionActivity($uri . ' ' . $encodedParameters);
 
         return $result['result'];
     }
@@ -410,7 +397,9 @@ class ApiClient
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
             'Content-Type: application/json',
         ]);
+
         $response = curl_exec($ch);
+
         if ($persist) {
             curl_setopt($ch, CURLOPT_HEADERFUNCTION, array(&$this, 'catchResponseHeaderCallback'));
             static::$lastResponse['headers'] = [];
@@ -421,6 +410,8 @@ class ApiClient
         $result = json_decode($response, true);
 
         $this->validateResponseCode($result);
+
+        $this->loggingService->logConnectionActivity(strlen($response) . ' ' . $uri . ' ' . json_encode($data));
 
         return $result;
     }
@@ -444,10 +435,13 @@ class ApiClient
     {
         if (!isset($result['code']) || $result['code'] != 0) {
             $message = isset($result['message']) ? $result['message'] : 'MamClient: could not communicate with mam api. please try again later';
+            $this->loggingService->logConnectionActivity($message, GeneralUtility::SYSLOG_SEVERITY_ERROR);
             throw new ApiException($message . ' - Response code ' . $result['code'] . ': ' . $this->translateResponseCode($result['code']));
         }
         if (!is_array($result)) {
-            throw new ApiException('The MAM API returned garbage data (not JSON array)');
+            $message = 'The MAM API returned garbage data (not JSON array)';
+            $this->loggingService->logConnectionActivity($message, GeneralUtility::SYSLOG_SEVERITY_ERROR);
+            throw new ApiException($message);
         }
     }
 

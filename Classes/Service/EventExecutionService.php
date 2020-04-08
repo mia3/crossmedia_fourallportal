@@ -5,6 +5,9 @@ use Crossmedia\Fourallportal\Domain\Dto\SyncParameters;
 use Crossmedia\Fourallportal\Domain\Model\Event;
 use Crossmedia\Fourallportal\Domain\Model\Module;
 use Crossmedia\Fourallportal\Domain\Model\Server;
+use Crossmedia\Fourallportal\Domain\Repository\EventRepository;
+use Crossmedia\Fourallportal\Domain\Repository\ModuleRepository;
+use Crossmedia\Fourallportal\Domain\Repository\ServerRepository;
 use Crossmedia\Fourallportal\Error\ApiException;
 use Crossmedia\Fourallportal\Mapping\DeferralException;
 use TYPO3\CMS\Core\Database\ConnectionPool;
@@ -23,19 +26,24 @@ use TYPO3\CMS\Scheduler\Scheduler;
 class EventExecutionService implements SingletonInterface
 {
     /**
-     * @var \Crossmedia\Fourallportal\Domain\Repository\ServerRepository
+     * @var ServerRepository
      * */
     protected $serverRepository = null;
 
     /**
-     * @var \Crossmedia\Fourallportal\Domain\Repository\EventRepository
+     * @var EventRepository
      * */
     protected $eventRepository = null;
 
     /**
-     * @var \Crossmedia\Fourallportal\Domain\Repository\ModuleRepository
+     * @var ModuleRepository
      * */
     protected $moduleRepository = null;
+
+    /**
+     * @var LoggingService
+     * */
+    protected $loggingService = null;
 
     /**
      * @var ResponseInterface
@@ -47,19 +55,24 @@ class EventExecutionService implements SingletonInterface
      */
     protected $objectManager;
 
-    public function injectEventRepository(\Crossmedia\Fourallportal\Domain\Repository\EventRepository $eventRepository)
+    public function injectEventRepository(EventRepository $eventRepository)
     {
         $this->eventRepository = $eventRepository;
     }
 
-    public function injectModuleRepository(\Crossmedia\Fourallportal\Domain\Repository\ModuleRepository $moduleRepository)
+    public function injectModuleRepository(ModuleRepository $moduleRepository)
     {
         $this->moduleRepository = $moduleRepository;
     }
 
-    public function injectServerRepository(\Crossmedia\Fourallportal\Domain\Repository\ServerRepository $serverRepository)
+    public function injectServerRepository(ServerRepository $serverRepository)
     {
         $this->serverRepository = $serverRepository;
+    }
+
+    public function injectLoggingService(LoggingService $loggingService)
+    {
+        $this->loggingService = $loggingService;
     }
 
     public function injectObjectManager(ObjectManagerInterface $objectManager)
@@ -135,7 +148,6 @@ class EventExecutionService implements SingletonInterface
                 $this->performExecute($parameters);
             }
         } catch (ApiException $error) {
-            $this->logProblem($error);
             $this->unlock();
         }
     }
@@ -169,15 +181,14 @@ class EventExecutionService implements SingletonInterface
 
         foreach ($activeModules as $key => $module) {
             if (!$module->verifySchemaVersion()) {
-                $this->logProblem(
-                    new ApiException(
-                        sprintf(
-                            'Remote config hash "%s" does not match local "%s" - skipping SYNC of module "%s"',
-                            $module->getConnectorConfiguration()['config_hash'],
-                            $module->getConfigHash(),
-                            $module->getModuleName()
-                        )
-                    )
+                $this->loggingService->logSchemaActivity(
+                    sprintf(
+                        'Remote config hash "%s" does not match local "%s" - skipping SYNC of module "%s"',
+                        $module->getConnectorConfiguration()['config_hash'],
+                        $module->getConfigHash(),
+                        $module->getModuleName()
+                    ),
+                    GeneralUtility::SYSLOG_SEVERITY_FATAL
                 );
                 continue;
             }
@@ -244,7 +255,6 @@ class EventExecutionService implements SingletonInterface
         try {
             $this->performExecute($parameters);
         } catch (ApiException $error) {
-            $this->logProblem($error);
             $this->unlock();
         }
     }
@@ -259,15 +269,14 @@ class EventExecutionService implements SingletonInterface
         foreach ($activeModules as $module) {
 
             if (!$module->verifySchemaVersion()) {
-                $this->logProblem(
-                    new ApiException(
-                        sprintf(
-                            'Remote config hash "%s" does not match local "%s" - skipping EXECUTE of module "%s"',
-                            $module->getConnectorConfiguration()['config_hash'],
-                            $module->getConfigHash(),
-                            $module->getModuleName()
-                        )
-                    )
+                $this->loggingService->logSchemaActivity(
+                    sprintf(
+                        'Remote config hash "%s" does not match local "%s" - skipping EXECUTE of module "%s"',
+                        $module->getConnectorConfiguration()['config_hash'],
+                        $module->getConfigHash(),
+                        $module->getModuleName()
+                    ),
+                    GeneralUtility::SYSLOG_SEVERITY_FATAL
                 );
                 continue;
             }
@@ -319,39 +328,32 @@ class EventExecutionService implements SingletonInterface
                 continue;
             }
             if (!$event->getModule()->getServer()->isActive()) {
-                $this->logProblem(
-                    new ApiException(
-                        sprintf(
-                            'Event "%s" uses server "%s" which is disabled. Skipping event.',
-                            $event->getEventId(),
-                            $event->getModule()->getServer()->getDomain()
-                        )
+                $this->loggingService->logEventActivity(
+                    $event,
+                    sprintf(
+                        'Event "%s" uses server "%s" which is disabled. Skipping event.',
+                        $event->getEventId(),
+                        $event->getModule()->getServer()->getDomain()
                     )
                 );
                 continue;
             }
             if (!$event->getModule()->verifySchemaVersion()) {
-                $this->logProblem(
-                    new ApiException(
-                        sprintf(
-                            'Remote config hash "%s" does not match local "%s" - skipping EXECUTE of event "%s"',
-                            $event->getModule()->getConnectorConfiguration()['config_hash'],
-                            $event->getModule()->getConfigHash(),
-                            $event->getEventId()
-                        )
-                    )
+                $message = sprintf(
+                    'Remote config hash "%s" does not match local "%s" - skipping EXECUTE of event "%s"',
+                    $event->getModule()->getConnectorConfiguration()['config_hash'],
+                    $event->getModule()->getConfigHash(),
+                    $event->getEventId()
                 );
+                $this->loggingService->logEventActivity($event, $message);
+                $this->loggingService->logSchemaActivity($message, GeneralUtility::SYSLOG_SEVERITY_FATAL);
                 continue;
             }
             $this->processEvent($event, true);
             $parameters->countExecutedEvent();
         }
 
-        try {
-            $this->objectManager->get(PersistenceManagerInterface::class)->persistAll();
-        } catch (\Exception $error) {
-            $this->logProblem($error);
-        }
+        $this->objectManager->get(PersistenceManagerInterface::class)->persistAll();
     }
 
     /**
@@ -364,20 +366,15 @@ class EventExecutionService implements SingletonInterface
     {
         $done = false;
         $allEvents = [];
-        try {
-            while (($events = $client->getEvents($connectorName, $lastEventId)) && count($events) && !$done) {
-                foreach ($events as $event) {
-                    //echo 'Read: ' . $connectorName . ':' . $event['id'] . PHP_EOL;
-                    $lastEventId = $event['id'];
-                    if (isset($allEvents[$lastEventId])) {
-                        $done = true;
-                        break;
-                    }
-                    $allEvents[$lastEventId] = $event;
+        while (($events = $client->getEvents($connectorName, $lastEventId)) && count($events) && !$done) {
+            foreach ($events as $event) {
+                $lastEventId = $event['id'];
+                if (isset($allEvents[$lastEventId])) {
+                    $done = true;
+                    break;
                 }
+                $allEvents[$lastEventId] = $event;
             }
-        } catch (\Exception $error) {
-            $this->logProblem($error);
         }
         return $allEvents;
     }
@@ -509,24 +506,6 @@ class EventExecutionService implements SingletonInterface
         return GeneralUtility::getFileAbsFileName('typo3temp/var/locks/') . 'lock_4ap_sync.lock';
     }
 
-    public function logProblem(\Exception $exception)
-    {
-        GeneralUtility::makeInstance(LogManager::class)->getLogger(__CLASS__)->critical(
-            $exception->getMessage(),
-            [
-                'code' => $exception->getCode(),
-                'file' => $exception->getFile(),
-                'line' => $exception->getLine(),
-            ]
-        );
-        if ($this->response instanceof Response) {
-            $this->response->setContent($exception->getMessage() . PHP_EOL);
-            $this->response->setExitCode(1);
-            $this->response->send();
-            $this->response->setContent('');
-        }
-    }
-
     /**
      * @param Event $event
      * @param bool $updateEventId
@@ -576,6 +555,7 @@ class EventExecutionService implements SingletonInterface
             $event->setRetries(0);
             $event->setStatus('claimed');
             $event->setMessage('Successfully executed - no additional output available');
+            $this->loggingService->logEventActivity($event, 'Event was executed');
         } catch (DeferralException $error) {
             // The system was unable to map properties, most likely because of an unresolvable relation.
             // Skip the event for now; process it later.
@@ -601,14 +581,15 @@ class EventExecutionService implements SingletonInterface
                 $event->setRetries(0);
                 $event->setStatus('failed');
             }
+            $this->loggingService->logEventActivity($event, 'Event was deferred', GeneralUtility::SYSLOG_SEVERITY_WARNING);
         } catch (\Exception $exception) {
-            $this->logProblem($exception);
             $event->setStatus('failed');
             $event->setRetries(0);
             $event->setMessage($exception->getMessage() . ' (code: ' . $exception->getCode() . ')' . $exception->getFile() . ':' . $exception->getLine());
             if ($updateEventId) {
                 $event->getModule()->setLastEventId(max($event->getEventId(), $event->getModule()->getLastEventId()));
             }
+            $this->loggingService->logEventActivity($event, 'System error: ' . $exception->getMessage(), GeneralUtility::SYSLOG_SEVERITY_WARNING);
         }
         $responseMetadata = $client->getLastResponse();
         $event->setHeaders($responseMetadata['headers']);
@@ -619,7 +600,7 @@ class EventExecutionService implements SingletonInterface
         try {
             $this->objectManager->get(PersistenceManager::class)->persistAll();
         } catch (\Exception $error) {
-            $this->logProblem($error);
+            $this->loggingService->logEventActivity($event, 'System error: ' . $exception->getMessage(), GeneralUtility::SYSLOG_SEVERITY_WARNING);
         }
     }
 }

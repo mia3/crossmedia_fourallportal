@@ -5,6 +5,7 @@ use Crossmedia\Fourallportal\Domain\Model\DimensionMapping;
 use Crossmedia\Fourallportal\Domain\Model\Event;
 use Crossmedia\Fourallportal\Domain\Model\Module;
 use Crossmedia\Fourallportal\Service\ApiClient;
+use Crossmedia\Fourallportal\Service\LoggingService;
 use Crossmedia\Fourallportal\TypeConverter\PimBasedTypeConverterInterface;
 use Crossmedia\Fourallportal\ValueReader\ResponseDataFieldValueReader;
 use Psr\Log\LoggerInterface;
@@ -42,13 +43,22 @@ abstract class AbstractMapping implements MappingInterface
     protected $repositoryClassName;
 
     /**
+     * @var LoggingService
+     */
+    protected $loggingService;
+
+    public function injectLoggingService(LoggingService $loggingService)
+    {
+        $this->loggingService = $loggingService;
+    }
+
+    /**
      * @param array $data
      * @param Event $event
      * @return bool
      */
     public function import(array $data, Event $event)
     {
-        $logger = $this->getEventAndObjectSpecificLogger($event);
         if ($this->sanityCheckAndAutoRepair($data, $event, $logger)) {
             // A failed sanity check may mean DB contents have been repaired.
             // To be safe, we defer the event once so the next time it gets
@@ -75,8 +85,8 @@ abstract class AbstractMapping implements MappingInterface
                     return;
                 }
                 $this->removeObjectFromRepository($object);
-                $logger->log(
-                    LogLevel::INFO,
+                $this->loggingService->logObjectActivity(
+                    $objectId,
                     sprintf(
                         'Object %s was deleted by event %s:%d',
                         $event->getObjectId(),
@@ -89,8 +99,8 @@ abstract class AbstractMapping implements MappingInterface
             case 'update':
             case 'create':
                 $deferAfterProcessing = $this->importObjectWithDimensionMappings($data, $object, $event);
-                $logger->log(
-                    LogLevel::INFO,
+                $this->loggingService->logObjectActivity(
+                    $objectId,
                     sprintf(
                         'Object %s was updated by event %s:%d',
                         $event->getObjectId(),
@@ -108,23 +118,10 @@ abstract class AbstractMapping implements MappingInterface
         }
 
         if ($deferAfterProcessing) {
-            $logger->notice(sprintf('Event %d was deferred', $event->getEventId()));
+            $this->loggingService->logEventActivity($event, 'Event deferred');
         }
 
         return $deferAfterProcessing;
-    }
-
-    /**
-     * @param Event $event
-     * @return LoggerInterface
-     */
-    protected function getEventAndObjectSpecificLogger(Event $event): LoggerInterface
-    {
-        $loggerName = '4ap_object_' . $event->getObjectId();
-        $logger = new Logger($loggerName);
-        $logger->addWriter(LogLevel::INFO, new FileWriter(['logFile' => $event->getObjectLogFilePath()]));
-        $logger->addWriter(LogLevel::INFO, new FileWriter(['logFile' => $event->getEventLogFilePath()]));
-        return $logger;
     }
 
     /**
@@ -273,9 +270,11 @@ abstract class AbstractMapping implements MappingInterface
                     $mappingProblemsOccurred = $mappingProblemsOccurred ?: $propertyMappingProblemsOccurred;
                 }
             } catch (PropertyNotAccessibleException $error) {
-                $this->logProblem('Error mapping ' . $module->getModuleName() . ':' . $object->getRemoteId() . ':' . $importedName .' - ' . $error->getMessage());
+                $message = 'Error mapping ' . $module->getModuleName() . ':' . $object->getRemoteId() . ':' . $importedName .' - ' . $error->getMessage();
+                $this->loggingService->logObjectActivity($data['result']['id'], $message, GeneralUtility::SYSLOG_SEVERITY_WARNING);
             } catch (DeferralException $error) {
-                $this->logProblem('Error mapping ' . $module->getModuleName() . ':' . $object->getRemoteId() . ':' . $importedName .' - ' . $error->getMessage());
+                $message = 'Error mapping ' . $module->getModuleName() . ':' . $object->getRemoteId() . ':' . $importedName .' - ' . $error->getMessage();
+                $this->loggingService->logObjectActivity($data['result']['id'], $message, GeneralUtility::SYSLOG_SEVERITY_WARNING);
             }
         }
         return $mappingProblemsOccurred;
@@ -305,6 +304,11 @@ abstract class AbstractMapping implements MappingInterface
             $this->persist();
         }
         */
+
+        $objectId = 'unknown';
+        if (method_exists($object, 'getRemoteId')) {
+            $objectId = $object->getRemoteId();
+        }
 
         if ($propertyValue === null && reset((new \ReflectionMethod(get_class($object), 'set' . ucfirst($propertyName)))->getParameters())->allowsNull()) {
             ObjectAccess::setProperty($object, $propertyName, null);
@@ -338,7 +342,7 @@ abstract class AbstractMapping implements MappingInterface
                     try {
                         $child = $typeConverter->convertFrom($identifier, $childType, [], $configuration);
                     } catch (DeferralException $error) {
-                        $this->logProblem($error->getMessage());
+                        $this->loggingService->logObjectActivity($objectId, $error->getMessage(), GeneralUtility::SYSLOG_SEVERITY_WARNING);
                         $mappingProblemsOccurred = true;
                         continue;
                     }
@@ -346,19 +350,17 @@ abstract class AbstractMapping implements MappingInterface
                     if ($child instanceof Error) {
                         // For whatever reason, property validators will return a validation error rather than throw an exception.
                         // We therefore need to check this, log the problem, and skip the property.
-                        $this->logProblem(
-                            'Mapping error when mapping property ' . $propertyName . ' on ' . get_class($object) . ':' .  $object->getRemoteId() .
-                            ' in language UID ' . ObjectAccess::getProperty($object, '_languageUid', true) . ': ' . $child->getMessage()
-                        );
+                        $message = 'Mapping error when mapping property ' . $propertyName . ' on ' . get_class($object) . ':' .  $object->getRemoteId() .
+                            ' in language UID ' . ObjectAccess::getProperty($object, '_languageUid', true) . ': ' . $child->getMessage();
+                        $this->loggingService->logObjectActivity($objectId, $message, GeneralUtility::SYSLOG_SEVERITY_WARNING);
                         $child = null;
                     }
 
                     if (!$child) {
-                        $this->logProblem(
-                            'Child of type ' . $childType . ' identified by ' . $identifier . ' not found when mapping property ' .
+                        $message = 'Child of type ' . $childType . ' identified by ' . $identifier . ' not found when mapping property ' .
                             $propertyName . ' on ' . get_class($object) . ':' .  $object->getRemoteId() . ' in language UID ' .
-                            ObjectAccess::getProperty($object, '_languageUid', true)
-                        );
+                            ObjectAccess::getProperty($object, '_languageUid', true);
+                        $this->loggingService->logObjectActivity($objectId, $message, GeneralUtility::SYSLOG_SEVERITY_WARNING);
                         $mappingProblemsOccurred = true;
                         continue;
                     }
@@ -387,8 +389,7 @@ abstract class AbstractMapping implements MappingInterface
                     // For whatever reason, property validators will return a validation error rather than throw an exception.
                     // We therefore need to check this, log the problem, and skip the property.
                     $message = 'Mapping error when mapping property ' . $propertyName . ' on ' . get_class($object) . ':' .  $object->getRemoteId() . ': ' . $propertyValue->getMessage();
-                    //$mappingProblemsOccurred = true;
-                    $this->logProblem($message);
+                    $this->loggingService->logObjectActivity($objectId, $message, GeneralUtility::SYSLOG_SEVERITY_WARNING);
                     $propertyValue = null;
                 }
 
@@ -400,14 +401,13 @@ abstract class AbstractMapping implements MappingInterface
                 }
             }
         } elseif ($propertyValue === null && !reset((new \ReflectionMethod(get_class($object), 'set' . ucfirst($propertyName)))->getParameters())->allowsNull()) {
-            $this->logProblem(
-                sprintf(
-                    'Property "%s" on object "%s->%s" does not allow NULL as value, but NULL was resolved. Please verify PIM response data consistency!',
-                    $propertyName,
-                    get_class($object),
-                    method_exists($object, 'getRemoteId') ? $object->getRemoteId() : $object->getUid()
-                )
+            $message = sprintf(
+                'Property "%s" on object "%s->%s" does not allow NULL as value, but NULL was resolved. Please verify PIM response data consistency!',
+                $propertyName,
+                get_class($object),
+                method_exists($object, 'getRemoteId') ? $object->getRemoteId() : $object->getUid()
             );
+            $this->loggingService->logObjectActivity($objectId, $message, GeneralUtility::SYSLOG_SEVERITY_FATAL);
             return false;
         }
 
@@ -791,7 +791,11 @@ abstract class AbstractMapping implements MappingInterface
         foreach ($translationDimensionMappings as $translationDimensionMapping) {
 
             if (!$translationDimensionMapping->isActive()) {
-                $this->logProblem('Dimension mapping ' . $translationDimensionMapping->getUid() . ' is configured to not use dimensions, skipping.');
+                $this->loggingService->logObjectActivity(
+                    $data['result']['id'],
+                    'Dimension mapping ' . $translationDimensionMapping->getUid() . ' is configured to not use dimensions, skipping.',
+                    GeneralUtility::SYSLOG_SEVERITY_INFO
+                );
                 continue;
             }
 
@@ -832,10 +836,5 @@ abstract class AbstractMapping implements MappingInterface
         GeneralUtility::makeInstance(ObjectManager::class)->get(Session::class)->registerObject($event, get_class($event) . ':' . $event->getUid());
 
         return $mappingProblemsOccurred;
-    }
-
-    protected function logProblem($message)
-    {
-        GeneralUtility::makeInstance(LogManager::class)->getLogger(__CLASS__)->alert($message);
     }
 }

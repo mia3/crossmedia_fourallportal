@@ -26,5 +26,9 @@
         </f:for>
         </tbody>
     </table>
+    <h3>Error log</h3>
+    <f:render partial="Log" arguments="{log: errorLog}" />
+    <h3>Connection log</h3>
+    <f:render partial="Log" arguments="{log: connectionLog}" />
 </f:section>
 </html>

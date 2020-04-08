@@ -37,11 +37,11 @@
 
     <f:render partial="Events" arguments="{events: events, highlightEvent: event, paginate: 0, deleted: deleted}" />
 
-    <h3>Message</h3>
-    <pre>{event.message -> f:format.raw()}</pre>
+    <h4>Event log</h4>
+    <f:render partial="Log" arguments="{log: eventLog}" />
 
-    <h4>Request URL</h4>
-    <pre>{event.url -> f:format.raw()}</pre>
+    <h4>Object log</h4>
+    <f:render partial="Log" arguments="{log: objectLog}" />
 
     <h4>Request payload</h4>
     <pre>{event.payload -> f:format.raw()}</pre>
@@ -49,13 +49,7 @@
     <h4>Response headers</h4>
     <pre>{event.headers -> f:format.raw()}</pre>
 
-    <h4>Event log</h4>
-    <pre>{event.mostRecentEventLog -> f:format.raw()}</pre>
-
     <h4>Response body</h4>
     <pre>{event.response -> f:format.raw()}</pre>
-
-    <h4>Object log</h4>
-    <pre>{event.mostRecentObjectLog -> f:format.raw()}</pre>
 </f:section>
 </html>

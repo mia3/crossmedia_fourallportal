@@ -39,6 +39,12 @@ class ServerController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
     protected $eventRepository = null;
 
     /**
+     * @var \Crossmedia\Fourallportal\Service\LoggingService
+     * @inject
+     */
+    protected $loggingService = null;
+
+    /**
      * action index
      *
      * @return void
@@ -138,6 +144,8 @@ class ServerController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
                 'description' => 'Login failed (' . $exception->getMessage() . ')',
             ];
         }
+        $this->view->assign('connectionLog', $this->loggingService->getConnectionActivity(200));
+        $this->view->assign('errorLog', $this->loggingService->getErrorActivity(200));
         $this->view->assign('status', $status);
         $this->view->assign('server', $server);
     }

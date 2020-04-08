@@ -17,6 +17,7 @@ use Crossmedia\Fourallportal\Domain\Model\Event;
 use Crossmedia\Fourallportal\Hook\EventExecutionHookInterface;
 use Crossmedia\Fourallportal\Response\CollectingResponse;
 use Crossmedia\Fourallportal\Service\EventExecutionService;
+use Crossmedia\Fourallportal\Service\LoggingService;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 /**
@@ -38,11 +39,21 @@ class EventController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionController
     protected $eventExecutionService = null;
 
     /**
+     * @var LoggingService
+     */
+    protected $loggingService = null;
+
+    /**
      * @param EventExecutionService $eventExecutionService
      */
     public function injectEventExecutionService(EventExecutionService $eventExecutionService)
     {
         $this->eventExecutionService = $eventExecutionService;
+    }
+
+    public function injectLoggingService(LoggingService $loggingService)
+    {
+        $this->loggingService = $loggingService;
     }
 
     /**
@@ -133,6 +144,8 @@ class EventController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionController
         $events = $this->eventRepository->findByObjectId($event->getObjectId());
         $this->view->assign('event', $event);
         $this->view->assign('events', $events);
+        $this->view->assign('eventLog', $this->loggingService->getEventActivity($event, 20));
+        $this->view->assign('objectLog', $this->loggingService->getObjectActivity($event->getObjectId(), 20));
         foreach ($events as $historicalEvent) {
             if ($historicalEvent->getEventType() === 'delete') {
                 $this->view->assign('deleted', ($historicalEvent->getStatus() === 'claimed'));
@@ -152,6 +165,7 @@ class EventController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionController
         $event->setNextRetry(0);
         $event->setRetries(0);
         $this->eventRepository->update($event);
+        $this->loggingService->logEventActivity($event, 'Event reset');
         $this->redirect('index', null, null, ['status' => 'pending']);
     }
 
@@ -161,7 +175,6 @@ class EventController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionController
      */
     public function executeAction($event)
     {
-
         $fakeResponse = new CollectingResponse();
         $this->eventExecutionService->setResponse($fakeResponse);
         $this->eventExecutionService->processEvent($event, false);
