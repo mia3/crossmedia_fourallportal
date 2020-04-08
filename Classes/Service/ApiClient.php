@@ -345,12 +345,12 @@ class ApiClient
      * @apiparam connector_name - Name des Connectors
      * @apiparam ids - Die Ids des Beans
      *
-     * @param string $connectorName
      * @param integer|array $objectIds
      * @param string $connectorName
      * @return array $beans
+     * @throws ApiException
      */
-    public function getBeans($objectIds, $connectorName = null)
+    public function getBeans($objectIds, string $connectorName): iterable
     {
         if (!is_array($objectIds)) {
             $objectIds = array($objectIds);
@@ -360,7 +360,7 @@ class ApiClient
             $this->server->getRestUrl() . 'PAPRemoteService/getBeans',
             array(
                 $this->sessionId,
-                $connectorName ? $connectorName : $this->connectorName,
+                $connectorName,
                 $objectIds,
             )
         );
@@ -508,7 +508,7 @@ class ApiClient
         return $path;
     }
 
-    protected function initializeCreateMasks()
+    protected function initializeCreateMasks(): void
     {
         if (isset($GLOBALS['TYPO3_CONF_VARS']['BE']['folderCreateMask'])) {
             $this->folderCreateMask = octdec($GLOBALS['TYPO3_CONF_VARS']['BE']['folderCreateMask']);
