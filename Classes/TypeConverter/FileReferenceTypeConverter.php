@@ -124,6 +124,7 @@ class FileReferenceTypeConverter extends AbstractUuidAwareObjectTypeConverter im
 
         }
 
+        /*
         if ($systemLanguageUid > 0) {
             // Select the original language version of this particular file reference so the UID can
             // be used as t3_origuid and l10n_parent value in the localized reference's record.
@@ -132,7 +133,7 @@ class FileReferenceTypeConverter extends AbstractUuidAwareObjectTypeConverter im
             $queryBuilder = (new ConnectionPool())->getConnectionForTable('sys_file')->createQueryBuilder();
             $query = $queryBuilder->select('r.uid')->from('sys_file', 'f')->from('sys_file_reference', 'r')->where(
                 sprintf(
-                    'r.uid_local = f.uid AND f.remote_id = \'%s\' AND r.tablenames = \'%s\' AND r.table_local = \'sys_file\' AND r.fieldname = \'%s\' AND r.uid_foreign = %d AND r.sys_language_uid = 0',
+                    'r.uid_local = f.uid AND f.remote_id = \'%s\' AND r.tablenames = \'%s\' AND r.table_local = \'sys_file\' AND r.fieldname = \'%s\' AND r.uid_foreign = %d AND r.sys_language_uid = ' . $this->parentObject->_getProperty('_languageUid'),
                     $source,
                     $dataMap->getTableName(),
                     $fieldName,
@@ -146,6 +147,7 @@ class FileReferenceTypeConverter extends AbstractUuidAwareObjectTypeConverter im
                 $referenceProperties['uid_foreign'] = $this->parentObject->_getProperty('_localizedUid');
             }
         }
+        */
 
         $reference = $resourceFactory->createFileReferenceObject($referenceProperties);
 
