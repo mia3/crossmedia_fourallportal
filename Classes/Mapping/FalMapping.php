@@ -248,7 +248,7 @@ class FalMapping extends AbstractMapping
         $dimensionMapping = $event->getModule()->getServer()->getDimensionMappings()->current();
         $fieldValueReader = new ResponseDataFieldValueReader();
 
-        $originalFullFileName = $fieldValueReader->readResponseDataField($data['result'][0], 'data_name', $dimensionMapping);
+        $originalFullFileName = $fieldValueReader->readResponseDataField($data['result'][0], 'name', $dimensionMapping);
 
         $originalFileExtension = pathinfo($originalFullFileName, PATHINFO_EXTENSION);
         $originalFileName = pathinfo($originalFullFileName, PATHINFO_FILENAME);
@@ -270,9 +270,8 @@ class FalMapping extends AbstractMapping
 
         $tempPathAndFilename = GeneralUtility::tempnam('mamfal', $targetFilename);
 
-        $trimShellPath = $event->getModule()->getShellPath();
-        $targetFolder = trim(substr($fieldValueReader->readResponseDataField($data['result'][0], 'data_shellpath', $dimensionMapping), strlen($trimShellPath)), '/');
-        $targetFolder = implode('/', array_map([$this, 'sanitizeFileName'], explode('/', $targetFolder))) . '/';
+        $targetFolder = trim($fieldValueReader->readResponseDataField($data['result'][0], 'parent_path', $dimensionMapping) . '/');
+        $targetFolder = implode('/', array_map([$this, 'sanitizeFileName'], explode('/', trim($targetFolder, '/')))) . '/';
 
         $client = $this->getClientByServer($event->getModule()->getServer());
         $storage = (new StorageRepository())->findByUid($event->getModule()->getFalStorage());
