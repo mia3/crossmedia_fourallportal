@@ -183,7 +183,7 @@ class EventController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionController
 
     public function syncAction()
     {
-        $syncParameters = GeneralUtility::makeInstance(SyncParameters::class)->setSync(true)->setExecute(true);
+        $syncParameters = GeneralUtility::makeInstance(SyncParameters::class)->setSync(true)->setExecute(false);
         $fakeResponse = new CollectingResponse();
         $this->eventExecutionService->setResponse($fakeResponse);
         $this->eventExecutionService->sync($syncParameters);
