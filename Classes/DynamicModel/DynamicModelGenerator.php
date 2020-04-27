@@ -505,8 +505,6 @@ TEMPLATE;
                 echo ' !!!SKIPPED!!! ' . $error->getMessage();
             } catch (\RuntimeException $error) {
                 echo ' !!!SKIPPED!!! ' . $error->getMessage();
-                #var_dump($fieldConfiguration);
-                #var_dump($fieldsAndRelations[$fieldName]);
                 if (Bootstrap::getInstance()->getApplicationContext()->isDevelopment()) {
                     throw $error;
                 }

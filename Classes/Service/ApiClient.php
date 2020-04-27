@@ -157,29 +157,6 @@ class ApiClient
     }
 
     /**
-     * Fetches a specific derivate from MAM
-     *
-     * @param string $objectId id of the object to get a derivate for
-     * @return array
-     */
-    public function getDerivate($objectId, $usage = null)
-    {
-        if ($usage === null) {
-            $usage = $this->defaultDerivate;
-        }
-        $query = array(
-            'session' => $this->sessionId,
-            'apptype' => 'MAM',
-            'clientType' => 'Web',
-            'usage' => $usage,
-            'id' => $objectId,
-        );
-        $uri = $this->server->getDataUrl() . '?' . http_build_query($query);
-
-        return $this->doGetRequest($uri);
-    }
-
-    /**
      * @param string $filename
      * @param string $objectId
      * @param string|null $usage
@@ -192,8 +169,6 @@ class ApiClient
             'module_name' => 'file',
             'type' => $usage,
             'session' => $this->sessionId,
-            'apptype' => 'MAM',
-            'clientType' => 'Web',
             'id' => $objectId,
         );
         $uri = $this->server->getDataUrl() . '?' . http_build_query($query);

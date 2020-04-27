@@ -320,7 +320,6 @@ class FalMapping extends AbstractMapping
                     $file = $folder->createFile($targetFilename);
                 }
             } catch (ExistingTargetFileNameException $error) {
-                die('exists');
                 $file = reset($this->getObjectRepository()->searchByName($folder, $targetFilename));
             } catch (ApiException $error) {
                 throw new \RuntimeException($error->getMessage(), $error->getCode());
