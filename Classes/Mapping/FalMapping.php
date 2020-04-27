@@ -446,7 +446,7 @@ class FalMapping extends AbstractMapping
         }
         if (count($files)) {
             try {
-                $temporaryFile = $client->saveDerivate(GeneralUtility::tempnam('derivative_'), $ids[0]);
+                $temporaryFile = $client->saveDerivate(GeneralUtility::tempnam('derivative_'), $ids[0], $module->getUsageFlag());
                 if (!file_exists($temporaryFile) || !filesize($temporaryFile)) {
                     $status['class'] = 'danger';
                     $messages['derivative_download_failed'] = sprintf('
