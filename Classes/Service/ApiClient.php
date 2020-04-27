@@ -190,11 +190,10 @@ class ApiClient
     {
         $query = array(
             'module_name' => 'file',
-            'type' => 'weball',
+            'type' => $usage,
             'session' => $this->sessionId,
             'apptype' => 'MAM',
             'clientType' => 'Web',
-            'usage' => $usage ?: 'Original',
             'id' => $objectId,
         );
         $uri = $this->server->getDataUrl() . '?' . http_build_query($query);

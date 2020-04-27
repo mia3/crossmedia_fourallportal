@@ -10,6 +10,7 @@ use Crossmedia\Fourallportal\DynamicModel\DynamicModelRegister;
 use Crossmedia\Fourallportal\Mapping\DeferralException;
 use Crossmedia\Fourallportal\Service\ApiClient;
 use Crossmedia\Fourallportal\Service\EventExecutionService;
+use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Locking\Exception\LockCreateException;
 use TYPO3\CMS\Core\Log\LogManager;
 use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
@@ -647,6 +648,7 @@ class FourallportalCommandController extends CommandController
      * @param bool $execute If true, also executes events after receiving (syncing) events
      * @param int $maxEvents Maximum number of events to process. Default is unlimited. Affects only the number of events being executed, if sync is enabled will still sync all.
      * @param int $maxTime Maximum number of seconds that the sync is allowed to run, once expired, will require a new execution to continue
+     * @param int $maxThreads Maximum number of concurrent threads which are allowed to execute events. Ignored if sync=true.
      */
     public function syncCommand(
         $sync = false,
@@ -656,13 +658,23 @@ class FourallportalCommandController extends CommandController
         $force = false,
         $execute = false,
         $maxEvents = 0,
-        $maxTime = 0
+        $maxTime = 0,
+        $maxThreads = 4
     ) {
-        if (!$force) {
+        if (!$sync) {
+            // We are executing only, not syncing. Check number of currently running threads - if no more threads are
+            // allowed, exit early.
+            $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('tx_fourallportal_domain_model_event');
+            $query = $queryBuilder->select('uid')->from('tx_fourallportal_domain_model_event')->where($queryBuilder->expr()->eq('processing', 1));
+            $currentThreadCount = $query->execute()->rowCount();
+            if ($currentThreadCount >= $maxThreads) {
+                return;
+            }
+        }
+        if (!$force && $sync) {
             try {
                 $this->eventExecutionService->lock();
             } catch (\Exception $error) {
-                $this->eventExecutionService->logProblem($error);
                 $this->response->setContent('Cannot acquire lock - exiting without error' . PHP_EOL);
                 $this->response->send();
                 return;
@@ -682,7 +694,7 @@ class FourallportalCommandController extends CommandController
         $this->eventExecutionService->setResponse($this->response);
         $this->eventExecutionService->sync($syncParameters);
 
-        if (!$force) {
+        if (!$force && $sync) {
             $this->eventExecutionService->unlock();
         }
     }

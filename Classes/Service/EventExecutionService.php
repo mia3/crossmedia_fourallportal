@@ -517,6 +517,12 @@ class EventExecutionService implements SingletonInterface
             $event->getEventType() . ' ' . $event->getObjectId() . PHP_EOL
         );
 
+        if ($event->isProcessing()) {
+            return;
+        }
+
+        $event->setProcessing(true);
+
         if (method_exists($this->response, 'send')) {
             $this->response->send();
         }
@@ -596,6 +602,7 @@ class EventExecutionService implements SingletonInterface
         $event->setUrl($responseMetadata['url']);
         $event->setResponse($responseMetadata['response']);
         $event->setPayload($responseMetadata['payload']);
+        $event->setProcessing(false);
         $this->eventRepository->update($event);
         try {
             $this->objectManager->get(PersistenceManager::class)->persistAll();

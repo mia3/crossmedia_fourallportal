@@ -1,6 +1,9 @@
 <?php
 namespace Crossmedia\Fourallportal\Domain\Model;
 
+use TYPO3\CMS\Core\Database\ConnectionPool;
+use TYPO3\CMS\Core\Utility\GeneralUtility;
+
 /***
  *
  * This file is part of the "4AllPortal Connector" Extension for TYPO3 CMS.
@@ -107,6 +110,11 @@ class Event extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
      * @var integer
      */
     protected $tstamp;
+
+    /**
+     * @var bool
+     */
+    protected $processing = false;
 
     /**
      * @var array
@@ -398,6 +406,27 @@ class Event extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
     public function setTstamp($tstamp)
     {
         $this->tstamp = $tstamp;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isProcessing(): bool
+    {
+        $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('tx_fourallportal_domain_model_event');
+        $query = $queryBuilder->select('processing')->from('tx_fourallportal_domain_model_event')->where($queryBuilder->expr()->eq('uid', $this->uid))->setMaxResults(1);
+        return $this->processing = (bool) $query->execute()->fetchColumn(0);
+    }
+
+    /**
+     * @param bool $processing
+     */
+    public function setProcessing(bool $processing): void
+    {
+        $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('tx_fourallportal_domain_model_event');
+        $query = $queryBuilder->update('tx_fourallportal_domain_model_event')->set('processing', $processing, \PDO::PARAM_INT)->where($queryBuilder->expr()->eq('uid', $this->uid));
+        $query->execute();
+        $this->processing = $processing;
     }
 
     /**

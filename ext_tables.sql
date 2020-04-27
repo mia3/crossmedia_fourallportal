@@ -114,6 +114,7 @@ CREATE TABLE tx_fourallportal_domain_model_event (
 	retries int(11) DEFAULT '0' NOT NULL,
 	object_id varchar(255) DEFAULT '' NOT NULL,
 	module int(11) unsigned DEFAULT '0',
+	processing smallint(5) unsigned DEFAULT '0' NOT NULL,
 
 	url text,
 	headers text,
