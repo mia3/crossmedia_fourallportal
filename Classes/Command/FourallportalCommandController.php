@@ -436,6 +436,55 @@ class FourallportalCommandController extends CommandController
     }
 
     /**
+     * Create session ID
+     *
+     * Logs in on the specified server (or active server) and
+     * outputs the session ID, which can then be used for testing
+     * in for example raw CURL requests.
+     *
+     * @param int $server
+     */
+    public function createSessionCommand(int $server = 0)
+    {
+        if ($server === 0) {
+            /** @var Server $server */
+            $server = $this->serverRepository->findOneByActive(true);
+        } else {
+            /** @var Server $server */
+            $server = $this->serverRepository->findByUid($server);
+        }
+        $apiClient = $this->objectManager->get(ApiClient::class, $server);
+        $sessionId = $apiClient->login();
+        $this->response->setContent($sessionId . PHP_EOL);
+        $this->response->send();
+    }
+
+    /**
+     * Get module and connector configuration
+     *
+     * Gets the module and connector configuration for the module
+     * identified by $moduleName, and outputs it as JSON.
+     *
+     * @param string $moduleName Name of module for which to get configuration
+     * @param int $server Optional UID of server, defaults to active server
+     */
+    public function getConfigurationCommand(string $moduleName, int $server = 0)
+    {
+        if ($server === 0) {
+            /** @var Server $server */
+            $server = $this->serverRepository->findOneByActive(true);
+        } else {
+            /** @var Server $server */
+            $server = $this->serverRepository->findByUid($server);
+        }
+        $module = $server->getModule($moduleName);
+        $this->response->appendContent(json_encode($module->getModuleConfiguration(), JSON_PRETTY_PRINT));
+        $this->response->appendContent(PHP_EOL);
+        $this->response->appendContent(json_encode($module->getConnectorConfiguration(), JSON_PRETTY_PRINT));
+        $this->response->send();
+    }
+
+    /**
      * Generates all configuration
      *
      * Shortcut method for calling all of the three specific
