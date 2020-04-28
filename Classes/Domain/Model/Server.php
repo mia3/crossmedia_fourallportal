@@ -222,6 +222,16 @@ class Server extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
         $this->modules = $modules;
     }
 
+    public function getModule(string $moduleName): ?Module
+    {
+        foreach ($this->getModules() as $module) {
+            if ($module->getModuleName() === $moduleName) {
+                return $module;
+            }
+        }
+        return null;
+    }
+
     /**
      * @return string
      */
