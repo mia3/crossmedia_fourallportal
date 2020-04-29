@@ -150,10 +150,13 @@ return [
                 'maxitems' => 1,
             ],
         ],
-
         'server' => [
+            'exclude' => true,
+            'label' => 'LLL:EXT:fourallportal/Resources/Private/Language/locallang_db.xlf:tx_fourallportal_domain_model_module.server',
             'config' => [
-                'type' => 'passthrough',
+                'type' => 'select',
+                'renderType' => 'selectSingle',
+                'foreign_table' => 'tx_fourallportal_domain_model_server',
             ],
         ],
     ],

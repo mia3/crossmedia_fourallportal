@@ -19,15 +19,47 @@ use Crossmedia\Fourallportal\Domain\Model\Module;
  */
 class EventRepository extends \TYPO3\CMS\Extbase\Persistence\Repository
 {
-    public function findByStatus($status)
+    public function findByStatus(string $status, int $limit = 0, bool $includeProcessing = true)
     {
         $query = $this->createQuery();
-        $query->matching($query->equals('status', $status));
+        $constraints = [
+            $query->equals('status', $status),
+            $query->equals('module.server.active', true),
+        ];
+        if (!$includeProcessing) {
+            $constraints[] = $query->logicalNot($query->equals('processing', true));
+        }
+        $constraint = $query->logicalAnd(...$constraints);
+
+        $query->matching($constraint);
         $query->setOrderings(
             [
                 'crdate' => 'ASC',
             ]
         );
+        if ($limit) {
+            $query->setLimit($limit);
+        }
+        return $query->execute();
+    }
+
+    public function findDeferred(int $limit = 0)
+    {
+        $query = $this->createQuery();
+        $constraint = $query->logicalAnd(
+            $query->equals('status', 'deferred'),
+            $query->lessThan('nextRetry', time()),
+            $query->logicalNot($query->equals('processing', true))
+        );
+        $query->matching($constraint);
+        $query->setOrderings(
+            [
+                'crdate' => 'ASC',
+            ]
+        );
+        if ($limit) {
+            $query->setLimit($limit);
+        }
         return $query->execute();
     }
 

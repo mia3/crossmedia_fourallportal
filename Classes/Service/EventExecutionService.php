@@ -19,7 +19,9 @@ use TYPO3\CMS\Extbase\Mvc\Cli\Response;
 use TYPO3\CMS\Extbase\Mvc\ResponseInterface;
 use TYPO3\CMS\Extbase\Object\ObjectManagerInterface;
 use TYPO3\CMS\Extbase\Persistence\Generic\PersistenceManager;
+use TYPO3\CMS\Extbase\Persistence\Generic\QueryResult;
 use TYPO3\CMS\Extbase\Persistence\PersistenceManagerInterface;
+use TYPO3\CMS\Extbase\Persistence\QueryResultInterface;
 use TYPO3\CMS\Extbase\Scheduler\Task;
 use TYPO3\CMS\Scheduler\Scheduler;
 
@@ -263,21 +265,18 @@ class EventExecutionService implements SingletonInterface
     {
         $sync = $parameters->getSync();
         $module = $parameters->getModule();
-        $exclude = $parameters->getExclude();
+
         $activeModules = $this->getActiveModuleOrModules($module);
 
         foreach ($activeModules as $module) {
-
             if (!$module->verifySchemaVersion()) {
-                $this->loggingService->logSchemaActivity(
-                    sprintf(
-                        'Remote config hash "%s" does not match local "%s" - skipping EXECUTE of module "%s"',
-                        $module->getConnectorConfiguration()['config_hash'],
-                        $module->getConfigHash(),
-                        $module->getModuleName()
-                    ),
-                    GeneralUtility::SYSLOG_SEVERITY_FATAL
+                $message = sprintf(
+                    'Remote config hash "%s" does not match local "%s"',
+                    $module->getConnectorConfiguration()['config_hash'],
+                    $module->getConfigHash()
                 );
+                $this->loggingService->logSchemaActivity($message, GeneralUtility::SYSLOG_SEVERITY_FATAL);
+                $parameters->excludeModule($module->getModuleName());
                 continue;
             }
 
@@ -287,73 +286,49 @@ class EventExecutionService implements SingletonInterface
             }
         }
 
-        $deferredEvents = [];
-        foreach ($this->eventRepository->findByStatus('deferred') as $event) {
-            if (!$parameters->shouldContinue()) {
-                break;
-            }
-            if (in_array($event->getModule()->getModuleName(), $exclude ?: [])) {
-                continue;
-            }
-            if (!in_array($event->getModule(), $activeModules)) {
-                continue;
-            }
-            $deferredEvents[] = $event;
-            if ($event->getNextRetry() < time()) {
-                $this->processEvent($event, false);
-                $parameters->countExecutedEvent();
-            }
+        $maxEvents = min($parameters->getEventLimit(), 100);
+        if ($maxEvents === 0) {
+            $maxEvents = 100;
         }
+        $maxDeferredEvents = floor($maxEvents / 5);
+        while ($parameters->shouldContinue()) {
+            if ($maxDeferredEvents > 0) {
+                while (($events = $this->eventRepository->findDeferred($maxEvents)) && $events->count() > 0) {
+                    echo 'Processing batch of ' . $events->count() . ' deferred events...' . PHP_EOL;
+                    $this->processEvents($parameters, $events);
+                }
+            }
 
-        /** @var Event[] $pending */
-        $pending = $this->eventRepository->findByStatus('pending')->toArray();
-        $this->processEvents($parameters, $pending);
-
-        // Trigger post-execution hook
-        if (is_array($GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['fourallportal']['postEventExecution'] ?? null)) {
-            $allEvents = array_merge($deferredEvents, $pending);
-            foreach ($GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['fourallportal']['postEventExecution'] as $postExecutionHookClass) {
-                GeneralUtility::makeInstance($postExecutionHookClass)->postEventExecution($allEvents);
+            while ($parameters->shouldContinue() && ($events = $this->eventRepository->findByStatus('pending', $maxEvents, false)) && $events->count() > 0) {
+                echo 'Processing batch of ' . $events->count() . ' pending events...' . PHP_EOL;
+                $this->processEvents($parameters, $events);
+            }
+            if ($events && $events->count() === 0) {
+                break;
             }
         }
     }
 
-    protected function processEvents(SyncParameters $parameters, array $events)
+    protected function processEvents(SyncParameters $parameters, QueryResultInterface $events)
     {
         foreach ($events as $event) {
             if (!$parameters->shouldContinue()) {
-                break;
+                return;
             }
-            if (in_array($event->getModule()->getModuleName(), explode(',', $parameters->getExclude()))) {
+            if ($parameters->isModuleExcluded($event->getModule()->getModuleName())) {
                 continue;
             }
-            if (!$event->getModule()->getServer()->isActive()) {
-                $this->loggingService->logEventActivity(
-                    $event,
-                    sprintf(
-                        'Event "%s" uses server "%s" which is disabled. Skipping event.',
-                        $event->getEventId(),
-                        $event->getModule()->getServer()->getDomain()
-                    )
-                );
-                continue;
-            }
-            if (!$event->getModule()->verifySchemaVersion()) {
-                $message = sprintf(
-                    'Remote config hash "%s" does not match local "%s" - skipping EXECUTE of event "%s"',
-                    $event->getModule()->getConnectorConfiguration()['config_hash'],
-                    $event->getModule()->getConfigHash(),
-                    $event->getEventId()
-                );
-                $this->loggingService->logEventActivity($event, $message);
-                $this->loggingService->logSchemaActivity($message, GeneralUtility::SYSLOG_SEVERITY_FATAL);
-                continue;
-            }
-            $this->processEvent($event, true);
-            $parameters->countExecutedEvent();
+            $this->processEvent($event, true, $parameters);
         }
 
         $this->objectManager->get(PersistenceManagerInterface::class)->persistAll();
+
+        // Trigger post-execution hook
+        if (is_array($GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['fourallportal']['postEventExecution'] ?? null)) {
+            foreach ($GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['fourallportal']['postEventExecution'] as $postExecutionHookClass) {
+                GeneralUtility::makeInstance($postExecutionHookClass)->postEventExecution($events->toArray());
+            }
+        }
     }
 
     /**
@@ -509,17 +484,18 @@ class EventExecutionService implements SingletonInterface
     /**
      * @param Event $event
      * @param bool $updateEventId
+     * @param SyncParameters|null $parameters
      */
-    public function processEvent($event, $updateEventId = true)
+    public function processEvent($event, $updateEventId = true, ?SyncParameters $parameters = null)
     {
+        if ($event->isProcessing()) {
+            return;
+        }
+
         $this->response->setContent(
             'Processing ' . $event->getStatus() . ' event "' . $event->getModule()->getModuleName() . ':' . $event->getEventId() . '" - ' .
             $event->getEventType() . ' ' . $event->getObjectId() . PHP_EOL
         );
-
-        if ($event->isProcessing()) {
-            return;
-        }
 
         $event->setProcessing(true);
 
@@ -608,6 +584,10 @@ class EventExecutionService implements SingletonInterface
             $this->objectManager->get(PersistenceManager::class)->persistAll();
         } catch (\Exception $error) {
             $this->loggingService->logEventActivity($event, 'System error: ' . $exception->getMessage(), GeneralUtility::SYSLOG_SEVERITY_WARNING);
+        }
+
+        if ($parameters) {
+            $parameters->countExecutedEvent();
         }
     }
 }

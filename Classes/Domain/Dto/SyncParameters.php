@@ -22,7 +22,7 @@ class SyncParameters
     protected $force = false;
     protected $execute = true;
     protected $module = null;
-    protected $exclude = null;
+    protected $exclude = [];
     protected $timeLimit = 0;
     protected $eventLimit = 0;
 
@@ -106,14 +106,29 @@ class SyncParameters
         return $this;
     }
 
-    public function getExclude(): ?string
+    public function getExclude(): array
     {
         return $this->exclude;
     }
 
     public function setExclude($exclude): self
     {
-        $this->exclude = $exclude;
+        $this->exclude = is_array($exclude) ? $exclude : explode(',', (string) $exclude);
+        return $this;
+    }
+
+    public function isModuleExcluded(string $moduleName): bool
+    {
+        return in_array($moduleName, $this->exclude, true);
+    }
+
+    public function excludeModule(string $moduleName): self
+    {
+        $excluded = explode(',', (string) $this->exclude);
+        if (!in_array($moduleName, $excluded, true)) {
+            $excluded[] = $moduleName;
+            $this->exclude = implode(',', $excluded);
+        }
         return $this;
     }
 
