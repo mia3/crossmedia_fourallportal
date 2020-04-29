@@ -127,13 +127,17 @@ class LoggingService implements SingletonInterface
         $items = [];
         foreach (array_reverse($entries) as $entry) {
             [$date, $severity, $message] = explode(' ', $entry, 3);
-            $items[] = GeneralUtility::makeInstance(LogEntry::class, $date, (int) $severity, $message);
+            $items[] = GeneralUtility::makeInstance(LogEntry::class, $date, (int) $severity, (string) $message);
         }
         return $items;
     }
 
     protected function writeEntry(string $logFile, string $message, int $severity): void
     {
+        if (empty($message)) {
+            // Cowardly refusing to create an empty log message
+            return;
+        }
         $fp = fopen($logFile, 'a+');
         fwrite($fp, date('Y-m-d_H:i:s') . ' ' . $severity . ' ' . $message . PHP_EOL);
         fclose($fp);
