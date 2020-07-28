@@ -159,11 +159,6 @@ class EventExecutionService implements SingletonInterface
         $fullSync = $parameters->getFullSync();
         $module = $parameters->getModule();
         $exclude = $parameters->getExclude();
-        if (!empty($exclude)) {
-            $exclude = explode(',', $exclude);
-        } else {
-            $exclude = [];
-        }
 
         $activeModules = $this->getActiveModuleOrModules($module);
 
