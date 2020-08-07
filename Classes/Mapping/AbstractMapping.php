@@ -522,8 +522,11 @@ abstract class AbstractMapping implements MappingInterface
         }
 
         $connectorConfiguration = $module->getConnectorConfiguration();
+        $moduleConfiguration = $module->getModuleConfiguration();
+        $allFields = $moduleConfiguration['field_conf'] + $moduleConfiguration['relation_conf'];
         $loadedFields = array_keys($connectorConfiguration['fieldsToLoad']);
-        $fieldTypes = array_column($connectorConfiguration['fieldsToLoad'], 'type', 'name');
+
+        $fieldTypes = array_column($allFields, 'type', 'name');
 
         $messages[] = '<table class="table table-bordered table-striped">';
         $messages[] = '<thead>';
@@ -535,7 +538,7 @@ abstract class AbstractMapping implements MappingInterface
         $messages[] = '</tr>';
         $messages[] = '</thead>';
 
-        foreach ($module->getModuleConfiguration()['field_conf'] as $sourcePropertyName => $fieldConfiguration) {
+        foreach ($allFields as $sourcePropertyName => $fieldConfiguration) {
             $destinationPropertyName = GeneralUtility::underscoredToLowerCamelCase($sourcePropertyName);
             $class = '';
 
