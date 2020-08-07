@@ -113,21 +113,23 @@ class SyncParameters
 
     public function setExclude($exclude): self
     {
-        $this->exclude = is_array($exclude) ? $exclude : explode(',', (string) $exclude);
+        if ($exclude === null) {
+            $this->exclude = [];
+        } else {
+            $this->exclude = is_array($exclude) ? $exclude : explode(',', (string) $exclude);
+        }
         return $this;
     }
 
     public function isModuleExcluded(string $moduleName): bool
     {
-        return in_array($moduleName, $this->exclude, true);
+        return in_array($moduleName, (array) $this->exclude, true);
     }
 
     public function excludeModule(string $moduleName): self
     {
-        $excluded = explode(',', (string) $this->exclude);
-        if (!in_array($moduleName, $excluded, true)) {
-            $excluded[] = $moduleName;
-            $this->exclude = implode(',', $excluded);
+        if (!in_array($moduleName, $this->exclude, true)) {
+            $this->exclude[] = $moduleName;
         }
         return $this;
     }

@@ -172,11 +172,11 @@ class EventExecutionService implements SingletonInterface
             }
             $deferredEvents[$event->getModule()->getModuleName()][$event->getObjectId()][] = $event;
         }
-        if ($fullSync && !$module && !$exclude) {
+        if ($fullSync && !$module && empty($exclude)) {
             $GLOBALS['TYPO3_DB']->exec_TRUNCATEquery('tx_fourallportal_domain_model_event');
         }
 
-        foreach ($activeModules as $key => $module) {
+        foreach ($activeModules as $module) {
             if (!$module->verifySchemaVersion()) {
                 $this->loggingService->logSchemaActivity(
                     sprintf(
@@ -200,8 +200,7 @@ class EventExecutionService implements SingletonInterface
                 continue;
             }
 
-            /** @var Module $configuredModule */
-            if ($fullSync && $module->getLastReceivedEventId() > 0) {
+            if ($fullSync) {
                 $module->setLastReceivedEventId(0);
                 $moduleEvents = $this->eventRepository->findByModule($module->getUid());
                 foreach ($moduleEvents as $moduleEvent) {
