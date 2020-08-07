@@ -764,12 +764,13 @@ TEMPLATE;
             // This table can then be generated on-the-fly since all MM tables have the same default structure when written
             // by this model generator class.
             case 'CEExternalIdList':
+            case 'FIELD_LINK':
             case 'CEIdList':
             case 'MANY_TO_MANY':
                 $tca['type'] = 'group';
                 $tca['internal_type'] = 'db';
                 $tca['allowed'] = $tableNameChild ?? $tableNameParent;
-                $tca['MM'] = 'tx_fourallportal_' . str_replace('.', '_', ($fieldConfiguration['field'] ?? $fieldName)) . '_mm';
+                $tca['MM'] = 'tx_fourallportal_' . str_replace('.', '_', ($fieldName)) . '_mm';
                 unset($tca['renderType']);
 
                 // Set "MM_opposite_field" to indicate this M:N is mirrored by other TCA. To do so, we must determine if
