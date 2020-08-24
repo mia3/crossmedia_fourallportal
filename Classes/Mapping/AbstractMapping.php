@@ -223,7 +223,7 @@ abstract class AbstractMapping implements MappingInterface
         }
         $query->execute();
         $message = sprintf('Record %s from table %s was updated', $record['uid'], $table);
-        $this->loggingService->logObjectActivity($record['remote_id'], $message, 'uid');
+        $this->loggingService->logObjectActivity($record['remote_id'] ?? 'unknown', $message, 'uid');
     }
 
     protected function hardDeleteRecord(string $table, array $record)
@@ -233,7 +233,7 @@ abstract class AbstractMapping implements MappingInterface
         $queryBuilder->delete($table)->where($queryBuilder->expr()->eq('uid', $record['uid']));
         $queryBuilder->execute();
         $message = sprintf('Record %s was deleted from table %s', $record['uid'], $table);
-        $this->loggingService->logObjectActivity($record['remote_id'], $message, 'uid');
+        $this->loggingService->logObjectActivity($record['remote_id'] ?? 'unknown', $message, 'uid');
     }
 
     protected function removeObject(DomainObjectInterface $object)
