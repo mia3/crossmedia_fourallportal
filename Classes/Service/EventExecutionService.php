@@ -333,16 +333,23 @@ class EventExecutionService implements SingletonInterface
      */
     protected function readAllPendingEvents(ApiClient $client, $connectorName, $lastEventId = 0)
     {
-        $done = false;
+        // Determine delay between 1,000 event batches: if $lastEventId is zero this causes the getEvents
+        // call to recreate the event queue on the remote service. If this code then loops and continuously
+        // calls getEvents, it is possible to reach a state where zero events are returned because the event
+        // queue on the remote service is not fully recreated. Subsequent calls to getEvents then returns
+        // additional events, causing problems with the local queue's consistency.
+        // Introducing a wait between each batch when $lastEventId is zero gives the remote service enough
+        // time to fully recreate the event queue, and the loop then won't exit until every event is recreated
+        // and fetched.
+        $sleep = ((int) $lastEventId === 0);
         $allEvents = [];
-        while (($events = $client->getEvents($connectorName, $lastEventId)) && count($events) && !$done) {
+        while (($events = $client->getEvents($connectorName, $lastEventId)) && count($events)) {
             foreach ($events as $event) {
                 $lastEventId = $event['id'];
-                if (isset($allEvents[$lastEventId])) {
-                    $done = true;
-                    break;
-                }
                 $allEvents[$lastEventId] = $event;
+            }
+            if ($sleep) {
+                sleep(10);
             }
         }
         return $allEvents;
