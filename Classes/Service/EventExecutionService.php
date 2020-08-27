@@ -315,8 +315,6 @@ class EventExecutionService implements SingletonInterface
             $this->processEvent($event, true, $parameters);
         }
 
-        $this->objectManager->get(PersistenceManagerInterface::class)->persistAll();
-
         // Trigger post-execution hook
         if (is_array($GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['fourallportal']['postEventExecution'] ?? null)) {
             foreach ($GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['fourallportal']['postEventExecution'] as $postExecutionHookClass) {
