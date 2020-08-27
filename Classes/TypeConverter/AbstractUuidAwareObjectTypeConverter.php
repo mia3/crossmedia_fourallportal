@@ -88,8 +88,11 @@ abstract class AbstractUuidAwareObjectTypeConverter extends PersistentObjectConv
         //$query->getQuerySettings()->setRespectSysLanguage(false);
         $query->matching($query->equals('uid', $uid));
         $object = $query->execute()->getFirst();
-        $object->_memorizeCleanState();
-        return $object;
+        if ($object) {
+            $object->_memorizeCleanState();
+            return $object;
+        }
+        return null;
     }
 
     protected function getTableName(string $targetType) {
