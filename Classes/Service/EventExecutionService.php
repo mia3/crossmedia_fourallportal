@@ -201,7 +201,7 @@ class EventExecutionService implements SingletonInterface
             }
 
             if ($fullSync) {
-                $module->setLastReceivedEventId(0);
+                $module->setLastReceivedEventId(1);
                 $moduleEvents = $this->eventRepository->findByModule($module->getUid());
                 foreach ($moduleEvents as $moduleEvent) {
                     $this->eventRepository->remove($moduleEvent);
@@ -212,7 +212,7 @@ class EventExecutionService implements SingletonInterface
 
             $results = $this->readAllPendingEvents($client, $module->getConnectorName(), $module->getLastReceivedEventId());
             $queuedEventsForModule = [];
-            $lastEventId = 0;
+            $lastEventId = 1;
             foreach ($results as $result) {
                 $this->response->setContent('Receiving event ID "' . $result['id'] . '" from connector "' . $module->getConnectorName() . '"' . PHP_EOL);
                 if (!$result['id']) {
@@ -237,10 +237,8 @@ class EventExecutionService implements SingletonInterface
                 $this->queueEvent($module, $result);
             }
 
-            if ($lastEventId > 0) {
-                $module->setLastReceivedEventId($lastEventId);
-                $this->moduleRepository->update($module);
-            }
+            $module->setLastReceivedEventId($lastEventId);
+            $this->moduleRepository->update($module);
         }
 
         $this->objectManager->get(PersistenceManagerInterface::class)->persistAll();
