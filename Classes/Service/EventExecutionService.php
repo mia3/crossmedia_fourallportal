@@ -210,9 +210,9 @@ class EventExecutionService implements SingletonInterface
                 $this->objectManager->get(PersistenceManagerInterface::class)->persistAll();
             }
 
+            $lastEventId = $module->getLastReceivedEventId();
             $results = $this->readAllPendingEvents($client, $module->getConnectorName(), $module->getLastReceivedEventId());
             $queuedEventsForModule = [];
-            $lastEventId = 1;
             foreach ($results as $result) {
                 $this->response->setContent('Receiving event ID "' . $result['id'] . '" from connector "' . $module->getConnectorName() . '"' . PHP_EOL);
                 if (!$result['id']) {
