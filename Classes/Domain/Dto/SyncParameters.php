@@ -113,7 +113,7 @@ class SyncParameters
 
     public function setExclude($exclude): self
     {
-        if ($exclude === null) {
+        if ($exclude === null || $exclude === '') {
             $this->exclude = [];
         } else {
             $this->exclude = is_array($exclude) ? $exclude : explode(',', (string) $exclude);
