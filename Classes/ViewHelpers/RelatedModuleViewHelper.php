@@ -1,4 +1,5 @@
 <?php
+
 namespace Crossmedia\Fourallportal\ViewHelpers;
 
 /*
@@ -45,10 +46,14 @@ class RelatedModuleViewHelper extends AbstractViewHelper
         $module = $arguments['module'];
         $response = $arguments['response'];
         $field = $arguments['field'];
-        if (!array_key_exists($field, (array) ($response['result'][0]['properties'] ?? []))) {
+        if (!array_key_exists($field, (array )($response['result'][0]['properties'] ?? []))) {
             return '<span class="text-danger"><i class="icon fa fa-exclamation"></i> Not in response!</span>';
         }
 
+        // duo to 4allportal version upgrade, relation-field-config can no longer be retrieved via fieldsToLoad property
+        if ($module->getConnectorConfiguration()['fieldsToLoad'][$field] == null) {
+            return '<span class="text-warning"><i class="icon fa fa-exclamation"></i> Unknown field type</span>';
+        }
         $relatedModuleName = static::detectRelatedModule(
             $field,
             $module->getConnectorConfiguration()['fieldsToLoad'][$field],
@@ -68,10 +73,13 @@ class RelatedModuleViewHelper extends AbstractViewHelper
         try {
             // Make an attempt with the FIRST configured dimension mapping enabled. The first entry SHOULD always be the default language.
             $fieldValue = (new ResponseDataFieldValueReader())->readResponseDataField($response['result'][0], $field, $module->getServer()->getDimensionMappings()->current());
-            if ($arguments['verifyRelations']) {
-                $relations = $module->getServer()->getClient()->getBeans($fieldValue, $relatedModule->getConnectorName());
-            } else {
+            if ($fieldValue != null) {
                 $relations = ['result' => (array)$fieldValue];
+                if ($arguments['verifyRelations']) {
+                    $relations = $module->getServer()->getClient()->getBeans($fieldValue, $relatedModule->getConnectorName());
+                } else {
+                    $relations = ['result' => (array)$fieldValue];
+                }
             }
         } catch (\RuntimeException $error) {
             $fieldValue = $error->getMessage();
