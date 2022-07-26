@@ -217,7 +217,7 @@ class FalMapping extends AbstractMapping
             if (isset($map[$propertyName])) {
                 $targetPropertyName = $map[$propertyName];
                 if (substr($targetPropertyName, 0, 9) === 'metadata.') {
-                    $metadata[substr($targetPropertyName, 9)] = $fieldValueReader->readResponseDataField($data['result'], $propertyName, $dimensionMapping);
+                    $metadata[substr($targetPropertyName, 9)] = $fieldValueReader->readResponseDataField($data['result'][0], $propertyName, $dimensionMapping);
                 }
             }
         }
