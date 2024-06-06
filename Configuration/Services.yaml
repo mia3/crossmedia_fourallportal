@@ -1,0 +1,33 @@
+services:
+  _defaults:
+    autowire: true
+    autoconfigure: true
+    public: false
+
+  Crossmedia\Fourallportal\:
+    resource: '../Classes/*'
+
+  cache.fourallportal.classes:
+    class: 'TYPO3\CMS\Core\Cache\Frontend\FrontendInterface'
+    factory: [ '@TYPO3\CMS\Core\Cache\CacheManager', 'getCache' ]
+    arguments:
+      $identifier: 'fourallportal_classes'
+
+  Crossmedia\Fourallportal\TypeConverter\FileReferenceTypeConverter:
+    tags:
+      - name: extbase.type_converter
+        priority: 10
+        target: TYPO3\CMS\Extbase\Domain\Model\FileReference
+        sources: string
+
+  Crossmedia\Fourallportal\TypeConverter\ComplexTypeConverter:
+    tags:
+      - name: extbase.type_converter
+        priority: 10
+        target: Crossmedia\Fourallportal\Domain\Model\ComplexType
+        sources: array
+
+  Crossmedia\Fourallportal\EventListener\TablesDefinitionListener:
+    tags:
+      - name: event.listener
+        event: TYPO3\CMS\Core\Database\Event\AlterTableDefinitionStatementsEvent

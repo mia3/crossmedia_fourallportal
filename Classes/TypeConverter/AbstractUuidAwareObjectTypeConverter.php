@@ -3,27 +3,23 @@ namespace Crossmedia\Fourallportal\TypeConverter;
 
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\DomainObject\AbstractEntity;
-use TYPO3\CMS\Extbase\DomainObject\DomainObjectInterface;
-use TYPO3\CMS\Extbase\Object\ObjectManager;
 use TYPO3\CMS\Extbase\Persistence\Generic\Mapper\DataMapper;
 use TYPO3\CMS\Extbase\Persistence\RepositoryInterface;
 use TYPO3\CMS\Extbase\Property\PropertyMappingConfigurationInterface;
-use TYPO3\CMS\Extbase\Property\TypeConverter\AbstractTypeConverter;
 use TYPO3\CMS\Extbase\Property\TypeConverter\PersistentObjectConverter;
 use TYPO3\CMS\Extbase\Property\TypeConverterInterface;
-use TYPO3\CMS\Extbase\Reflection\ObjectAccess;
 
 abstract class AbstractUuidAwareObjectTypeConverter extends PersistentObjectConverter implements TypeConverterInterface, PimBasedTypeConverterInterface
 {
     /**
      * @var AbstractEntity
      */
-    protected $parent;
+    protected AbstractEntity $parent;
 
     /**
      * @var string
      */
-    protected $propertyName;
+    protected string $propertyName;
 
     /**
      * Converters convert from strings (UUIDs) and integers (UIDs).
@@ -45,7 +41,7 @@ abstract class AbstractUuidAwareObjectTypeConverter extends PersistentObjectConv
      * @param string $propertyName
      * @return void
      */
-    public function setParentObjectAndProperty($object, $propertyName)
+    public function setParentObjectAndProperty(AbstractEntity $object, string $propertyName): mixed
     {
         $this->parent = $object;
         $this->propertyName = $propertyName;
@@ -56,9 +52,9 @@ abstract class AbstractUuidAwareObjectTypeConverter extends PersistentObjectConv
      * @param string $targetType
      * @param array $convertedChildProperties
      * @param PropertyMappingConfigurationInterface|null $configuration
-     * @return object
+     * @return object|null
      */
-    public function convertFrom($source, $targetType, array $convertedChildProperties = [], PropertyMappingConfigurationInterface $configuration = null)
+    public function convertFrom($source, string $targetType, array $convertedChildProperties = [], PropertyMappingConfigurationInterface $configuration = null): ?object
     {
         if (is_numeric($source)) {
             $existingRecordUid = (int)$source;
@@ -96,16 +92,16 @@ abstract class AbstractUuidAwareObjectTypeConverter extends PersistentObjectConv
     }
 
     protected function getTableName(string $targetType) {
-
         return GeneralUtility::makeInstance(DataMapper::class)->getDataMap($targetType)->getTableName();
     }
 
     /**
      * @return RepositoryInterface
+     * @see .build/vendor/typo3/cms-core/Documentation/Changelog/10.0/Breaking-87594-HardenExtbase.rst
      */
-    protected function getRepository()
+    protected function getRepository(): RepositoryInterface
     {
-        return GeneralUtility::makeInstance(ObjectManager::class)->get(ltrim(str_replace('\\Domain\\Model\\', '\\Domain\\Repository\\', $this->getSupportedTargetType()) . 'Repository', '\\'));
+        return GeneralUtility::makeInstance(ltrim(str_replace('\\Domain\\Model\\', '\\Domain\\Repository\\', $this->getSupportedTargetType()) . 'Repository', '\\'));
     }
 
     /**
@@ -115,7 +111,7 @@ abstract class AbstractUuidAwareObjectTypeConverter extends PersistentObjectConv
      *
      * @return int
      */
-    public function getPriority()
+    public function getPriority(): int
     {
         return 90;
     }

@@ -12,7 +12,10 @@ return [
         'transOrigDiffSourceField' => 'l10n_diffsource',
         'delete' => 'deleted',
         'searchFields' => 'event_id,event_type,status,skip_until,object_id,module',
-        'iconfile' => 'EXT:fourallportal/Resources/Public/Icons/tx_fourallportal_domain_model_complextype.gif'
+        'iconfile' => 'EXT:fourallportal/Resources/Public/Icons/tx_fourallportal_domain_model_complextype.gif',
+        'security' => [
+          'ignorePageTypeRestriction' => true,
+        ],
     ],
     'interface' => [
         'showRecordFieldList' => 'name, type, label, field_name, actual_value, normalized_value, cast_type',

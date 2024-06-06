@@ -1,4 +1,5 @@
 <?php
+
 namespace Crossmedia\Fourallportal\Controller;
 
 /***
@@ -14,193 +15,215 @@ namespace Crossmedia\Fourallportal\Controller;
 
 use Crossmedia\Fourallportal\Domain\Dto\SyncParameters;
 use Crossmedia\Fourallportal\Domain\Model\Event;
+use Crossmedia\Fourallportal\Domain\Repository\EventRepository;
 use Crossmedia\Fourallportal\Hook\EventExecutionHookInterface;
 use Crossmedia\Fourallportal\Response\CollectingResponse;
 use Crossmedia\Fourallportal\Service\EventExecutionService;
 use Crossmedia\Fourallportal\Service\LoggingService;
+use Crossmedia\Fourallportal\Utility\ControllerUtility;
+use Doctrine\DBAL\Exception;
+use Psr\Http\Message\ResponseInterface;
+use TYPO3\CMS\Backend\Attribute\AsController;
+use TYPO3\CMS\Backend\Template\ModuleTemplateFactory;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Extbase\Mvc\Controller\ActionController;
+use TYPO3\CMS\Extbase\Persistence\Exception\IllegalObjectTypeException;
+use TYPO3\CMS\Extbase\Persistence\Exception\InvalidQueryException;
+use TYPO3\CMS\Extbase\Persistence\Exception\UnknownObjectException;
+use TYPO3\CMS\Extbase\Persistence\QueryResultInterface;
+use TYPO3\CMS\Extbase\Annotation\IgnoreValidation;
 
 /**
  * EventController
  */
-class EventController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionController
+#[AsController]
+final class EventController extends ActionController
 {
-    /**
-     * eventRepository
-     *
-     * @var \Crossmedia\Fourallportal\Domain\Repository\EventRepository
-     * @inject
-     */
-    protected $eventRepository = null;
+  /**
+   * @param EventRepository|null $eventRepository
+   * @param EventExecutionService|null $eventExecutionService
+   * @param LoggingService|null $loggingService
+   * @param SyncParameters|null $syncParameters
+   * @param ModuleTemplateFactory $moduleTemplateFactory
+   */
+  public function __construct(
+    protected ?EventRepository       $eventRepository,
+    protected ?EventExecutionService $eventExecutionService,
+    protected ?LoggingService        $loggingService,
+    protected ?SyncParameters        $syncParameters,
+    protected ModuleTemplateFactory  $moduleTemplateFactory)
+  {
+  }
 
-    /**
-     * @var EventExecutionService
-     */
-    protected $eventExecutionService = null;
+  /**
+   * action index
+   *
+   * @param string|null $status
+   * @param string|null $search
+   * @param string|null $objectId
+   * @param Event|null $modifiedEvent
+   * @return ResponseInterface
+   * @throws InvalidQueryException
+   * @IgnoreValidation("modifiedEvent")
+   */
+  public function indexAction(string $status = null, string $search = null, string $objectId = null, ?Event $modifiedEvent = null): ResponseInterface
+  {
+    $eventOptions = [
+      'pending' => 'Status: pending',
+      'failed' => 'Status: failed',
+      'deferred' => 'Status: deferred',
+      'claimed' => 'Status: claimed',
+      'all' => 'Status: all'
+    ];
 
-    /**
-     * @var LoggingService
-     */
-    protected $loggingService = null;
-
-    /**
-     * @param EventExecutionService $eventExecutionService
-     */
-    public function injectEventExecutionService(EventExecutionService $eventExecutionService)
-    {
-        $this->eventExecutionService = $eventExecutionService;
+    $searchWidened = null;
+    if ($objectId) {
+      $events = $this->eventRepository->findByObjectId($objectId);
+      $status = 'all';
+    } elseif ($status || $search) {
+      // Load events with selected status
+      $events = $this->searchEventsWithStatus($status, $search);
+      if ($status !== 'all' && $events->count() === 0) {
+        // Widen search to search other statuses than the selected one.
+        $searchWidened = true;
+        $events = $this->searchEventsWithStatus(false, $search);
+        $status = 'all';
+      }
+    } else {
+      // Find first status from prioritised list above which yields results
+      do {
+        $status = key($eventOptions);
+        $events = $this->searchEventsWithStatus($status, $search);
+      } while ($events->count() === 0 && next($eventOptions));
     }
 
-    public function injectLoggingService(LoggingService $loggingService)
-    {
-        $this->loggingService = $loggingService;
+    $view = $this->moduleTemplateFactory->create($this->request);
+    // create header menu
+    ControllerUtility::addMainMenu($this->request, $this->uriBuilder, $view, 'Event');
+    // assign values
+    $view->assign('searchWidened', $searchWidened);
+    $view->assign('status', $status);
+    $view->assign('events', $events);
+    $view->assign('search', $search);
+    $view->assign('objectId', $objectId);
+    $view->assign('modifiedEvent', $modifiedEvent);
+    $view->assign('eventStatusOptions', $eventOptions);
+    return $view->renderResponse('Event/Index');
+  }
+
+  /**
+   * @param Event $event
+   * @return ResponseInterface
+   * @IgnoreValidation("event")
+   */
+  public function checkAction(Event $event): ResponseInterface
+  {
+    $view = $this->moduleTemplateFactory->create($this->request);
+    // create header menu
+    ControllerUtility::addMainMenu($this->request, $this->uriBuilder, $view, 'Event');
+    $events = $this->eventRepository->findByObjectId($event->getObjectId());
+
+    $view->assign('event', $event);
+    $view->assign('event_json', 'event json value equals, traa: ' . json_encode($event));
+    $view->assign('events', $events);
+    $view->assign('eventLog', $this->loggingService->getEventActivity($event, 20));
+    $view->assign('objectLog', $this->loggingService->getObjectActivity($event->getObjectId(), 100));
+    foreach ($events as $historicalEvent) {
+      if ($historicalEvent->getEventType() === 'delete') {
+        $view->assign('deleted', ($historicalEvent->getStatus() === 'claimed'));
+        $view->assign('deletedScheduled', ($historicalEvent->getStatus() === 'pending'));
+        break;
+      }
+    }
+    return $view->renderResponse('Event/Check');
+  }
+
+  /**
+   * @param Event $event
+   * @return ResponseInterface
+   * @throws IllegalObjectTypeException
+   * @throws UnknownObjectException
+   */
+  public function resetAction(Event $event): ResponseInterface
+  {
+    $event->setStatus('pending');
+    $event->setNextRetry(0);
+    $event->setRetries(0);
+    $this->eventRepository->update($event);
+    $this->loggingService->logEventActivity($event, 'Event reset');
+    return $this->redirect('index', null, null, ['status' => 'pending']);
+  }
+
+  /**
+   * @param Event $event
+   * @return ResponseInterface
+   * @throws Exception
+   */
+  public function executeAction(Event $event): ResponseInterface
+  {
+    $fakeResponse = new CollectingResponse();
+    $this->eventExecutionService->setResponse($fakeResponse);
+    $this->eventExecutionService->processEvent($event, false);
+
+    $message = $fakeResponse->getCollected() ?: 'No output from action';
+
+    if (is_array($GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['fourallportal']['postEventExecution'] ?? null)) {
+      foreach ($GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['fourallportal']['postEventExecution'] as $postExecutionHookClass) {
+        /** @var EventExecutionHookInterface $postExecutionHookInstance */
+        $postExecutionHookInstance = GeneralUtility::makeInstance($postExecutionHookClass);
+        $postExecutionHookInstance->postSingleManualEventExecution($event);
+      }
     }
 
-    /**
-     * action index
-     *
-     * @param string $status
-     * @param string $search
-     * @param string $objectId
-     * @param Event $modifiedEvent
-     * @return void
-     */
-    public function indexAction($status = null, $search = null, $objectId = null, Event $modifiedEvent = null)
-    {
-        $eventOptions = [
-            'pending' => 'Status: pending',
-            'failed' => 'Status: failed',
-            'deferred' => 'Status: deferred',
-            'claimed' => 'Status: claimed',
-            'all' => 'Status: all'
-        ];
+    $this->addFlashMessage($message, 'Executed event ' . $event->getEventId());
+    return $this->redirect('index', null, null, ['modifiedEvent' => $event->getUid()]);
+  }
 
-        if ($objectId) {
-            $events = $this->eventRepository->findByObjectId($objectId);
-            $status = 'all';
-        } elseif ($status || $search) {
-            // Load events with selected status
-            $events = $this->searchEventsWithStatus($status, $search);
-            if ($status !== 'all' && $events->count() === 0) {
-                // Widen search to search other statuses than the selected one.
-                $searchWidened = true;
-                $events = $this->searchEventsWithStatus(false, $search);
-                $status = 'all';
-            }
-        } else {
-            // Find first status from prioritised list above which yields results
-            do {
-                $status = key($eventOptions);
-                $events = $this->searchEventsWithStatus($status, $search);
-            } while ($events->count() === 0 && next($eventOptions));
-        }
+  /**
+   * @return ResponseInterface
+   * @throws Exception
+   * @throws IllegalObjectTypeException
+   * @throws InvalidQueryException
+   * @throws UnknownObjectException
+   */
+  public function syncAction(): ResponseInterface
+  {
+    $syncParameters = $this->syncParameters->setSync(true)->setExecute(false);
+    $fakeResponse = new CollectingResponse();
+    $this->eventExecutionService->setResponse($fakeResponse);
+    $this->eventExecutionService->sync($syncParameters);
+    $this->addFlashMessage(nl2br($fakeResponse->getCollected()) ?: 'No new events to fetch', 'Executed');
+    return $this->redirect('index');
+  }
 
-        $this->view->assign('searchWidened', $searchWidened);
-        $this->view->assign('status', $status);
-        $this->view->assign('events', $events);
-        $this->view->assign('search', $search);
-        $this->view->assign('objectId', $objectId);
-        $this->view->assign('modifiedEvent', $modifiedEvent);
-        $this->view->assign('eventStatusOptions', $eventOptions);
+  /**
+   * @param string $status
+   * @param string|null $search
+   * @return QueryResultInterface
+   * @throws InvalidQueryException
+   */
+  protected function searchEventsWithStatus(string $status, string|null $search): QueryResultInterface
+  {
+    $query = $this->eventRepository->createQuery();
+    $constraints = null;
+    if ($status !== 'all') {
+      $constraints = $query->equals('status', $status);
     }
 
-    /**
-     * @param string $status
-     * @param string $search
-     * @return \TYPO3\CMS\Extbase\Persistence\QueryResultInterface
-     */
-    protected function searchEventsWithStatus($status, $search)
-    {
-        $query = $this->eventRepository->createQuery();
-        $constraints = [];
-        if ($status !== 'all') {
-            $constraints[] = $query->equals('status', $status);
-        }
-
-        if ($search) {
-            $constraints[] = $query->logicalOr([
-                $query->equals('eventId', (integer) $search),
-                $query->like('module.connectorName', '%' . $search . '%'),
-                $query->like('objectId', '%' . $search . '%'),
-                $query->like('eventType', '%' . $search . '%'),
-            ]);
-        }
-
-        if (count($constraints)) {
-            $query->matching($query->logicalAnd($constraints));
-        }
-
-        $query->setOrderings(['crdate' => 'ASC']);
-
-        return $query->execute();
+    if ($search) {
+      $constraints = $query->logicalOr(
+        $query->equals('eventId', (integer)$search),
+        $query->like('module.connectorName', '%' . $search . '%'),
+        $query->like('objectId', '%' . $search . '%'),
+        $query->like('eventType', '%' . $search . '%'),
+      );
     }
 
-    /**
-     * @param \Crossmedia\Fourallportal\Domain\Model\Event $event
-     * @return void
-     */
-    public function checkAction($event)
-    {
-        $events = $this->eventRepository->findByObjectId($event->getObjectId());
-        $this->view->assign('event', $event);
-        $this->view->assign('events', $events);
-        $this->view->assign('eventLog', $this->loggingService->getEventActivity($event, 20));
-        $this->view->assign('objectLog', $this->loggingService->getObjectActivity($event->getObjectId(), 100));
-        foreach ($events as $historicalEvent) {
-            if ($historicalEvent->getEventType() === 'delete') {
-                $this->view->assign('deleted', ($historicalEvent->getStatus() === 'claimed'));
-                $this->view->assign('deletedScheduled', ($historicalEvent->getStatus() === 'pending'));
-                break;
-            }
-        }
+    if ($constraints) {
+      $query->matching($query->logicalAnd($constraints));
     }
 
-    /**
-     * @param \Crossmedia\Fourallportal\Domain\Model\Event $event
-     * @return void
-     */
-    public function resetAction($event)
-    {
-        $event->setStatus('pending');
-        $event->setNextRetry(0);
-        $event->setRetries(0);
-        $this->eventRepository->update($event);
-        $this->loggingService->logEventActivity($event, 'Event reset');
-        $this->redirect('index', null, null, ['status' => 'pending']);
-    }
-
-    /**
-     * @param \Crossmedia\Fourallportal\Domain\Model\Event $event
-     * @return void
-     */
-    public function executeAction($event)
-    {
-        $fakeResponse = new CollectingResponse();
-        $this->eventExecutionService->setResponse($fakeResponse);
-        $this->eventExecutionService->processEvent($event, false);
-
-        $message = $fakeResponse->getCollected() ?: 'No output from action';
-
-        if (is_array($GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['fourallportal']['postEventExecution'] ?? null)) {
-            foreach ($GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['fourallportal']['postEventExecution'] as $postExecutionHookClass) {
-                /** @var EventExecutionHookInterface $postExecutionHookInstance */
-                $postExecutionHookInstance = GeneralUtility::makeInstance($postExecutionHookClass);
-                $postExecutionHookInstance->postSingleManualEventExecution($event);
-            }
-        }
-
-        $this->addFlashMessage($message, 'Executed event ' . $event->getEventId());
-
-        $this->redirect('index', null, null, ['modifiedEvent' => $event->getUid()]);
-    }
-
-    public function syncAction()
-    {
-        $syncParameters = GeneralUtility::makeInstance(SyncParameters::class)->setSync(true)->setExecute(false);
-        $fakeResponse = new CollectingResponse();
-        $this->eventExecutionService->setResponse($fakeResponse);
-        $this->eventExecutionService->sync($syncParameters);
-        $this->addFlashMessage(nl2br($fakeResponse->getCollected()) ?: 'No new events to fetch', 'Executed');
-        $this->redirect('index');
-    }
+    $query->setOrderings(['crdate' => 'ASC']);
+    return $query->execute();
+  }
 }

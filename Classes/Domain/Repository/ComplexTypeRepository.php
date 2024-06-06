@@ -1,5 +1,8 @@
 <?php
+
 namespace Crossmedia\Fourallportal\Domain\Repository;
+
+use TYPO3\CMS\Extbase\Persistence\Repository;
 
 /***
  *
@@ -15,6 +18,6 @@ namespace Crossmedia\Fourallportal\Domain\Repository;
 /**
  * The repository for ComplexType
  */
-class ComplexTypeRepository extends \TYPO3\CMS\Extbase\Persistence\Repository
+class ComplexTypeRepository extends Repository
 {
 }

@@ -1,5 +1,9 @@
 <?php
+
 namespace Crossmedia\Fourallportal\Domain\Repository;
+
+use TYPO3\CMS\Extbase\Persistence\QueryInterface;
+use TYPO3\CMS\Extbase\Persistence\Repository;
 
 /***
  *
@@ -15,9 +19,9 @@ namespace Crossmedia\Fourallportal\Domain\Repository;
 /**
  * The repository for Servers
  */
-class ServerRepository extends \TYPO3\CMS\Extbase\Persistence\Repository
+class ServerRepository extends Repository
 {
-    public function createQuery()
+    public function createQuery(): QueryInterface
     {
         $query = parent::createQuery();
         $query->getQuerySettings()->setRespectStoragePage(false);

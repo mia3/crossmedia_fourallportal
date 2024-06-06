@@ -3,9 +3,11 @@ declare(strict_types=1);
 
 namespace Crossmedia\Fourallportal\Log;
 
+use Exception;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Log\LogRecord;
 use TYPO3\CMS\Core\Log\Writer\DatabaseWriter;
+use TYPO3\CMS\Core\Log\Writer\WriterInterface;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 /**
@@ -19,40 +21,44 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
  */
 class SystemLogDatabaseWriter extends DatabaseWriter
 {
-    public function writeLog(LogRecord $record)
-    {
-        $data = '';
-        $recordData = $record->getData();
-        if (!empty($recordData)) {
-            // According to PSR3 the exception-key may hold an \Exception
-            // Since json_encode() does not encode an exception, we run the _toString() here
-            if (isset($recordData['exception']) && $recordData['exception'] instanceof \Exception) {
-                $recordData['exception'] = (string)$recordData['exception'];
-            }
-            $data = '- ' . json_encode($recordData);
-        }
+  public function __construct(private readonly ConnectionPool $connectionPool, array $options = [])
+  {
+    parent::__construct($options);
+  }
 
-        $fieldValues = [
-            'tstamp' => time(),
-            'type' => 5,
-            'ip' => GeneralUtility::getIndpEnv('REMOTE_ADDR') ?? GeneralUtility::getIndpEnv('HTTP_CLIENT_IP') ?? '',
-            'details' => $record->getMessage(),
-            'request_id' => $record->getRequestId(),
-            'time_micro' => $record->getCreated(),
-            'component' => $record->getComponent(),
-            'error' => $record->getLevel(),
-            'event_pid' => -1,
-            'level' => $record->getLevel(),
-            'message' => $record->getMessage(),
-            'data' => $data,
-            'log_data' => serialize($recordData),
-            'userid' => $GLOBALS['BE_USER']->id,
-        ];
-
-        GeneralUtility::makeInstance(ConnectionPool::class)
-            ->getConnectionForTable($this->logTable)
-            ->insert($this->logTable, $fieldValues);
-
-        return $this;
+  public function writeLog(LogRecord $record): WriterInterface|static
+  {
+    $data = '';
+    $recordData = $record->getData();
+    if (!empty($recordData)) {
+      // According to PSR3 the exception-key may hold an \Exception
+      // Since json_encode() does not encode an exception, we run the _toString() here
+      if (isset($recordData['exception']) && $recordData['exception'] instanceof Exception) {
+        $recordData['exception'] = (string)$recordData['exception'];
+      }
+      $data = '- ' . json_encode($recordData);
     }
+
+    $fieldValues = [
+      'tstamp' => time(),
+      'type' => 5,
+      'ip' => GeneralUtility::getIndpEnv('REMOTE_ADDR') ?? GeneralUtility::getIndpEnv('HTTP_CLIENT_IP') ?? '',
+      'details' => $record->getMessage(),
+      'request_id' => $record->getRequestId(),
+      'time_micro' => $record->getCreated(),
+      'component' => $record->getComponent(),
+      'error' => $record->getLevel(),
+      'event_pid' => -1,
+      'level' => $record->getLevel(),
+      'message' => $record->getMessage(),
+      'data' => $data,
+      'log_data' => serialize($recordData),
+      'userid' => $GLOBALS['BE_USER']->id,
+    ];
+
+    $this->connectionPool->getConnectionForTable($this->logTable)
+      ->insert($this->logTable, $fieldValues);
+
+    return $this;
+  }
 }

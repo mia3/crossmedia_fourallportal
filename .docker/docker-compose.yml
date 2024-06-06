@@ -1,0 +1,74 @@
+version: '3.9'
+
+networks:
+  typo3network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 192.168.200.0/24
+          gateway: 192.168.200.1
+
+services:
+  db:
+    image: mysql:8
+    container_name: typo3_db.4allportal.com
+    restart: unless-stopped
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_ROOT_PASSWORD: toor
+    ports:
+      - "3320:3306"
+    volumes:
+      - type: bind
+        source: ./shared/db
+        target: /var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+    networks:
+      typo3network:
+        ipv4_address: 192.168.200.10
+
+  typo:
+    image: martinhelmich/typo3:12.4
+    container_name: example.typo3.net
+    restart: unless-stopped
+    user: www-data
+    ports:
+      - "80:80"
+    # sudo chown -R 33:33 typo3
+    volumes:
+      - "./shared/typo3/fileadmin:/var/www/html/fileadmin"
+      - "./shared/typo3/typo3conf:/var/www/html/typo3conf"
+      - "./shared/typo3/typo3temp:/var/www/html/typo3temp"
+      - "./shared/typo3/uploads:/var/www/html/uploads"
+    networks:
+      typo3network:
+        ipv4_address: 192.168.200.11
+    depends_on:
+      db:
+        condition: service_healthy
+
+  typo_8:
+    image: martinhelmich/typo3:8.7
+    container_name: typo8.typo3.net
+    restart: unless-stopped
+    user: www-data
+    ports:
+      - "8080:80"
+    # sudo chown -R 33:33 typo3
+    volumes:
+      - "./shared/typo3_8/fileadmin:/var/www/html/fileadmin"
+      - "./shared/typo3_8/typo3conf:/var/www/html/typo3conf"
+      - "./shared/typo3_8/typo3temp:/var/www/html/typo3temp"
+      - "./shared/typo3_8/uploads:/var/www/html/uploads"
+    networks:
+      typo3network:
+        ipv4_address: 192.168.200.12
+    depends_on:
+      db:
+        condition: service_healthy

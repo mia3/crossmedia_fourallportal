@@ -1,4 +1,5 @@
 <?php
+
 namespace Crossmedia\Fourallportal\ViewHelpers;
 
 /*
@@ -13,10 +14,11 @@ namespace Crossmedia\Fourallportal\ViewHelpers;
  *
  * The TYPO3 project - inspiring people to share!
  */
-use TYPO3\CMS\Backend\Utility\BackendUtility;
-use TYPO3\CMS\Core\Utility\GeneralUtility;
-use TYPO3\CMS\Fluid\Core\ViewHelper\AbstractTagBasedViewHelper;
 
+use TYPO3\CMS\Backend\Routing\Exception\RouteNotFoundException;
+use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Backend\Routing\UriBuilder;
+use TYPO3Fluid\Fluid\Core\ViewHelper\AbstractTagBasedViewHelper;
 
 /**
  * Create internal link within backend app
@@ -25,42 +27,42 @@ use TYPO3\CMS\Fluid\Core\ViewHelper\AbstractTagBasedViewHelper;
 class NewRecordLinkViewHelper extends AbstractTagBasedViewHelper
 {
 
-    /**
-     * @var string
-     */
-    protected $tagName = 'a';
+  /**
+   * @var string
+   */
+  protected $tagName = 'a';
 
-    /**
-     * @var bool
-     */
-    protected $escapeOutput = false;
+  /**
+   * @var bool
+   */
+  protected $escapeOutput = false;
 
-    /**
-     * Initializes the arguments
-     */
-    public function initializeArguments()
-    {
-        parent::initializeArguments();
-        parent::registerUniversalTagAttributes();
-        $this->registerArgument('table', 'string', '', true);
-    }
+  /**
+   * Initializes the arguments
+   */
+  public function initializeArguments()
+  {
+    parent::initializeArguments();
+    parent::registerUniversalTagAttributes();
+    $this->registerArgument('table', 'string', '', true);
+  }
 
-    /**
-     * Render method
-     * @return NULL|string
-     */
-    public function render()
-    {
-        $uri = BackendUtility::getModuleUrl('record_edit', [
-            'edit' => [
-                $this->arguments['table'] => [
-                    0 => 'new'
-                ]
-            ],
-            'returnUrl' => GeneralUtility::getIndpEnv('REQUEST_URI')
-        ]);
-        $this->tag->addAttribute('href', $uri);
-        $this->tag->setContent($this->renderChildren());
-        return $this->tag->render();
-    }
+  /**
+   * Render method
+   * @return NULL|string
+   * @throws RouteNotFoundException
+   */
+  public function render(): ?string
+  {
+    $uriBuilder = GeneralUtility::makeInstance(UriBuilder::class);
+    $uri = $uriBuilder->buildUriFromRoute('record_edit', [
+      'edit' => [
+        $this->arguments['table'] => [0 => 'new']
+      ],
+      'returnUrl' => GeneralUtility::getIndpEnv('REQUEST_URI')
+    ]);
+    $this->tag->addAttribute('href', $uri);
+    $this->tag->setContent($this->renderChildren());
+    return $this->tag->render();
+  }
 }

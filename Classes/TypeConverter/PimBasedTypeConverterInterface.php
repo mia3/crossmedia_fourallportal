@@ -1,4 +1,5 @@
 <?php
+
 namespace Crossmedia\Fourallportal\TypeConverter;
 
 use TYPO3\CMS\Extbase\DomainObject\AbstractEntity;
@@ -14,5 +15,5 @@ interface PimBasedTypeConverterInterface extends TypeConverterInterface
      * @param string $propertyName
      * @return mixed
      */
-    public function setParentObjectAndProperty($object, $propertyName);
+    public function setParentObjectAndProperty(AbstractEntity $object, string $propertyName): mixed;
 }

@@ -1,8 +1,12 @@
 <?php
+
 namespace Crossmedia\Fourallportal\Domain\Model;
 
+use Doctrine\DBAL\Exception;
+use PDO;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Extbase\DomainObject\AbstractEntity;
 
 /***
  *
@@ -18,456 +22,245 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
 /**
  * Events
  */
-class Event extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
+class Event extends AbstractEntity
 {
-    /**
-     * eventId
-     *
-     * @var int
-     */
-    protected $eventId = 0;
+  protected int $eventId = 0;
+  protected string $eventType = '';
+  protected string $status = 'pending';
+  protected int $skipUntil = 0;
+  protected int $nextRetry = 0;
+  protected int $retries = 0;
+  protected string $objectId = '';
+  protected ?Module $module = null;
+  protected string $headers = '';
+  protected string $response = '';
+  protected string $url;
+  protected string $payload = '';
+  protected string $message;
+  protected int $crdate;
+  protected int $tstamp;
+  protected bool $processing = false;
+  protected array $beanData = [];
 
-    /**
-     * eventType
-     *
-     * @var string
-     */
-    protected $eventType = '';
+  public function getBeanData(): array
+  {
+    return $this->beanData;
+  }
 
-    /**
-     * status
-     *
-     * @var string
-     */
-    protected $status = 'pending';
+  public function setBeanData(array $beanData): void
+  {
+    $this->beanData = $beanData;
+  }
 
-    /**
-     * skipUntil
-     *
-     * @var int
-     */
-    protected $skipUntil = 0;
+  public function getEventId(): int
+  {
+    return $this->eventId;
+  }
 
-    /**
-     * nextRetry
-     *
-     * @var int
-     */
-    protected $nextRetry = 0;
+  public function setEventId(int $eventId): void
+  {
+    $this->eventId = $eventId;
+  }
 
-    /**
-     * retries
-     *
-     * @var int
-     */
-    protected $retries = 0;
+  public function getStatus(): string
+  {
+    return $this->status;
+  }
 
-    /**
-     * objectId
-     *
-     * @var string
-     */
-    protected $objectId = '';
+  public function setStatus(string $status): void
+  {
+    $this->status = $status;
+  }
 
-    /**
-     * module
-     *
-     * @var \Crossmedia\Fourallportal\Domain\Model\Module
-     */
-    protected $module = null;
+  public function getSkipUntil(): int
+  {
+    return $this->skipUntil;
+  }
 
-    /**
-     * @var string
-     */
-    protected $headers;
+  public function getRetries(): int
+  {
+    return $this->retries;
+  }
 
-    /**
-     * @var string
-     */
-    protected $response;
+  public function setRetries(int $retries): void
+  {
+    $this->retries = $retries;
+  }
 
-    /**
-     * @var string
-     */
-    protected $url;
+  public function getNextRetry(): int
+  {
+    return $this->nextRetry;
+  }
 
-    /**
-     * @var string
-     */
-    protected $payload;
+  public function setNextRetry(int $nextRetry): void
+  {
+    $this->nextRetry = $nextRetry;
+  }
 
-    /**
-     * @var string
-     */
-    protected $message;
+  public function setSkipUntil(int $skipUntil): void
+  {
+    $this->skipUntil = $skipUntil;
+  }
 
-    /**
-     * @var integer
-     */
-    protected $crdate;
+  public function getObjectId(): string
+  {
+    return $this->objectId;
+  }
 
-    /**
-     * @var integer
-     */
-    protected $tstamp;
+  public function setObjectId(string $objectId): void
+  {
+    $this->objectId = $objectId;
+  }
 
-    /**
-     * @var bool
-     */
-    protected $processing = false;
+  public function getModule(): ?Module
+  {
+    return $this->module;
+  }
 
-    /**
-     * @var array
-     * @virtual
-     */
-    protected $beanData = [];
+  public function setModule(Module $module): void
+  {
+    $this->module = $module;
+  }
 
-    /**
-     * @return array
-     */
-    public function getBeanData(): array
-    {
-        return $this->beanData;
-    }
+  public function getEventType(): string
+  {
+    return $this->eventType;
+  }
 
-    /**
-     * @param array $beanData
-     */
-    public function setBeanData(array $beanData)
-    {
-        $this->beanData = $beanData;
-    }
+  public function setEventType(string $eventType): void
+  {
+    $this->eventType = $eventType;
+  }
 
-    /**
-     * Returns the eventId
-     *
-     * @return int $eventId
-     */
-    public function getEventId()
-    {
-        return $this->eventId;
-    }
+  public function getHeaders(): string
+  {
+    return $this->headers;
+  }
 
-    /**
-     * Sets the eventId
-     *
-     * @param int $eventId
-     * @return void
-     */
-    public function setEventId($eventId)
-    {
-        $this->eventId = $eventId;
-    }
+  public function setHeaders(string $headers): void
+  {
+    $this->headers = $headers;
+  }
 
-    /**
-     * Returns the status
-     *
-     * @return string $status
-     */
-    public function getStatus()
-    {
-        return $this->status;
-    }
+  public function getResponse(): string
+  {
+    return $this->response;
+  }
 
-    /**
-     * Sets the status
-     *
-     * @param string $status
-     * @return void
-     */
-    public function setStatus($status)
-    {
-        $this->status = $status;
-    }
+  public function setResponse(string $response): void
+  {
+    $this->response = $response;
+  }
 
-    /**
-     * Returns the skipUntil
-     *
-     * @return int $skipUntil
-     */
-    public function getSkipUntil()
-    {
-        return $this->skipUntil;
-    }
+  public function getUrl(): string
+  {
+    return $this->url;
+  }
 
-    /**
-     * @return int
-     */
-    public function getRetries()
-    {
-        return $this->retries;
-    }
 
-    /**
-     * @param int $retries
-     */
-    public function setRetries($retries)
-    {
-        $this->retries = $retries;
-    }
+  public function setUrl(string $url): void
+  {
+    $this->url = $url;
+  }
 
-    /**
-     * @return int
-     */
-    public function getNextRetry()
-    {
-        return $this->nextRetry;
-    }
+  public function getPayload(): string
+  {
+    return $this->payload;
+  }
 
-    /**
-     * @param int $nextRetry
-     */
-    public function setNextRetry($nextRetry)
-    {
-        $this->nextRetry = $nextRetry;
-    }
+  public function setPayload(string $payload): void
+  {
+    $this->payload = $payload;
+  }
 
-    /**
-     * Sets the skipUntil
-     *
-     * @param int $skipUntil
-     * @return void
-     */
-    public function setSkipUntil($skipUntil)
-    {
-        $this->skipUntil = $skipUntil;
-    }
+  public function getMessage(): string
+  {
+    return $this->message;
+  }
 
-    /**
-     * Returns the objectId
-     *
-     * @return string $objectId
-     */
-    public function getObjectId()
-    {
-        return $this->objectId;
-    }
+  public function setMessage(string $message): void
+  {
+    $this->message = $message;
+  }
 
-    /**
-     * Sets the objectId
-     *
-     * @param string $objectId
-     * @return void
-     */
-    public function setObjectId($objectId)
-    {
-        $this->objectId = $objectId;
-    }
+  public function getCrdate(): int
+  {
+    return $this->crdate;
+  }
 
-    /**
-     * Returns the module
-     *
-     * @return \Crossmedia\Fourallportal\Domain\Model\Module $module
-     */
-    public function getModule()
-    {
-        return $this->module;
-    }
+  public function setCrdate(int $crdate): void
+  {
+    $this->crdate = $crdate;
+  }
 
-    /**
-     * Sets the module
-     *
-     * @param \Crossmedia\Fourallportal\Domain\Model\Module $module
-     * @return void
-     */
-    public function setModule(\Crossmedia\Fourallportal\Domain\Model\Module $module)
-    {
-        $this->module = $module;
-    }
+  public function getTstamp(): int
+  {
+    return $this->tstamp;
+  }
 
-    /**
-     * Returns the eventType
-     *
-     * @return string $eventType
-     */
-    public function getEventType()
-    {
-        return $this->eventType;
-    }
+  public function setTstamp(int $tstamp): void
+  {
+    $this->tstamp = $tstamp;
+  }
 
-    /**
-     * Sets the eventType
-     *
-     * @param string $eventType
-     * @return void
-     */
-    public function setEventType($eventType)
-    {
-        $this->eventType = $eventType;
-    }
+  /**
+   * @throws Exception
+   */
+  public function isProcessing(): bool
+  {
+    $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('tx_fourallportal_domain_model_event');
+    $query = $queryBuilder->select('processing')
+      ->from('tx_fourallportal_domain_model_event')
+      ->where($queryBuilder->expr()->eq('uid', $this->uid))
+      ->setMaxResults(1);
+    return $this->processing = (bool)$query->executeQuery()->fetchFirstColumn()[0];
+  }
 
-    /**
-     * @return string
-     */
-    public function getHeaders()
-    {
-        return $this->headers;
-    }
+  public function setProcessing(bool $processing): void
+  {
+    $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('tx_fourallportal_domain_model_event');
+    $query = $queryBuilder->update('tx_fourallportal_domain_model_event')
+      ->set('processing', $processing, PDO::PARAM_INT)
+      ->where($queryBuilder->expr()->eq('uid', $this->uid));
+    $query->executeStatement();
+    $this->processing = $processing;
+  }
 
-    /**
-     * @param string $headers
-     */
-    public function setHeaders($headers)
-    {
-        $this->headers = $headers;
-    }
+  public static function resolveEventType(int $eventTypeId): string
+  {
+    $map = [
+      0 => 'delete',
+      1 => 'update',
+      2 => 'create'
+    ];
+    return $map[$eventTypeId];
+  }
 
-    /**
-     * @return string
-     */
-    public function getResponse()
-    {
-        return $this->response;
-    }
+  public function getMostRecentObjectLog(): string
+  {
+    return implode(PHP_EOL, array_reverse(explode(PHP_EOL, shell_exec('tail -n 1000 ' . $this->getObjectLogFilePath()))));
+  }
 
-    /**
-     * @param string $response
-     */
-    public function setResponse($response)
-    {
-        $this->response = $response;
-    }
+  public function getMostRecentEventLog(): string
+  {
+    return implode(PHP_EOL, array_reverse(explode(PHP_EOL, shell_exec('tail -n 1000 ' . $this->getEventLogFilePath()))));
+  }
 
-    /**
-     * @return string
-     */
-    public function getUrl()
-    {
-        return $this->url;
-    }
+  public function getObjectLogFilePath(): string
+  {
+    return sprintf(
+      'typo3temp/var/logs/fourallportal/objects/%s/%s.log',
+      $this->getModule()->getModuleName(),
+      $this->getObjectId()
+    );
+  }
 
-    /**
-     * @param string $url
-     */
-    public function setUrl($url)
-    {
-        $this->url = $url;
-    }
-
-    /**
-     * @return string
-     */
-    public function getPayload()
-    {
-        return $this->payload;
-    }
-
-    /**
-     * @param string $payload
-     */
-    public function setPayload($payload)
-    {
-        $this->payload = $payload;
-    }
-
-    /**
-     * @return string
-     */
-    public function getMessage()
-    {
-        return $this->message;
-    }
-
-    /**
-     * @param string $message
-     */
-    public function setMessage($message)
-    {
-        $this->message = $message;
-    }
-
-    /**
-     * @return integer
-     */
-    public function getCrdate()
-    {
-        return $this->crdate;
-    }
-
-    /**
-     * @param integer $crdate
-     */
-    public function setCrdate($crdate)
-    {
-        $this->crdate = $crdate;
-    }
-
-    /**
-     * @return integer
-     */
-    public function getTstamp()
-    {
-        return $this->tstamp;
-    }
-
-    /**
-     * @param integer $tstamp
-     */
-    public function setTstamp($tstamp)
-    {
-        $this->tstamp = $tstamp;
-    }
-
-    /**
-     * @return bool
-     */
-    public function isProcessing(): bool
-    {
-        $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('tx_fourallportal_domain_model_event');
-        $query = $queryBuilder->select('processing')->from('tx_fourallportal_domain_model_event')->where($queryBuilder->expr()->eq('uid', $this->uid))->setMaxResults(1);
-        return $this->processing = (bool) $query->execute()->fetchColumn(0);
-    }
-
-    /**
-     * @param bool $processing
-     */
-    public function setProcessing(bool $processing): void
-    {
-        $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('tx_fourallportal_domain_model_event');
-        $query = $queryBuilder->update('tx_fourallportal_domain_model_event')->set('processing', $processing, \PDO::PARAM_INT)->where($queryBuilder->expr()->eq('uid', $this->uid));
-        $query->execute();
-        $this->processing = $processing;
-    }
-
-    /**
-     * @param integer $eventTypeId
-     * @return string
-     */
-    public static function resolveEventType($eventTypeId)
-    {
-        $map = [
-            0 => 'delete',
-            1 => 'update',
-            2 => 'create'
-        ];
-        return $map[$eventTypeId];
-    }
-
-    public function getMostRecentObjectLog(): string
-    {
-        return (string)implode(PHP_EOL, array_reverse(explode(PHP_EOL, shell_exec('tail -n 1000 ' . $this->getObjectLogFilePath()))));
-    }
-
-    public function getMostRecentEventLog(): string
-    {
-        return (string)implode(PHP_EOL, array_reverse(explode(PHP_EOL, shell_exec('tail -n 1000 ' . $this->getEventLogFilePath()))));
-    }
-
-    public function getObjectLogFilePath(): string
-    {
-        return sprintf(
-            'typo3temp/var/logs/fourallportal/objects/%s/%s.log',
-            $this->getModule()->getModuleName(),
-            $this->getObjectId()
-        );
-    }
-
-    public function getEventLogFilePath(): string
-    {
-        return sprintf(
-            'typo3temp/var/logs/fourallportal/events/%s/%s.log',
-            $this->getModule()->getModuleName(),
-            $this->getObjectId()
-        );
-    }
+  public function getEventLogFilePath(): string
+  {
+    return sprintf(
+      'typo3temp/var/logs/fourallportal/events/%s/%s.log',
+      $this->getModule()->getModuleName(),
+      $this->getObjectId()
+    );
+  }
 }

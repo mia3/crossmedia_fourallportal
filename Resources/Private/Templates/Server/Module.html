@@ -1,23 +1,24 @@
-<html xmlns:core="http://typo3.org/ns/TYPO3/CMS/Core/ViewHelpers"
-      xmlns:fourallportal="http://typo3.org/ns/Crossmedia/Fourallportal/ViewHelpers">
-<f:layout name="Backend"/>
+<html xmlns:f="http://typo3.org/ns/TYPO3/CMS/Core/ViewHelpers"
+      data-namespace-typo3-fluid="true"
+      lang="en">
 
-<f:section name="docheader-buttons">
-</f:section>
-
-<f:section name="module-headline">
+<f:layout name="Module"/>
+<f:section name="Content">
+  <f:section name="module-headline">
     <h2>Module response inspection: {module.moduleName}</h2>
     <h4>{uuid}</h4>
-</f:section>
+  </f:section>
 
-<f:section name="Content">
+  <f:section name="Content">
     <f:flashMessages/>
     <f:form action="module">
-        <f:form.select name="module" options="{modules}" value="{module}" optionLabelField="moduleName" />
-        <f:form.textfield name="uuid" placeholder="Enter object UUID" size="40" value="{uuid}" />
-        <f:form.submit value="Check data response" />
+      <f:form.select name="module" options="{modules}" value="{module}"
+                     optionLabelField="moduleName"/>
+      <f:form.textfield name="uuid" placeholder="Enter object UUID" size="40" value="{uuid}"/>
+      <f:form.submit value="Check data response"/>
     </f:form>
-    <f:render partial="ModuleCheck" arguments="{_all}" />
+    <f:render partial="ModuleCheck" arguments="{_all}"/>
     <pre>{prettyResponse -> f:format.raw()}</pre>
+  </f:section>
 </f:section>
 </html>
