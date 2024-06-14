@@ -43,6 +43,7 @@ class EventExecutionService implements SingletonInterface
     protected ?ModuleRepository            $moduleRepository,
     protected ?LoggingService              $loggingService,
     protected ?PersistenceManagerInterface $persistenceManager,
+    protected ?ConnectionPool              $connectionPool,
     protected ?SchedulerTaskRepository     $schedulerTaskRepository)
   {
     /** @see .build/vendor/typo3/cms-core/Documentation/Changelog/10.0/Breaking-87193-DeprecatedFunctionalityRemoved.rst */
@@ -137,6 +138,7 @@ class EventExecutionService implements SingletonInterface
    * @throws ApiException
    * @throws IllegalObjectTypeException
    * @throws UnknownObjectException
+   * @throws \Doctrine\DBAL\Exception
    */
   protected function performSync(SyncParameters $parameters): void
   {
@@ -157,7 +159,20 @@ class EventExecutionService implements SingletonInterface
       $deferredEvents[$event->getModule()->getModuleName()][$event->getObjectId()][] = $event;
     }
     if ($fullSync && !$module && empty($exclude)) {
-      $GLOBALS['TYPO3_DB']->exec_TRUNCATEquery('tx_fourallportal_domain_model_event');
+//      $GLOBALS['TYPO3_DB']->exec_TRUNCATEquery('tx_fourallportal_domain_model_event');
+      $tableName = "tx_fourallportal_domain_model_event";
+      $connection = $this->connectionPool->getQueryBuilderForTable($tableName)->getConnection();
+      $dbPlatform = $connection->getDatabasePlatform();
+      $connection->beginTransaction();
+      try {
+        $connection->executeQuery('SET FOREIGN_KEY_CHECKS=0');
+        $q = $dbPlatform->getTruncateTableSql($tableName);
+        $connection->executeStatement($q);
+        $connection->executeQuery('SET FOREIGN_KEY_CHECKS=1');
+        $connection->commit();
+      } catch (\Exception $e) {
+        $connection->rollback();
+      }
     }
 
     foreach ($activeModules as $module) {

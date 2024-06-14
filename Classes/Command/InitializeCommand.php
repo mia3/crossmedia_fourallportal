@@ -13,6 +13,7 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Persistence\Exception\IllegalObjectTypeException;
 use TYPO3\CMS\Extbase\Persistence\Exception\UnknownObjectException;
@@ -89,7 +90,8 @@ class InitializeCommand extends Command
     $io->title($this->getDescription());
     $fail = $input->getArgument('fail');
 
-    $settings = GeneralUtility::removeDotsFromTS((array)unserialize($GLOBALS['TYPO3_CONF_VARS']['EXT']['extConf']['fourallportal']));
+    // Retrieve whole configuration
+    $settings = GeneralUtility::makeInstance(ExtensionConfiguration::class)->get('fourallportal');
     if (isset($settings['servers'])) {
       foreach ($settings['servers'] as $server) {
         $currentServer = $this->serverRepository->findOneByDomain($server['domain']);

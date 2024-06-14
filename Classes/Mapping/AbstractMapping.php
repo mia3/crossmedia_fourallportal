@@ -48,6 +48,7 @@ abstract class AbstractMapping implements MappingInterface
   protected AccessiblePropertyMapper $accessiblePropertyMapper;
   protected StorageRepository $storageRepository;
   protected Session $session;
+  protected ConnectionPool $connectionPool;
 
   public function injectLoggingService(LoggingService $loggingService)
   {
@@ -72,6 +73,11 @@ abstract class AbstractMapping implements MappingInterface
   public function injectSession(Session $session)
   {
     $this->session = $session;
+  }
+
+  public function injectConnectionPool(ConnectionPool $connectionPool)
+  {
+    $this->connectionPool = $connectionPool;
   }
 
 
@@ -744,9 +750,12 @@ abstract class AbstractMapping implements MappingInterface
         'remote_id' => $event->getObjectId(),
         'crdate' => time(),
       ];
-      $GLOBALS['TYPO3_DB']->exec_INSERTquery($this->getTableName(), $newRecordValues);
-      $insertedRecordUid = $GLOBALS['TYPO3_DB']->sql_insert_id();
-      $recordUid = $insertedRecordUid;
+      $queryBuilder = $this->connectionPool->getQueryBuilderForTable($this->getTableName());
+      $numberOfInsertedRows = $queryBuilder
+        ->insert($this->getTableName())
+        ->values($newRecordValues)
+        ->executeStatement();
+      $recordUid = $queryBuilder->getConnection()->lastInsertId();
     }
 
     $this->persist();
@@ -914,19 +923,23 @@ abstract class AbstractMapping implements MappingInterface
 //      $GLOBALS['TSFE']->config['sys_language_uid'] = 0;
 //      $GLOBALS['TSFE']->settingLanguage();
 
-      $existingRow = $GLOBALS['TYPO3_DB']->exec_SELECTgetSingleRow(
-        'uid,l10n_parent,sys_language_uid',
-        $this->getTableName(),
-        'sys_language_uid = ' . $languageUid . ' AND l10n_parent = ' . $object->getUid()
-      );
-
-      $translationObject = $this->createObject($event, $languageUid, $object->getUid(), $existingRow);
-      //$translationObject->setRemoteId($event->getObjectId());
-      $objectMappingProblemsOccurred = $this->mapPropertiesFromDataToObject($data, $translationObject, $event->getModule(), $translationDimensionMapping);
-      $mappingProblemsOccurred = $mappingProblemsOccurred ?: $objectMappingProblemsOccurred;
-      $this->getObjectRepository()->update($translationObject);
-      $this->persist();
-      $this->session->unregisterObject($translationObject);
+      $queryBuilder = $this->connectionPool->getQueryBuilderForTable($this->getTableName());
+      $existingRowResult = $queryBuilder->select('uid', 'l10n_parent', 'sys_language_uid')
+        ->from($this->getTableName())
+        ->where($queryBuilder->expr()->eq('sys_language_uid', $languageUid))
+        ->andWhere($queryBuilder->expr()->eq('l10n_parent', $object->getUid()))
+        ->executeQuery();
+      try {
+        $existingRow = $existingRowResult->fetchOne();
+        $translationObject = $this->createObject($event, $languageUid, $object->getUid(), $existingRow);
+        //$translationObject->setRemoteId($event->getObjectId());
+        $objectMappingProblemsOccurred = $this->mapPropertiesFromDataToObject($data, $translationObject, $event->getModule(), $translationDimensionMapping);
+        $mappingProblemsOccurred = $mappingProblemsOccurred ?: $objectMappingProblemsOccurred;
+        $this->getObjectRepository()->update($translationObject);
+        $this->persist();
+        $this->session->unregisterObject($translationObject);
+      } catch (Exception $e) {
+      }
     }
 
     #$persistenceSession->destroy();

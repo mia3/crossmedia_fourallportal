@@ -16,6 +16,10 @@ use TYPO3\CMS\Core\Cache\Backend\SimpleFileBackend;
 use TYPO3\CMS\Core\Cache\Frontend\PhpFrontend;
 use TYPO3\CMS\Extbase\Utility\ExtensionUtility;
 
+//$backendConfiguration = \TYPO3\CMS\Core\Utility\GeneralUtility::makeInstance(
+//  \TYPO3\CMS\Core\Configuration\ExtensionConfiguration::class
+//)->get('fourallportal');
+
 if (!isset($GLOBALS['TYPO3_CONF_VARS']['EXT']['extConf']['fourallportal'])) {
   $GLOBALS['TYPO3_CONF_VARS']['EXT']['extConf']['fourallportal'] = [
     'clientConnectTimeout' => 10,

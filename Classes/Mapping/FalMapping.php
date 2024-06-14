@@ -11,6 +11,7 @@ use Crossmedia\Fourallportal\Service\ApiClient;
 use Crossmedia\Fourallportal\ValueReader\ResponseDataFieldValueReader;
 use DateTime;
 use Doctrine\DBAL\Exception;
+use ReflectionClass;
 use ReflectionException;
 use RuntimeException;
 use TYPO3\CMS\Core\Charset\CharsetConverter;
@@ -33,7 +34,6 @@ use TYPO3\CMS\Extbase\DomainObject\AbstractEntity;
 use TYPO3\CMS\Extbase\Property\Exception\InvalidSourceException;
 use TYPO3\CMS\Extbase\Property\Exception\TypeConverterException;
 use TYPO3\CMS\Extbase\Reflection\Exception\PropertyNotAccessibleException;
-use TYPO3\CMS\Extbase\Reflection\ObjectAccess;
 
 class FalMapping extends AbstractMapping
 {
@@ -331,7 +331,14 @@ class FalMapping extends AbstractMapping
         if ($existingFileRows) {
           foreach ($existingFileRows as $existingFileRow) {
             $existingFile = $storage->getFile($existingFileRow['identifier']);
-            if (!$existingFile || $existingFileRow['name'] !== $targetFilename || !ObjectAccess::getProperty($storage, 'driver', true)->fileExists($existingFile->getIdentifier())) {
+            $refStorage = new ReflectionClass($storage);
+            $driverProperty = $refStorage->getProperty('driver');
+            // set driver property to public
+            /** @noinspection PhpExpressionResultUnusedInspection */
+            $driverProperty->setAccessible(true);
+            $driver = $driverProperty->getValue($storage);
+
+            if (!$existingFile || $existingFileRow['name'] !== $targetFilename || !$driver->fileExists($existingFile->getIdentifier())) {
               // File is determined to not exist, but exists in database. Remove the record, create file anew.
               // If this is not done, various permission nonsense is raised by FAL without indication of the
               // actual error. Any problem ranging from a missing file over file/folder permissions to user
