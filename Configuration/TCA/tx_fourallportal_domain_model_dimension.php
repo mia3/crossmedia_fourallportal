@@ -5,21 +5,12 @@ return [
     'label' => 'name',
     'tstamp' => 'tstamp',
     'crdate' => 'crdate',
-    'cruser_id' => 'cruser_id',
-    //'delete' => 'deleted',
     'rootLevel' => 1,
-    'enablecolumns' => [
-      //'disabled' => 'hidden',
-      //'starttime' => 'starttime',
-      //'endtime' => 'endtime',
-    ],
+    'enablecolumns' => [],
     'iconfile' => 'EXT:fourallportal/Resources/Public/Icons/tx_fourallportal_domain_model_dimension.gif',
     'security' => [
       'ignorePageTypeRestriction' => true,
     ],
-  ],
-  'interface' => [
-    'showRecordFieldList' => '--palette--;;1, dimension',
   ],
   'types' => [
     '1' => ['showitem' => '--palette--;;1, dimension'],

@@ -9,14 +9,8 @@ return [
     'label' => 'connector_name',
     'tstamp' => 'tstamp',
     'crdate' => 'crdate',
-    'cruser_id' => 'cruser_id',
-    //'delete' => 'deleted',
     'rootLevel' => 1,
-    'enablecolumns' => [
-      //'disabled' => 'hidden',
-      //'starttime' => 'starttime',
-      //'endtime' => 'endtime',
-    ],
+    'enablecolumns' => [],
     'sortby' => 'sorting',
     'default_sortby' => 'sorting ASC',
     'searchFields' => 'connector_name,mapping_class,config_hash,last_event_id,shell_path,storage_pid,server',
@@ -24,9 +18,6 @@ return [
     'security' => [
       'ignorePageTypeRestriction' => true,
     ],
-  ],
-  'interface' => [
-    'showRecordFieldList' => 'connector_name, module_name, mapping_class, enable_dynamic_model, contains_dimensions, config_hash, last_event_id, shell_path, storage_pid, fal_storage, usage_flag, test_object_uuid, server',
   ],
   'types' => [
     '1' => ['showitem' => 'connector_name, module_name, mapping_class, enable_dynamic_model, contains_dimensions, config_hash, last_event_id, last_received_event_id, shell_path, storage_pid, fal_storage, usage_flag, test_object_uuid, server'],
@@ -58,7 +49,12 @@ return [
         'type' => 'select',
         'renderType' => 'selectSingle',
         'itemsProcFunc' => MappingRegister::class . '->getTcaSelectItems',
-        'items' => array(['', '']),
+        'items' => [
+          [
+            'label' => '',
+            'value' => '',
+          ]
+        ],
       ],
     ],
     'config_hash' => [
@@ -123,7 +119,6 @@ return [
       'displayCond' => 'FIELD:mapping_class:!=:' . FalMapping::class,
       'config' => [
         'type' => 'group',
-        'internal_type' => 'db',
         'allowed' => 'pages',
         'size' => 1,
         'hideSuggest' => 1
@@ -149,8 +144,14 @@ return [
         'type' => 'select',
         'renderType' => 'selectSingle',
         'items' => [
-          ['Original', 'Original'],
-          ['WebAll', 'WebAll']
+          [
+            'label' => 'Original',
+            'value' => 'Original',
+          ],
+          [
+            'label' => 'WebAll',
+            'value' => 'WebAll',
+          ]
         ],
         'minitems' => 1,
         'maxitems' => 1,

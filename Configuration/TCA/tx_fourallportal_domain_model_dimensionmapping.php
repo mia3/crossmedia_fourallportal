@@ -5,21 +5,12 @@ return [
     'label' => 'language',
     'tstamp' => 'tstamp',
     'crdate' => 'crdate',
-    'cruser_id' => 'cruser_id',
-    //'delete' => 'deleted',
     'rootLevel' => 1,
-    'enablecolumns' => [
-      //'disabled' => 'hidden',
-      //'starttime' => 'starttime',
-      //'endtime' => 'endtime',
-    ],
+    'enablecolumns' => [ ],
     'iconfile' => 'EXT:fourallportal/Resources/Public/Icons/tx_fourallportal_domain_model_dimensionmapping.gif',
     'security' => [
       'ignorePageTypeRestriction' => true,
     ],
-  ],
-  'interface' => [
-    'showRecordFieldList' => 'active, language, metric_or_imperial, dimensions, server',
   ],
   'types' => [
     '1' => ['showitem' => 'active, language, metric_or_imperial, dimensions, server'],
@@ -29,7 +20,7 @@ return [
       'exclude' => true,
       'label' => 'LLL:EXT:fourallportal/Resources/Private/Language/locallang_db.xlf:tx_fourallportal_domain_model_dimensionmapping.language',
       'config' => [
-        'type' => 'select',
+        'type' => 'language',
         'renderType' => 'selectSingle',
         'special' => 'languages',
         'default' => 0,
@@ -57,12 +48,10 @@ return [
       'label' => 'LLL:EXT:fourallportal/Resources/Private/Language/locallang_db.xlf:tx_fourallportal_domain_model_dimensionmapping.active',
       'config' => [
         'type' => 'check',
-        'items' => [
-          '1' => [
-            '0' => 'LLL:EXT:lang/locallang_core.xlf:labels.enabled'
-          ]
-        ],
         'default' => 0,
+        'items' => [
+          ['label' => 'LLL:EXT:lang/locallang_core.xlf:labels.enabled']
+        ],
       ]
     ],
     'dimensions' => [

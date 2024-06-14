@@ -202,16 +202,21 @@ TEMPLATE;
   }
 
   /**
-   * @param string $tableName
    * @param string $modelClassName
    * @param bool $readOnly If TRUE, generates TCA fields as read-only
    * @return array
+   * @throws ApiException
+   * @throws Exception
+   * @throws IllegalObjectTypeException
+   * @throws UnknownObjectException
    */
-  public static function generateAutomaticTableConfigurationForModelClassName(string $tableName, string $modelClassName, bool $readOnly = false): array
+  public static function generateAutomaticTableConfigurationForModelClassName(string $modelClassName, bool $readOnly = false): array
   {
     $modelClassNameParts = explode('\\', substr($modelClassName, 0, strpos($modelClassName, '\\Domain\\Model\\')));
     $extensionName = array_pop($modelClassNameParts);
     $extensionKey = GeneralUtility::camelCaseToLowerCaseUnderscored($extensionName);
+    $tableName = GeneralUtility::makeInstance(DataMapper::class)->getDataMap($modelClassName)->getTableName();
+
     $tca = include ExtensionManagementUtility::extPath('fourallportal', 'Configuration/TCA/BoilerPlate/AutomaticTableConfiguration.php');
     $additionalColumns = DynamicModelGenerator::generateTableConfigurationForModuleIdentifiedByModelClassName($modelClassName, $readOnly);
     $additionalColumnNames = implode(',', array_keys($additionalColumns));

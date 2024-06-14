@@ -47,7 +47,7 @@ class ConfigGeneratorService
   public function generateTableConfiguration($entityClassName = null, $readOnly = false)
   {
     foreach ($this->getEntityClassNames($entityClassName) as $entityClassName) {
-      $tca = DynamicModelGenerator::generateAutomaticTableConfigurationForModelClassName($entityClassName, $readOnly);
+      $tca = $this->dynamicModelGenerator->generateAutomaticTableConfigurationForModelClassName($entityClassName, $readOnly);
       $table = $this->dataMapper->getDataMap($entityClassName)->getTableName();
       $extensionKey = $this->getExtensionKeyFromEntityClasName($entityClassName);
 
@@ -159,7 +159,7 @@ class ConfigGeneratorService
     if ($entityClassName) {
       $entityClassNames = [$entityClassName];
     } else {
-      $entityClassNames = DynamicModelRegister::getModelClassNamesRegisteredForAutomaticHandling();
+      $entityClassNames = $this->dynamicModelGenerator->getModelClassNamesRegisteredForAutomaticHandling();
     }
     return $entityClassNames;
   }

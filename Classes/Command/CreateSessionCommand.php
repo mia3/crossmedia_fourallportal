@@ -4,7 +4,7 @@ namespace Crossmedia\Fourallportal\Command;
 
 use Crossmedia\Fourallportal\Domain\Model\Server;
 use Crossmedia\Fourallportal\Domain\Repository\ServerRepository;
-use Crossmedia\Fourallportal\DynamicModel\DynamicModelGenerator;
+use Crossmedia\Fourallportal\Error\ApiException;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -19,8 +19,7 @@ class CreateSessionCommand extends Command
 {
 
   public function __construct(
-    protected ?DynamicModelGenerator $dynamicModelGenerator = null,
-    protected ?ServerRepository      $serverRepository = null
+    protected ?ServerRepository $serverRepository = null
   )
   {
     parent::__construct();
@@ -45,7 +44,10 @@ class CreateSessionCommand extends Command
    * outputs the session ID, which can then be used for testing
    * in for example raw CURL requests.
    *
-   * @param int $server
+   * @param InputInterface $input
+   * @param OutputInterface $output
+   * @return int
+   * @throws ApiException
    */
   protected function execute(InputInterface $input, OutputInterface $output)
   {

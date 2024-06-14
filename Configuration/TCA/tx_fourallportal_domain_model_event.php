@@ -5,7 +5,6 @@ return [
     'label' => 'event_id',
     'tstamp' => 'tstamp',
     'crdate' => 'crdate',
-    'cruser_id' => 'cruser_id',
     'delete' => 'deleted',
     'rootLevel' => 1,
     'enablecolumns' => [
@@ -15,9 +14,6 @@ return [
     'security' => [
       'ignorePageTypeRestriction' => true,
     ],
-  ],
-  'interface' => [
-    'showRecordFieldList' => 'event_id, event_type, status, skip_until, retries, object_id, module',
   ],
   'types' => [
     '1' => ['showitem' => 'event_id, event_type, status, skip_until, retries, object_id, module'],
@@ -40,9 +36,8 @@ return [
       'exclude' => true,
       'label' => 'LLL:EXT:fourallportal/Resources/Private/Language/locallang_db.xlf:tx_fourallportal_domain_model_event.event_id',
       'config' => [
-        'type' => 'input',
+        'type' => 'number',
         'size' => 4,
-        'eval' => 'int'
       ]
     ],
     'event_type' => [
@@ -102,27 +97,24 @@ return [
       'exclude' => true,
       'label' => 'LLL:EXT:fourallportal/Resources/Private/Language/locallang_db.xlf:tx_fourallportal_domain_model_event.skip_until',
       'config' => [
-        'type' => 'input',
+        'type' => 'number',
         'size' => 4,
-        'eval' => 'int'
       ]
     ],
     'next_retry' => [
       'exclude' => true,
       'label' => 'LLL:EXT:fourallportal/Resources/Private/Language/locallang_db.xlf:tx_fourallportal_domain_model_event.next_retry',
       'config' => [
-        'type' => 'input',
+        'type' => 'number',
         'size' => 4,
-        'eval' => 'int'
       ]
     ],
     'retries' => [
       'exclude' => true,
       'label' => 'LLL:EXT:fourallportal/Resources/Private/Language/locallang_db.xlf:tx_fourallportal_domain_model_event.retries',
       'config' => [
-        'type' => 'input',
+        'type' => 'number',
         'size' => 4,
-        'eval' => 'int'
       ]
     ],
     'object_id' => [
