@@ -2,17 +2,11 @@
 
 namespace Crossmedia\Fourallportal\Command;
 
-use Crossmedia\Fourallportal\Domain\Model\Module;
-use Crossmedia\Fourallportal\Domain\Repository\ModuleRepository;
-use Crossmedia\Fourallportal\Domain\Repository\ServerRepository;
 use Crossmedia\Fourallportal\DynamicModel\DynamicModelGenerator;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Console\Style\SymfonyStyle;
-use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 #[AsCommand(
   name: 'fourallportal:updateModels'

@@ -12,7 +12,7 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
 class ApiClient
 {
 
-  protected string $sessionId;
+  protected ?string $sessionId = null;
   protected static array $sessionPool = array();
   protected int $folderCreateMask;
   protected int $fileCreateMask;

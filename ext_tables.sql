@@ -1,7 +1,7 @@
 #
 # Table structure for table 'tx_fourallportal_domain_model_server'
 #
-CREATE TABLE IF NOT EXISTS tx_fourallportal_domain_model_server
+CREATE TABLE tx_fourallportal_domain_model_server
 (
 
     uid                int(11)                          NOT NULL auto_increment,
@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS tx_fourallportal_domain_model_server
 #
 # Table structure for table 'tx_fourallportal_domain_model_module'
 #
-CREATE TABLE IF NOT EXISTS tx_fourallportal_domain_model_module
+CREATE TABLE tx_fourallportal_domain_model_module
 (
 
     uid                    int(11)                          NOT NULL auto_increment,
@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS tx_fourallportal_domain_model_module
 #
 # Table structure for table 'tx_fourallportal_domain_model_complextype'
 #
-CREATE TABLE IF NOT EXISTS tx_fourallportal_domain_model_complextype
+CREATE TABLE tx_fourallportal_domain_model_complextype
 (
 
     uid                  int(11)                          NOT NULL auto_increment,
@@ -104,7 +104,7 @@ CREATE TABLE IF NOT EXISTS tx_fourallportal_domain_model_complextype
 #
 # Table structure for table 'tx_fourallportal_domain_model_event'
 #
-CREATE TABLE IF NOT EXISTS tx_fourallportal_domain_model_event
+CREATE TABLE tx_fourallportal_domain_model_event
 (
 
     uid        int(11)                          NOT NULL auto_increment,
@@ -144,7 +144,7 @@ CREATE TABLE IF NOT EXISTS tx_fourallportal_domain_model_event
 #
 # Table structure for table 'sys_file'
 #
-CREATE TABLE IF NOT EXISTS sys_file
+CREATE TABLE sys_file
 (
     remote_id varchar(255) DEFAULT '' NOT NULL,
     KEY remote_id (remote_id)
@@ -153,7 +153,7 @@ CREATE TABLE IF NOT EXISTS sys_file
 #
 # Table structure for table 'tx_fourallportal_domain_model_dimension_mapping'
 #
-CREATE TABLE IF NOT EXISTS tx_fourallportal_domain_model_dimensionmapping
+CREATE TABLE tx_fourallportal_domain_model_dimensionmapping
 (
 
     uid                int(11)                               NOT NULL auto_increment,
@@ -178,7 +178,7 @@ CREATE TABLE IF NOT EXISTS tx_fourallportal_domain_model_dimensionmapping
 #
 # Table structure for table 'tx_fourallportal_domain_model_dimension'
 #
-CREATE TABLE IF NOT EXISTS tx_fourallportal_domain_model_dimension
+CREATE TABLE tx_fourallportal_domain_model_dimension
 (
 
     uid               int(11)                      NOT NULL auto_increment,

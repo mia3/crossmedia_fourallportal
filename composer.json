@@ -55,5 +55,13 @@
       "typo3/class-alias-loader": true,
       "typo3/cms-composer-installers": true
     }
+  },
+  "scripts": {
+    "install-extension-setup": [
+      "typo3 extension:setup"
+    ],
+    "install-updateschema": [
+      "typo3 database:updateschema"
+    ]
   }
 }
