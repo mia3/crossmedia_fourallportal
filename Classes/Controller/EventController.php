@@ -21,12 +21,14 @@ use Crossmedia\Fourallportal\Response\CollectingResponse;
 use Crossmedia\Fourallportal\Service\EventExecutionService;
 use Crossmedia\Fourallportal\Service\LoggingService;
 use Crossmedia\Fourallportal\Utility\ControllerUtility;
+use Crossmedia\Fourallportal\ViewHelpers\NumberedPagination;
 use Doctrine\DBAL\Exception;
 use Psr\Http\Message\ResponseInterface;
 use TYPO3\CMS\Backend\Attribute\AsController;
 use TYPO3\CMS\Backend\Template\ModuleTemplateFactory;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Mvc\Controller\ActionController;
+use TYPO3\CMS\Extbase\Pagination\QueryResultPaginator;
 use TYPO3\CMS\Extbase\Persistence\Exception\IllegalObjectTypeException;
 use TYPO3\CMS\Extbase\Persistence\Exception\InvalidQueryException;
 use TYPO3\CMS\Extbase\Persistence\Exception\UnknownObjectException;
@@ -66,7 +68,7 @@ final class EventController extends ActionController
    * @throws InvalidQueryException
    * @IgnoreValidation("modifiedEvent")
    */
-  public function indexAction(string $status = null, string $search = null, string $objectId = null, ?Event $modifiedEvent = null): ResponseInterface
+  public function indexAction(string $status = null, string $search = null, string $objectId = null, ?Event $modifiedEvent = null, int $currentPage = 1): ResponseInterface
   {
     $eventOptions = [
       'pending' => 'Status: pending',
@@ -96,18 +98,25 @@ final class EventController extends ActionController
         $events = $this->searchEventsWithStatus($status, $search);
       } while ($events->count() === 0 && next($eventOptions));
     }
-
     $view = $this->moduleTemplateFactory->create($this->request);
+    // pagination$events
+    $paginator = new QueryResultPaginator($events ?? null, $currentPage, 20);
+    $pagination = new NumberedPagination($paginator, 5);
+
     // create header menu
     ControllerUtility::addMainMenu($this->request, $this->uriBuilder, $view, 'Event');
     // assign values
-    $view->assign('searchWidened', $searchWidened);
-    $view->assign('status', $status);
-    $view->assign('events', $events);
-    $view->assign('search', $search);
-    $view->assign('objectId', $objectId);
-    $view->assign('modifiedEvent', $modifiedEvent);
-    $view->assign('eventStatusOptions', $eventOptions);
+    $view->assignMultiple([
+      'searchWidened' => $searchWidened,
+      'status' => $status,
+      'events' => $events,
+      'search' => $search,
+      'objectId' => $objectId,
+      'modifiedEvent' => $modifiedEvent,
+      'eventStatusOptions' => $eventOptions,
+      'paginator' => $paginator,
+      'pagination' => $pagination,
+    ]);
     return $view->renderResponse('Event/Index');
   }
 

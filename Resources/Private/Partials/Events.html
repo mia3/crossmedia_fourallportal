@@ -14,22 +14,22 @@
   </tr>
   </thead>
   <tbody>
-  <f:for each="{events}" as="event" iteration="iterator">
-    <f:render section="EventRow" arguments="{_all}"/>
-  </f:for>
-<!--  <f:if condition="{paginate}">-->
-<!--    <f:then>-->
-<!--      <f:for each="{events}" as="event" iteration="iterator">-->
-<!--        <f:render section="EventRow" arguments="{item:item}"/>-->
-<!--      </f:for>-->
-<!--      <f:render partial="Pagination" arguments="{pagination: pagination.pagination, paginator: pagination.paginator, actionName: 'listXYZ'}" />-->
-<!--    </f:then>-->
-<!--    <f:else>-->
-<!--      <f:for each="{events}" as="event">-->
-<!--        <f:render section="EventRow" arguments="{_all}"/>-->
-<!--      </f:for>-->
-<!--    </f:else>-->
-<!--  </f:if>-->
+
+  <f:if condition="{pagination && paginator}">
+    <f:then>
+      <!-- Render your items listing -->
+      <f:for each="{paginator.paginatedItems}" as="event" iteration="iterator">
+        <f:render section="EventRow" arguments="{_all}"/>
+      </f:for>
+      <!-- Render your paging -->
+      <f:render partial="Pagination" arguments="{pagination: pagination, paginator: paginator, actionName: 'index'}"/>
+    </f:then>
+    <f:else>
+      <f:for each="{events}" as="event">
+        <f:render section="EventRow" arguments="{_all}"/>
+      </f:for>
+    </f:else>
+  </f:if>
   </tbody>
 </table>
 

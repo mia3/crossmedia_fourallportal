@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Crossmedia\Fourallportal\ViewHelpers;
 
 use TYPO3\CMS\Core\Pagination\PaginationInterface;
@@ -7,14 +9,18 @@ use TYPO3\CMS\Core\Pagination\PaginatorInterface;
 
 class NumberedPagination implements PaginationInterface
 {
+  /**
+   * @var PaginatorInterface
+   */
+  protected $paginator;
 
-  protected $maximumNumberOfLinks = 100;
+  protected $maximumNumberOfLinks = 10;
   protected $displayRangeStart = 0;
   protected $displayRangeEnd = 0;
   protected $hasLessPages = false;
   protected $hasMorePages = false;
 
-  public function __construct(protected PaginatorInterface $paginator, int $maximumNumberOfLinks = 0)
+  public function __construct(PaginatorInterface $paginator, int $maximumNumberOfLinks = 0)
   {
     $this->paginator = $paginator;
     if ($maximumNumberOfLinks > 0) {
