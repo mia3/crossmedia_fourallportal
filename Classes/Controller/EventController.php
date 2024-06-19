@@ -100,8 +100,8 @@ final class EventController extends ActionController
     }
     $view = $this->moduleTemplateFactory->create($this->request);
     // pagination$events
-    $paginator = new QueryResultPaginator($events ?? null, $currentPage, 20);
-    $pagination = new NumberedPagination($paginator, 5);
+    $paginator = new QueryResultPaginator($events ?? null, $currentPage, 50);
+    $pagination = new NumberedPagination($paginator, 10);
 
     // create header menu
     ControllerUtility::addMainMenu($this->request, $this->uriBuilder, $view, 'Event');
