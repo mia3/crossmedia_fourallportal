@@ -7,10 +7,10 @@ use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
-use TYPO3\CMS\Extbase\Persistence\Generic\Exception;
 
 #[AsCommand(
-  name: 'fourallportal:generateSqlSchema'
+  name: 'fourallportal:generateSqlSchema',
+  description: 'Generate additional SQL schema file'
 )]
 class GenerateSqlSchemaCommand extends Command
 {
@@ -22,13 +22,11 @@ class GenerateSqlSchemaCommand extends Command
     parent::__construct();
   }
 
-  /**
-   * Configure the command by defining the name, options and arguments
-   */
   protected function configure()
   {
     $this
-      ->setDescription("Generate additional SQL schema file\n\nThis command can be used as substitute for the automatic\nSQL schema generation - using it disables the analysis of\nthe Module to read schema properties. If used, should be\ncombined with both of the other \"generate\" commands from\nthis package, to create a completely static set of assets\nbased on the configured Modules and prevent dynamic changes.\n\nGenerates all schemas for all modules, and generates a static\nSQL schema file in the extension to which the entity belongs.\nThe SQL schema registration hook then circumvents the normal\nschema fetching and uses the static schema instead, when the\nextension has a static schema.");
+      ->setDescription('Generate additional SQL schema file')
+      ->setHelp("Generate additional SQL schema file\n\nThis command can be used as substitute for the automatic\nSQL schema generation - using it disables the analysis of\nthe Module to read schema properties. If used, should be\ncombined with both of the other \"generate\" commands from\nthis package, to create a completely static set of assets\nbased on the configured Modules and prevent dynamic changes.\n\nGenerates all schemas for all modules, and generates a static\nSQL schema file in the extension to which the entity belongs.\nThe SQL schema registration hook then circumvents the normal\nschema fetching and uses the static schema instead, when the\nextension has a static schema.");
   }
 
   /**

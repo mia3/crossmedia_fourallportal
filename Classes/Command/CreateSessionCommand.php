@@ -13,7 +13,8 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(
-  name: 'fourallportal:createSession'
+  name: 'fourallportal:createSession',
+  description: 'Create session ID'
 )]
 class CreateSessionCommand extends Command
 {
@@ -25,16 +26,12 @@ class CreateSessionCommand extends Command
     parent::__construct();
   }
 
-  /**
-   * Configure the command by defining the name, options and arguments
-   */
   protected function configure()
   {
     $this
-      ->setDescription('Logs in on the specified server (or active server) and outputs the session ID, which can then be used for testing in for example raw CURL requests.')
-      ->addArgument(
-        'server', InputArgument::REQUIRED, 'server id'
-      );
+      ->setDescription('Create session ID')
+      ->setHelp('Logs in on the specified server (or active server) and outputs the session ID, which can then be used for testing in for example raw CURL requests.')
+      ->addArgument('server', InputArgument::OPTIONAL, 'server id', 0);
   }
 
   /**

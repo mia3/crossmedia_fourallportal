@@ -486,9 +486,9 @@ class FalMapping extends AbstractMapping
                         </p>
                     ', $ids[0]);
         } else {
-          $publicTempFile = TYPO3_mainDir . 'typo3temp/assets/images/' . basename($temporaryFile);
+          $publicTempFile = 'typo3/typo3temp/assets/images/' . basename($temporaryFile);
           rename($temporaryFile, $publicTempFile);
-          $temporaryFileRelativePath = substr($publicTempFile, strlen(TYPO3_mainDir) - 1);
+          $temporaryFileRelativePath = substr($publicTempFile, strlen('typo3/') - 1);
           $receivedBytes = filesize($publicTempFile);
           $messages['derivative_download_success'] = sprintf(
             '

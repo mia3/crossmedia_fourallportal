@@ -10,7 +10,8 @@ use Symfony\Component\Console\Output\OutputInterface;
 use TYPO3\CMS\Extbase\Persistence\Generic\PersistenceManager;
 
 #[AsCommand(
-  name: 'fourallportal:pinschema'
+  name: 'fourallportal:pinschema',
+  description: 'Pin PIM schema version'
 )]
 class PinSchemaCommand extends Command
 {
@@ -23,14 +24,11 @@ class PinSchemaCommand extends Command
     parent::__construct();
   }
 
-  /**
-   * Configure the command by defining the name, options and arguments
-   */
   protected function configure()
   {
     $this
-      ->setDescription('Pins the PIM schema version, updating all local modules to use the version of configuration that is currently live on the configured remote server.')
-      ->setHelp('Used when a schema version mismatch prevents PIM sync from running.');
+      ->setDescription('Pin PIM schema version')
+      ->setHelp("Pins the PIM schema version, updating all local modules to use the\nversion of configuration that is currently live on the configured\nremote server.\n\nUsed when a schema version mismatch prevents PIM sync from running.");
   }
 
   /**

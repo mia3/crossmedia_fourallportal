@@ -13,6 +13,8 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use TYPO3\CMS\Core\Configuration\Exception\ExtensionConfigurationExtensionNotConfiguredException;
+use TYPO3\CMS\Core\Configuration\Exception\ExtensionConfigurationPathDoesNotExistException;
 use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Persistence\Exception\IllegalObjectTypeException;
@@ -20,7 +22,8 @@ use TYPO3\CMS\Extbase\Persistence\Exception\UnknownObjectException;
 use TYPO3\CMS\Extbase\Persistence\Generic\PersistenceManager;
 
 #[AsCommand(
-  name: 'fourallportal:initialize'
+  name: 'fourallportal:initialize',
+  description: 'Initialize system'
 )]
 class InitializeCommand extends Command
 {
@@ -34,18 +37,12 @@ class InitializeCommand extends Command
     parent::__construct();
   }
 
-  /**
-   * Configure the command by defining the name, options and arguments
-   */
   protected function configure()
   {
     $this
-      ->setDescription('Creates Server and Module configuration if configured in extension configuration. The array in:  $GLOBALS[\'TYPO3_CONF_VARS\'][\'EXT\'][\'extConf\'][\'fourallportal\']')
-      ->addArgument(
-        'fail',
-        InputArgument::OPTIONAL,
-        'If TRUE, any connectivity test failure will cause the command to exit with failure'
-      );
+      ->setDescription('Initialize system')
+      ->setHelp("Creates Server and Module configuration if configured in\nextension configuration. The array in:\n\n\$GLOBALS['TYPO3_CONF_VARS']['EXT']['extConf']['fourallportal']\n\ncan contain an array of servers and modules, e.g.:\n\n· [\n·   'default' => [\n·     'domain' => '',\n·     'customerName' => '',\n·     'username' => '',\n·     'password' => '',\n·     'active' => 1,\n·     'modules' => [\n·       'module_name' => [\n·         'connectorName' => '',\n·         'mappingClass' => '',\n·         'shellPath' => '',\n·         'falStorage' => '',\n·         'storagePid' => '',\n·       ],\n·     ],\n·   ],\n· ]\n\nNote that the module properties may differ depending on which\nmapping class the module uses, and that the server name does\nnot get used - it is only there to identify the entry in your\nconfiguration file")
+      ->addArgument('fail', InputArgument::OPTIONAL, 'If TRUE, any connectivity test failure will cause the command to exit with failure', false);
   }
 
   /**
@@ -82,13 +79,19 @@ class InitializeCommand extends Command
    * not get used - it is only there to identify the entry in your
    * configuration file.
    *
-   * @param bool $fail If TRUE, any connectivity test failure will cause the command to exit with failure.
+   * @param InputInterface $input
+   * @param OutputInterface $output
+   * @return int
+   * @throws IllegalObjectTypeException
+   * @throws UnknownObjectException
+   * @throws ExtensionConfigurationExtensionNotConfiguredException
+   * @throws ExtensionConfigurationPathDoesNotExistException
    */
   protected function execute(InputInterface $input, OutputInterface $output)
   {
     $io = new SymfonyStyle($input, $output);
     $io->title($this->getDescription());
-    $fail = $input->getArgument('fail');
+    $fail = (bool)$input->getArgument('fail');
 
     // Retrieve whole configuration
     $settings = GeneralUtility::makeInstance(ExtensionConfiguration::class)->get('fourallportal');

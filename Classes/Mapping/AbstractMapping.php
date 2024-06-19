@@ -11,6 +11,7 @@ use Crossmedia\Fourallportal\Service\LoggingService;
 use Crossmedia\Fourallportal\TypeConverter\PimBasedTypeConverterInterface;
 use Crossmedia\Fourallportal\ValueReader\ResponseDataFieldValueReader;
 use Exception;
+use ReflectionClass;
 use ReflectionException;
 use ReflectionMethod;
 use RuntimeException;
@@ -410,19 +411,25 @@ abstract class AbstractMapping implements MappingInterface
             continue;
           }
 
+          $refObject = new ReflectionClass($object);
+          $languageIdProperty = $refObject->getProperty('_languageUid');
+          // set driver property to public
+          /** @noinspection PhpExpressionResultUnusedInspection */
+          $languageIdProperty->setAccessible(true);
+          $languageUid = $languageIdProperty->getValue($object);
+
           if ($child instanceof Error) {
             // For whatever reason, property validators will return a validation error rather than throw an exception.
             // We therefore need to check this, log the problem, and skip the property.
             $message = 'Mapping error when mapping property ' . $propertyName . ' on ' . get_class($object) . ':' . $objectId .
-              ' in language UID ' . ObjectAccess::getProperty($object, '_languageUid', true) . ': ' . $child->getMessage();
+              ' in language UID ' . $languageUid . ': ' . $child->getMessage();
             $this->loggingService->logObjectActivity($objectId, $message, 3 /*GeneralUtility::SYSLOG_SEVERITY_WARNING*/);
             $child = null;
           }
 
           if (!$child) {
             $message = 'Child of type ' . $childType . ' identified by ' . $identifier . ' not found when mapping property ' .
-              $propertyName . ' on ' . get_class($object) . ':' . $objectId . ' in language UID ' .
-              ObjectAccess::getProperty($object, '_languageUid', true);
+              $propertyName . ' on ' . get_class($object) . ':' . $objectId . ' in language UID ' . $languageUid;
             $this->loggingService->logObjectActivity($objectId, $message, 3 /*GeneralUtility::SYSLOG_SEVERITY_WARNING*/);
             $mappingProblemsOccurred = true;
             continue;

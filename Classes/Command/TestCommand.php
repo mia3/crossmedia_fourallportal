@@ -14,7 +14,8 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 #[AsCommand(
-  name: 'fourallportal:test'
+  name: 'fourallportal:test',
+  description: 'Run tests'
 )]
 class TestCommand extends Command
 {
@@ -27,22 +28,13 @@ class TestCommand extends Command
     parent::__construct();
   }
 
-  /**
-   * Configure the command by defining the name, options and arguments
-   */
   protected function configure()
   {
     $this
-      ->setDescription('Runs tests on schema and response consistency and performs tracking of basic response changes, i.e. simple diffs of which properties are included in the response.')
-      ->addArgument(
-        'onlyFailed',
-        InputArgument::OPTIONAL,
-        'If TRUE, only outputs failed properties'
-      )->addArgument(
-        'withHistory',
-        InputArgument::OPTIONAL,
-        'If TRUE, includes a tracking history of schema/response consistency for each module'
-      );
+      ->setDescription('Run tests')
+      ->setHelp("Runs tests on schema and response consistency and performs tracking\nof basic response changes, i.e. simple diffs of which properties\nare included in the response.\n\nOutputs streaming YAML.")
+      ->addArgument('onlyFailed', InputArgument::OPTIONAL, 'If TRUE, only outputs failed properties', false)
+      ->addArgument('withHistory', InputArgument::OPTIONAL, 'If TRUE, includes a tracking history of schema/response consistency for each module', true);
   }
 
   /**
