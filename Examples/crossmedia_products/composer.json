@@ -1,19 +1,8 @@
 {
-  "name": "crossmedia/fourallportal",
+  "name": "crossmedia/products",
   "type": "typo3-cms-extension",
-  "description": "The Official 4ALLPORTAL Package",
-  "authors": [
-    {
-      "name": "Marc Neuhaus",
-      "role": "Developer"
-    },
-    {
-      "name": "Eyad Abdullah",
-      "role": "Developer",
-      "email": "e.abdullah@4allportal.com",
-      "homepage": "https://4allportal.com/"
-    }
-  ],
+  "description": "4ALLPORTAL example extension",
+  "license": "proprietary",
   "minimum-stability": "dev",
   "prefer-stable": true,
   "require": {
@@ -28,22 +17,14 @@
     "ext-pdo": "*",
     "ext-curl": "*"
   },
-  "require-dev": {
-    "phpunit/phpunit": "^8.5"
-  },
   "autoload": {
     "psr-4": {
-      "Crossmedia\\Fourallportal\\": "Classes/"
-    }
-  },
-  "autoload-dev": {
-    "psr-4": {
-      "Crossmedia\\Fourallportal\\Tests\\": "Tests/"
+      "Crossmedia\\Products\\": "Classes/"
     }
   },
   "extra": {
     "typo3/cms": {
-      "extension-key": "fourallportal"
+      "extension-key": "fourallportal_products"
     }
   },
   "config": {
@@ -55,13 +36,5 @@
       "typo3/class-alias-loader": true,
       "typo3/cms-composer-installers": true
     }
-  },
-  "scripts": {
-    "install-extension-setup": [
-      "typo3 extension:setup"
-    ],
-    "install-updateschema": [
-      "typo3 database:updateschema"
-    ]
   }
 }
