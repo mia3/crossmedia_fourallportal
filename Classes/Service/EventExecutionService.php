@@ -13,6 +13,9 @@ use Crossmedia\Fourallportal\Error\ApiException;
 use Crossmedia\Fourallportal\Mapping\DeferralException;
 use Crossmedia\Fourallportal\Response\CollectingResponse;
 use Exception;
+use TYPO3\CMS\Core\Configuration\Exception\ExtensionConfigurationExtensionNotConfiguredException;
+use TYPO3\CMS\Core\Configuration\Exception\ExtensionConfigurationPathDoesNotExistException;
+use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Locking\Exception\LockCreateException;
 use TYPO3\CMS\Core\SingletonInterface;
@@ -35,7 +38,9 @@ class EventExecutionService implements SingletonInterface
    * @param ModuleRepository|null $moduleRepository
    * @param LoggingService|null $loggingService
    * @param PersistenceManagerInterface|null $persistenceManager
+   * @param ConnectionPool|null $connectionPool
    * @param SchedulerTaskRepository|null $schedulerTaskRepository
+   * @param ExtensionConfiguration|null $extensionConfiguration
    */
   public function __construct(
     protected ?ServerRepository            $serverRepository,
@@ -44,7 +49,8 @@ class EventExecutionService implements SingletonInterface
     protected ?LoggingService              $loggingService,
     protected ?PersistenceManagerInterface $persistenceManager,
     protected ?ConnectionPool              $connectionPool,
-    protected ?SchedulerTaskRepository     $schedulerTaskRepository)
+    protected ?SchedulerTaskRepository     $schedulerTaskRepository,
+    protected ?ExtensionConfiguration      $extensionConfiguration)
   {
     /** @see .build/vendor/typo3/cms-core/Documentation/Changelog/10.0/Breaking-87193-DeprecatedFunctionalityRemoved.rst */
     $this->response = new CollectingResponse();
@@ -314,8 +320,9 @@ class EventExecutionService implements SingletonInterface
    * @param SyncParameters $parameters
    * @param QueryResultInterface $events
    * @return void
-   * @throws IllegalObjectTypeException
-   * @throws UnknownObjectException
+   * @throws ApiException
+   * @throws ExtensionConfigurationExtensionNotConfiguredException
+   * @throws ExtensionConfigurationPathDoesNotExistException
    * @throws \Doctrine\DBAL\Exception
    */
   protected function processEvents(SyncParameters $parameters, QueryResultInterface $events): void
@@ -331,8 +338,8 @@ class EventExecutionService implements SingletonInterface
     }
 
     // Trigger post-execution hook
-    if (is_array($GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['fourallportal']['postEventExecution'] ?? null)) {
-      foreach ($GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['fourallportal']['postEventExecution'] as $postExecutionHookClass) {
+    if (is_array($this->extensionConfiguration->get('fourallportal')['postEventExecution'] ?? null)) {
+      foreach ($this->extensionConfiguration->get('fourallportal')['postEventExecution'] as $postExecutionHookClass) {
         GeneralUtility::makeInstance($postExecutionHookClass)->postEventExecution($events->toArray());
       }
     }
@@ -513,7 +520,10 @@ class EventExecutionService implements SingletonInterface
    * @param Event $event
    * @param bool $updateEventId
    * @param SyncParameters|null $parameters
+   * @throws ApiException
    * @throws \Doctrine\DBAL\Exception
+   * @throws ExtensionConfigurationExtensionNotConfiguredException
+   * @throws ExtensionConfigurationPathDoesNotExistException
    */
   public function processEvent(Event $event, bool $updateEventId = true, ?SyncParameters $parameters = null): void
   {
@@ -571,7 +581,7 @@ class EventExecutionService implements SingletonInterface
       // The system was unable to map properties, most likely because of an unresolvable relation.
       // Skip the event for now; process it later.
       $skippedUntil = $event->getSkipUntil();
-      $ttl = (int)($GLOBALS['TYPO3_CONF_VARS']['EXT']['extConf']['fourallportal']['eventDeferralTTL'] ?? 86400);
+      $ttl = (int)($this->extensionConfiguration->get('fourallportal')['eventDeferralTTL'] ?? 86400);
       $now = time();
       $event->setMessage($error->getMessage() . ' (code: ' . $error->getCode() . ')');
       $event->setStatus('deferred');

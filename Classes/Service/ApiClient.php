@@ -39,8 +39,6 @@ class ApiClient
     $this->initializeCreateMasks();
     $this->loggingService = GeneralUtility::makeInstance(LoggingService::class);
     $this->extensionConfiguration = GeneralUtility::makeInstance(ExtensionConfiguration::class);
-    // TODO: https://docs.typo3.org/m/typo3/reference-coreapi/12.4/en-us/ExtensionArchitecture/FileStructure/ExtConfTemplate.html#extension-options-api
-//    $this->extensionConfiguration = (array)@unserialize($GLOBALS['TYPO3_CONF_VARS']['EXT']['extConf']['fourallportal']);
     $this->portalConfig = $this->extensionConfiguration->get('fourallportal');
   }
 

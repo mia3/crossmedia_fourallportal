@@ -534,7 +534,7 @@ TEMPLATE;
   protected function guessLocalTypesFromRemoteField(string $originalName, array $fieldConfiguration, $currentSideModuleName)
   {
     $textFieldTypes = ['CEText', 'MAMString', 'XMPString'];
-    if ($fieldConfiguration['fulltext'] || in_array($fieldConfiguration['type'], $textFieldTypes)) {
+    if (array_key_exists('fulltext', $fieldConfiguration) || in_array($fieldConfiguration['type'], $textFieldTypes)) {
       // Shortcut: any fulltext/text typed fields will be "string" in class property and "text" in SQL
       return ['string', 'text', ['type' => 'text']];
     }
