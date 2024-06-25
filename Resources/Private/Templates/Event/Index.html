@@ -1,68 +1,78 @@
-{namespace core=TYPO3\CMS\Core\ViewHelpers}
-<f:layout name="Backend"/>
+<html xmlns:f="http://typo3.org/ns/TYPO3/CMS/Backend/ViewHelpers"
+      xmlns:core="http://typo3.org/ns/TYPO3/CMS/Core/ViewHelpers"
+      data-namespace-typo3-fluid="true" lang="en">
 
-<f:section name="docheader-buttons"></f:section>
-
-<f:section name="module-headline"></f:section>
-
+<f:layout name="Module"/>
 <f:section name="Content">
 
-    <f:flashMessages />
+  <f:flashMessages/>
+  <f:if condition="{modifiedEvent.uid}">
+    <p>
+      <f:link.action class="btn btn-info" action="check" arguments="{event: modifiedEvent.uid}">
+        <core:icon identifier="actions-document-info" alternativeMarkupIdentifier="inline"/>
+        Check response from event "{modifiedEvent.eventId}" / {modifiedEvent.module.moduleName}:{modifiedEvent.objectId}
+      </f:link.action>
+    </p>
+  </f:if>
 
-    <f:if condition="{modifiedEvent.uid}">
-        <p>
-            <f:link.action class="btn btn-info" action="check" arguments="{event: modifiedEvent.uid}">
-                <core:icon identifier="actions-document-info"
-                           alternativeMarkupIdentifier="inline"/>
-                Check response from event "{modifiedEvent.eventId}" / {modifiedEvent.module.moduleName}:{modifiedEvent.objectId}
-            </f:link.action>
-        </p>
-    </f:if>
-
-    <div class="row-fluid">
-        <f:form action="index" addQueryString="1" class="form form-inline" id="filter-form">
-            <fieldset class="filter form-group pull-right">
-                <f:form.textfield name="objectId" type="search" class="filter-search form-control" placeholder="Object UUID" value="{objectId}"/>
-                <f:if condition="!{objectId}">
-                    or
-                    <label>
-                        <f:if condition="{searchWidened}"><span class="text-danger">expanded to <code>{f:if(condition: status, then: status, else: 'all')}</code>, no results found for your request!</span></f:if>
-                        <f:form.select name="status" value="{status}" class="form-control" additionalAttributes="{onchange: 'document.getElementById(\'filter-form\').submit();'}">
-                            <f:for each="{eventStatusOptions}" as="optionLabel" key="optionValue">
-                                <f:if condition="{optionValue} === {status}">
-                                    <f:then>
-                                        <f:form.select.option value="{optionValue}" selected="selected">{optionLabel}</f:form.select.option>
-                                    </f:then>
-                                    <f:else>
-                                        <f:form.select.option value="{optionValue}">{optionLabel}</f:form.select.option>
-                                    </f:else>
-                                </f:if>
-                            </f:for>
-                        </f:form.select>
-                    </label>
-                    and
-                    <f:form.textfield name="search" type="search" class="filter-search form-control" placeholder="Search" value="{search}"/>
+  <div class="row-fluid"
+       style="display: flex; flex-direction: row; justify-content: space-between; flex-wrap: wrap; gap: 6px;">
+    <div style="flex: 1 1 auto;">
+      <f:link.action action="sync" class="btn btn-success"
+                     title="Sync, but do not execute, new events from PIM">
+        <core:icon identifier="actions-refresh"
+                   alternativeMarkupIdentifier="inline"/>
+        Sync new events
+      </f:link.action>
+      <strong>Events, {status}: </strong>
+      <span> {events -> f:count()}</span>
+    </div>
+    <f:form action="index" addQueryString="1" class="form form-inline" id="filter-form"
+            style="display: flex; flex-direction: column; gap: 6px;">
+      <fieldset class="filter form-group pull-right"
+                style="display: flex; align-items: center; gap: 4px;">
+        <f:form.textfield name="objectId" type="search" class="filter-search form-control"
+                          placeholder="Object UUID" value="{objectId}"/>
+        <f:if condition="!{objectId}">
+          or
+          <label>
+            <f:form.select name="status" value="{status}" class="form-control"
+                           additionalAttributes="{onchange: 'document.getElementById(\'filter-form\').submit();'}">
+              <f:for each="{eventStatusOptions}" as="optionLabel" key="optionValue">
+                <f:if condition="{optionValue} === {status}">
+                  <f:then>
+                    <f:form.select.option value="{optionValue}" selected="selected">{optionLabel}
+                    </f:form.select.option>
+                  </f:then>
+                  <f:else>
+                    <f:form.select.option value="{optionValue}">{optionLabel}
+                    </f:form.select.option>
+                  </f:else>
                 </f:if>
-                <f:form.submit value="Show" class="btn btn-primary" />
-                <f:link.action action="index" class="btn btn-warning">Reset</f:link.action>
-            </fieldset>
-        </f:form>
+              </f:for>
+            </f:form.select>
+          </label>
+          and
+          <f:form.textfield name="search" type="search" class="filter-search form-control"
+                            placeholder="Search" value="{search}"/>
+        </f:if>
+        <f:form.submit value="Show" class="btn btn-primary"/>
+        <f:link.action action="index" class="btn btn-warning">Reset</f:link.action>
+      </fieldset>
+      <label>
+        <f:if condition="{searchWidened}"><span class="text-danger">expanded to <code>{f:if(condition: status, then: status, else: 'all')}</code>, no results found for your request!</span>
+        </f:if>
+      </label>
+    </f:form>
+  </div>
 
-        <f:link.action action="sync" class="btn btn-success" title="Sync, but do not execute, new events from PIM">
-            <core:icon identifier="actions-refresh"
-                       alternativeMarkupIdentifier="inline"/>
-            Sync new events
-        </f:link.action>
-
-        <strong>Events, {status}: </strong> {events -> f:count()}
+  <div class="headerRow ui-helper-clearfix">
+    <div class="typo3-extensionmanager-headerRowLeft">
     </div>
-
-    <div class="headerRow ui-helper-clearfix">
-        <div class="typo3-extensionmanager-headerRowLeft">
-        </div>
-        <div class="typo3-extensionmanager-headerRowRight">
-        </div>
+    <div class="typo3-extensionmanager-headerRowRight">
     </div>
+  </div>
 
-    <f:render partial="Events" arguments="{_all}" />
+  <f:render partial="Events" arguments="{_all}"/>
 </f:section>
+</html>

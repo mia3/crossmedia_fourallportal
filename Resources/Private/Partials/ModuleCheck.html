@@ -1,57 +1,64 @@
-<html xmlns:core="http://typo3.org/ns/TYPO3/CMS/Core/ViewHelpers"
-      xmlns:fourallportal="http://typo3.org/ns/Crossmedia/Fourallportal/ViewHelpers">
+<html xmlns:f="http://typo3.org/ns/TYPO3/CMS/Core/ViewHelpers"
+      xmlns:fourallportal="http://typo3.org/ns/Crossmedia/Fourallportal/ViewHelpers"
+      data-namespace-typo3-fluid="true"
+      lang="en">
 
-<f:variable name="verifyRelations" value="{verifyRelations -> f:or(alternative: 1)}" />
+<f:variable name="verifyRelations" value="{verifyRelations -> f:or(alternative: 1)}"/>
 
 <f:if condition="{module}">
-    <h4>Fields</h4>
-    <p>
-        Field inspection based on field presence in <code>fieldsToLoad</code> array of connector configuration
-        of connector <code>{module.connectorName}</code>.
-    </p>
-    <table class="table table-bordered table-striped table-hover">
-        <thead>
-        <th>Field</th>
-        <th>Config</th>
-        <th>Relations</th>
-        <th>Status</th>
-        </thead>
-        <f:for each="{module.connectorConfiguration.fieldsToLoad}" as="fieldConfig" key="field">
-            <tr>
-                <td>{field}</td>
-                <td>{fieldConfig.type}</td>
-                <td>
-                    <fourallportal:relatedModule module="{module}" field="{field}" response="{response}" verifyRelations="{verifyRelations}">
-                        <h5 class="text-success">Related module: {relatedModule.moduleName}</h5>
-                        <f:if condition="{relations}">
-                            <f:else>
-                                There are no relations - field value: <code>{fieldValueDump -> f:format.raw()}</code>
-                            </f:else>
-                            <f:then>
-                                <ol>
-                                    <f:for each="{relations}" as="relation">
-                                        <li>
-                                            <f:if condition="{verifyRelations}">
-                                                <f:then>
-                                                    <f:link.action action="module" arguments="{module: relatedModule.uid, uuid: relation.id}">{relation.id}</f:link.action>
-                                                </f:then>
-                                                <f:else>
-                                                    {relation}
-                                                </f:else>
-                                            </f:if>
-                                        </li>
-                                    </f:for>
-                                </ol>
-                            </f:then>
-                        </f:if>
-                    </fourallportal:relatedModule>
-                </td>
-                <td>
-                    <fourallportal:propertyCheck module="{module}" field="{field}" response="{response}" />
-                </td>
-            </tr>
-        </f:for>
-    </table>
+  <h4>Fields</h4>
+  <p>
+    Field inspection based on field presence in <code>fieldsToLoad</code> array of connector
+    configuration
+    of connector <code>{module.connectorName}</code>.
+  </p>
+  <table class="table table-bordered table-striped table-hover">
+    <thead>
+    <th>Field</th>
+    <th>Config</th>
+    <th>Relations</th>
+    <th>Status</th>
+    </thead>
+    <f:for each="{module.connectorConfiguration.fieldsToLoad}" as="fieldConfig" key="field">
+      <tr>
+        <td>{field}</td>
+        <td>{fieldConfig.type}</td>
+        <td>
+          <fourallportal:relatedModule module="{module}" field="{field}" response="{response}"
+                                       verifyRelations="{verifyRelations}">
+            <h5 class="text-success">Related module: {relatedModule.moduleName}</h5>
+            <f:if condition="{relations}">
+              <f:else>
+                There are no relations - field value: <code>{fieldValueDump -> f:format.raw()}</code>
+              </f:else>
+              <f:then>
+                <ol>
+                  <f:for each="{relations}" as="relation">
+                    <li>
+                      <f:if condition="{verifyRelations}">
+                        <f:then>
+                          <f:link.action action="module"
+                                         arguments="{module: relatedModule.uid, uuid: relation.id}">
+                            {relation.id}
+                          </f:link.action>
+                        </f:then>
+                        <f:else>
+                          {relation}
+                        </f:else>
+                      </f:if>
+                    </li>
+                  </f:for>
+                </ol>
+              </f:then>
+            </f:if>
+          </fourallportal:relatedModule>
+        </td>
+        <td>
+          <fourallportal:propertyCheck module="{module}" field="{field}" response="{response}"/>
+        </td>
+      </tr>
+    </f:for>
+  </table>
 </f:if>
 
 </html>

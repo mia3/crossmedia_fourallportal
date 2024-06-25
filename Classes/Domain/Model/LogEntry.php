@@ -1,47 +1,40 @@
 <?php
-namespace Crossmedia\Fourallportal\Domain\Model;
 
-use TYPO3\CMS\Core\Utility\GeneralUtility;
+namespace Crossmedia\Fourallportal\Domain\Model;
 
 class LogEntry
 {
-    protected $date = '';
-    protected $severity = 0;
-    protected $message = '';
+  protected string $date = '';
+  protected int $severity = 0; // INFO
+  protected string $message = '';
 
-    public function __construct(string $date, int $severity, string $message)
-    {
-        $this->date = $date;
-        $this->severity = $severity;
-        $this->message = $message;
-    }
+  public function __construct(string $date, int $severity, string $message)
+  {
+    $this->date = $date;
+    $this->severity = $severity;
+    $this->message = $message;
+  }
 
-    public function getDate(): string
-    {
-        return $this->date;
-    }
+  public function getDate(): string
+  {
+    return $this->date;
+  }
 
-    public function getSeverity(): int
-    {
-        return $this->severity;
-    }
+  public function getSeverity(): int
+  {
+    return $this->severity;
+  }
 
-    public function getMessage(): string
-    {
-        return $this->message;
-    }
+  public function getMessage(): string
+  {
+    return $this->message;
+  }
 
-    public function getSeverityClassName(): string
-    {
-        switch ($this->severity) {
-            case GeneralUtility::SYSLOG_SEVERITY_FATAL:
-            case GeneralUtility::SYSLOG_SEVERITY_WARNING:
-            case GeneralUtility::SYSLOG_SEVERITY_ERROR:
-                $className = 'danger';
-                break;
-            default:
-                $className = 'default';
-        }
-        return $className;
-    }
+  public function getSeverityClassName(): string
+  {
+    return match ($this->severity) {
+      4, 3, 2 => 'danger',
+      default => 'default',
+    };
+  }
 }

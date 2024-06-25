@@ -1,5 +1,8 @@
 <?php
+
 namespace Crossmedia\Fourallportal\Domain\Repository;
+
+use TYPO3\CMS\Extbase\Persistence\Repository;
 
 /***
  *
@@ -15,18 +18,18 @@ namespace Crossmedia\Fourallportal\Domain\Repository;
 /**
  * The repository for Modules
  */
-class ModuleRepository extends \TYPO3\CMS\Extbase\Persistence\Repository
+class ModuleRepository extends Repository
 {
-    public function findOneByMappingClass($mappingClass)
-    {
-        static $modulesByMappingClass = [];
-        if (empty($modulesByMappingClass)) {
-            $query = $this->createQuery();
-            $query->equals('server.active', 1);
-            foreach ($query->execute() as $module) {
-                $modulesByMappingClass[$module->getMappingClass()] = $module;
-            }
-        }
-        return $modulesByMappingClass[$mappingClass] ?? null;
+  public function findOneByMappingClass($mappingClass)
+  {
+    static $modulesByMappingClass = [];
+    if (empty($modulesByMappingClass)) {
+      $query = $this->createQuery();
+      $query->equals('server.active', 1);
+      foreach ($query->execute() as $module) {
+        $modulesByMappingClass[$module->getMappingClass()] = $module;
+      }
     }
+    return $modulesByMappingClass[$mappingClass] ?? null;
+  }
 }

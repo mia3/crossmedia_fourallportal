@@ -1,4 +1,5 @@
 <?php
+
 namespace Crossmedia\Fourallportal\ViewHelpers;
 
 /*
@@ -25,20 +26,20 @@ class PropertyCheckViewHelper extends AbstractViewHelper
 
     protected $escapeOutput = false;
 
-    public function initializeArguments()
+    public function initializeArguments(): void
     {
         $this->registerArgument('module', Module::class, 'Module', true);
         $this->registerArgument('response', 'array', 'Response array', true);
         $this->registerArgument('field', 'string', 'Field name', true);
     }
 
-    public static function renderStatic(array $arguments, \Closure $renderChildrenClosure, RenderingContextInterface $renderingContext)
+    public static function renderStatic(array $arguments, \Closure $renderChildrenClosure, RenderingContextInterface $renderingContext): string
     {
         /** @var Module $module */
         $module = $arguments['module'];
         $response = $arguments['response'];
         $field = $arguments['field'];
-        if (!array_key_exists($field, (array) ($response['result'][0]['properties'] ?? []))) {
+        if (!array_key_exists($field, (array)($response['result'][0]['properties'] ?? []))) {
             return '<span class="text-danger"><i class="icon fa fa-exclamation"></i> Not in response!</span>';
         }
 

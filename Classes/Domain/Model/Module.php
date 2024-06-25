@@ -1,4 +1,5 @@
 <?php
+
 namespace Crossmedia\Fourallportal\Domain\Model;
 
 /***
@@ -11,421 +12,240 @@ namespace Crossmedia\Fourallportal\Domain\Model;
  *  (c) 2017 Marc Neuhaus <marc@mia3.com>, MIA3 GmbH & Co. KG
  *
  ***/
+
 use Crossmedia\Fourallportal\Domain\Repository\ModuleRepository;
+use Crossmedia\Fourallportal\Error\ApiException;
 use Crossmedia\Fourallportal\Mapping\MappingInterface;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
-use TYPO3\CMS\Extbase\Object\ObjectManager;
+use TYPO3\CMS\Extbase\DomainObject\AbstractEntity;
+use TYPO3\CMS\Extbase\Persistence\Exception\IllegalObjectTypeException;
+use TYPO3\CMS\Extbase\Persistence\Exception\UnknownObjectException;
 
 /**
  * Module
  */
-class Module extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
+class Module extends AbstractEntity
 {
-    /**
-     * connectorName
-     *
-     * @var string
-     */
-    protected $connectorName = '';
+  protected string $connectorName = '';
+  protected string $moduleName = '';
+  protected string $mappingClass = '';
+  protected string $configHash = '';
+  protected int $lastEventId = 0;
+  protected int $lastReceivedEventId = 0;
+  protected string $shellPath = '';
+  protected int $storagePid = 0;
+  protected int $falStorage = 0;
+  protected string $usageFlag = '';
+  protected string $testObjectUuid = '';
+  protected bool $enableDynamicModel = true;
+  protected ?Server $server = null;
+  protected bool $containsDimensions = true;
 
-    /**
-     * connectorName
-     *
-     * @var string
-     */
-    protected $moduleName = '';
+  public function getConnectorName(): string
+  {
+    return $this->connectorName;
+  }
 
-    /**
-     * mappingClass
-     *
-     * @var string
-     */
-    protected $mappingClass = '';
+  public function setConnectorName(string $connectorName): void
+  {
+    $this->connectorName = $connectorName;
+  }
 
-    /**
-     * configHash
-     *
-     * @var string
-     */
-    protected $configHash = '';
+  public function getModuleName(): string
+  {
+    return $this->moduleName;
+  }
 
-    /**
-     * lastEventId
-     *
-     * @var int
-     */
-    protected $lastEventId = 0;
+  public function setModuleName(string $moduleName): void
+  {
+    $this->moduleName = $moduleName;
+  }
 
-    /**
-     * lastReceivedEventId
-     *
-     * @var int
-     */
-    protected $lastReceivedEventId = 0;
+  public function getConfigHash(): string
+  {
+    return $this->configHash;
+  }
 
-    /**
-     * shellPath
-     *
-     * @var string
-     */
-    protected $shellPath = '';
+  public function setConfigHash(string $configHash): void
+  {
+    $this->configHash = $configHash;
+  }
 
-    /**
-     * storagePid
-     *
-     * @var int
-     */
-    protected $storagePid = 0;
+  public function getLastEventId(): int
+  {
+    return $this->lastEventId;
+  }
 
-    /**
-     * @var int
-     */
-    protected $falStorage = 0;
+  public function setLastEventId(int $lastEventId): void
+  {
+    $this->lastEventId = $lastEventId;
+  }
 
-    /**
-     * @var string
-     */
-    protected $usageFlag = '';
+  public function getLastReceivedEventId(): int
+  {
+    return $this->lastReceivedEventId;
+  }
 
-    /**
-     * @var string
-     */
-    protected $testObjectUuid = '';
+  public function setLastReceivedEventId(int $lastReceivedEventId): void
+  {
+    $this->lastReceivedEventId = $lastReceivedEventId;
+  }
 
-    /**
-     * @var bool
-     */
-    protected $enableDynamicModel = true;
+  public function getServer(): ?Server
+  {
+    return $this->server;
+  }
 
-    /**
-     * server
-     *
-     * @var \Crossmedia\Fourallportal\Domain\Model\Server
-     */
-    protected $server = null;
+  public function setServer(Server $server): void
+  {
+    $this->server = $server;
+  }
 
-    /**
-     * @var bool
-     */
-    protected $containsDimensions = true;
+  public function getShellPath(): string
+  {
+    return $this->shellPath;
+  }
 
-    /**
-     * Returns the connectorName
-     *
-     * @return string $connectorName
-     */
-    public function getConnectorName()
-    {
-        return $this->connectorName;
-    }
+  public function setShellPath(string $shellPath): void
+  {
+    $this->shellPath = $shellPath;
+  }
 
-    /**
-     * Sets the connectorName
-     *
-     * @param string $connectorName
-     * @return void
-     */
-    public function setConnectorName($connectorName)
-    {
-        $this->connectorName = $connectorName;
-    }
+  public function getStoragePid(): int
+  {
+    return $this->storagePid;
+  }
 
-    /**
-     * @return string
-     */
-    public function getModuleName()
-    {
-        return $this->moduleName;
-    }
+  public function setStoragePid(int $storagePid): void
+  {
+    $this->storagePid = $storagePid;
+  }
 
-    /**
-     * @param string $moduleName
-     */
-    public function setModuleName($moduleName)
-    {
-        $this->moduleName = $moduleName;
-    }
+  public function getFalStorage(): int
+  {
+    return $this->falStorage;
+  }
 
-    /**
-     * Returns the configHash
-     *
-     * @return string $configHash
-     */
-    public function getConfigHash()
-    {
-        return $this->configHash;
-    }
+  public function setFalStorage(int $falStorage): void
+  {
+    $this->falStorage = $falStorage;
+  }
 
-    /**
-     * Sets the configHash
-     *
-     * @param string $configHash
-     * @return void
-     */
-    public function setConfigHash($configHash)
-    {
-        $this->configHash = $configHash;
-    }
+  public function getUsageFlag(): string
+  {
+    return $this->usageFlag;
+  }
 
-    /**
-     * Returns the lastEventId
-     *
-     * @return int $lastEventId
-     */
-    public function getLastEventId()
-    {
-        return $this->lastEventId;
-    }
+  public function setUsageFlag(string $usageFlag): void
+  {
+    $this->usageFlag = $usageFlag;
+  }
 
-    /**
-     * Sets the lastEventId
-     *
-     * @param int $lastEventId
-     * @return void
-     */
-    public function setLastEventId($lastEventId)
-    {
-        $this->lastEventId = $lastEventId;
-    }
+  public function getMapper(): MappingInterface
+  {
+    return GeneralUtility::makeInstance($this->getMappingClass());
+  }
 
-    /**
-     * @return int
-     */
-    public function getLastReceivedEventId()
-    {
-        return (int)$this->lastReceivedEventId;
-    }
+  public function getMappingClass(): string
+  {
+    return $this->mappingClass;
+  }
 
-    /**
-     * @param int $lastReceivedEventId
-     */
-    public function setLastReceivedEventId($lastReceivedEventId)
-    {
-        $this->lastReceivedEventId = (int)$lastReceivedEventId;
-    }
+  public function setMappingClass(string $mappingClass): void
+  {
+    $this->mappingClass = $mappingClass;
+  }
 
-    /**
-     * Returns the server
-     *
-     * @return \Crossmedia\Fourallportal\Domain\Model\Server server
-     */
-    public function getServer()
-    {
-        return $this->server;
-    }
+  public function getTestObjectUuid(): string
+  {
+    return $this->testObjectUuid;
+  }
 
-    /**
-     * Sets the server
-     *
-     * @param string $server
-     * @return void
-     */
-    public function setServer($server)
-    {
-        $this->server = $server;
-    }
+  public function setTestObjectUuid(string $testObjectUuid): void
+  {
+    $this->testObjectUuid = $testObjectUuid;
+  }
 
-    /**
-     * Returns the shellPath
-     *
-     * @return string $shellPath
-     */
-    public function getShellPath()
-    {
-        return $this->shellPath;
-    }
+  public function isEnableDynamicModel(): bool
+  {
+    return $this->enableDynamicModel;
+  }
 
-    /**
-     * Sets the shellPath
-     *
-     * @param string $shellPath
-     * @return void
-     */
-    public function setShellPath($shellPath)
-    {
-        $this->shellPath = $shellPath;
-    }
+  public function setEnableDynamicModel(bool $enableDynamicModel): void
+  {
+    $this->enableDynamicModel = $enableDynamicModel;
+  }
 
-    /**
-     * Returns the storagePid
-     *
-     * @return int $storagePid
-     */
-    public function getStoragePid()
-    {
-        return $this->storagePid;
-    }
+  public function isContainsDimensions(): bool
+  {
+    return $this->containsDimensions;
+  }
 
-    /**
-     * Sets the storagePid
-     *
-     * @param int $storagePid
-     * @return void
-     */
-    public function setStoragePid($storagePid)
-    {
-        $this->storagePid = $storagePid;
-    }
+  public function getContainsDimensions(): bool
+  {
+    return $this->containsDimensions;
+  }
 
-    /**
-     * @return int
-     */
-    public function getFalStorage()
-    {
-        return $this->falStorage;
-    }
+  public function setContainsDimensions(bool $containsDimensions): void
+  {
+    $this->containsDimensions = (bool)$containsDimensions;
+  }
 
-    /**
-     * @param int $falStorage
-     */
-    public function setFalStorage($falStorage)
-    {
-        $this->falStorage = $falStorage;
-    }
+  /**
+   * @return array
+   * @throws ApiException
+   */
+  public function getModuleConfiguration(): array
+  {
+//    static $configs = [];
+//    if (!array_key_exists($this->moduleName, $configs)) {
+//      $configs[$this->moduleName] = $this->getServer()->getClient()->getModuleConfig($this->moduleName);
+//    }
+//    return $configs[$this->moduleName];
+    return $this->getServer()->getClient()->getModuleConfig($this->moduleName);
+  }
 
-    /**
-     * @return string
-     */
-    public function getUsageFlag()
-    {
-        return $this->usageFlag;
-    }
+  /**
+   * @return array
+   * @throws ApiException
+   */
+  public function getConnectorConfiguration(): array
+  {
+//    static $configs = [];
+//    if (!array_key_exists($this->connectorName, $configs)) {
+//      $configs[$this->connectorName] = $this->getServer()->getClient()->getConnectorConfig($this->connectorName);
+//    }
+//    return $configs[$this->connectorName];
+    return $this->getServer()->getClient()->getConnectorConfig($this->connectorName);
+  }
 
-    /**
-     * @param string $usageFlag
-     */
-    public function setUsageFlag($usageFlag)
-    {
-        $this->usageFlag = $usageFlag;
-    }
+  /**
+   * @return bool
+   * @throws ApiException
+   */
+  public function verifySchemaVersion(): bool
+  {
+    return $this->configHash === $this->getConnectorConfiguration()['config_hash'];
+  }
 
-    /**
-     * @return MappingInterface
-     */
-    public function getMapper()
-    {
-        return GeneralUtility::makeInstance(ObjectManager::class)->get($this->getMappingClass());
-    }
+  /**
+   * @return void
+   * @throws ApiException
+   * @throws IllegalObjectTypeException
+   * @throws UnknownObjectException
+   */
+  public function pinSchemaVersion(): void
+  {
+    $this->configHash = $this->getConnectorConfiguration()['config_hash'];
+    $this->update();
+  }
 
-    /**
-     * Returns the mappingClass
-     *
-     * @return string mappingClass
-     */
-    public function getMappingClass()
-    {
-        return $this->mappingClass;
-    }
-
-    /**
-     * Sets the mappingClass
-     *
-     * @param string $mappingClass
-     * @return void
-     */
-    public function setMappingClass($mappingClass)
-    {
-        $this->mappingClass = $mappingClass;
-    }
-
-    /**
-     * @return string
-     */
-    public function getTestObjectUuid(): string
-    {
-        return $this->testObjectUuid;
-    }
-
-    /**
-     * @param string $testObjectUuid
-     */
-    public function setTestObjectUuid(string $testObjectUuid)
-    {
-        $this->testObjectUuid = $testObjectUuid;
-    }
-
-    /**
-     * @return bool
-     */
-    public function isEnableDynamicModel()
-    {
-        return $this->enableDynamicModel;
-    }
-
-    /**
-     * @param bool $enableDynamicModel
-     */
-    public function setEnableDynamicModel($enableDynamicModel)
-    {
-        $this->enableDynamicModel = $enableDynamicModel;
-    }
-
-    /**
-     * @return bool
-     */
-    public function isContainsDimensions()
-    {
-        return $this->containsDimensions;
-    }
-
-    /**
-     * @return bool
-     */
-    public function getContainsDimensions()
-    {
-        return $this->containsDimensions;
-    }
-
-    /**
-     * @param bool $containsDimensions
-     */
-    public function setContainsDimensions($containsDimensions)
-    {
-        $this->containsDimensions = (bool)$containsDimensions;
-    }
-
-    /**
-     * @return array
-     */
-    public function getModuleConfiguration()
-    {
-        static $configs = [];
-        if ($configs[$this->moduleName] === null) {
-            $configs[$this->moduleName] = $this->getServer()->getClient()->getModuleConfig($this->moduleName);
-        }
-        return $configs[$this->moduleName];
-    }
-    /**
-     * @return array
-     */
-    public function getConnectorConfiguration()
-    {
-        static $configs = [];
-        if ($configs[$this->connectorName] === null) {
-            $configs[$this->connectorName] = $this->getServer()->getClient()->getConnectorConfig($this->connectorName);
-        }
-        return $configs[$this->connectorName];
-    }
-
-    /**
-     * @return bool
-     */
-    public function verifySchemaVersion()
-    {
-        return $this->configHash === $this->getConnectorConfiguration()['config_hash'];
-    }
-
-    public function pinSchemaVersion()
-    {
-        $this->configHash = $this->getConnectorConfiguration()['config_hash'];
-        $this->update();
-    }
-
-    /**
-     * @return void
-     */
-    public function update()
-    {
-        GeneralUtility::makeInstance(ObjectManager::class)->get(ModuleRepository::class)->update($this);
-    }
+  /**
+   * @throws UnknownObjectException
+   * @throws IllegalObjectTypeException
+   */
+  public function update(): void
+  {
+    GeneralUtility::makeInstance(ModuleRepository::class)->update($this);
+  }
 }

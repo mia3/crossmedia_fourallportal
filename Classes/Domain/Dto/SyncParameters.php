@@ -1,4 +1,5 @@
 <?php
+
 namespace Crossmedia\Fourallportal\Domain\Dto;
 
 /***
@@ -17,17 +18,16 @@ namespace Crossmedia\Fourallportal\Domain\Dto;
  */
 class SyncParameters
 {
-    protected $sync = true;
-    protected $fullSync = false;
-    protected $force = false;
-    protected $execute = true;
-    protected $module = null;
-    protected $exclude = [];
-    protected $timeLimit = 0;
-    protected $eventLimit = 0;
-
-    private $beganTime = 0;
-    private $eventsExecuted = 0;
+    protected bool $sync = true;
+    protected bool $fullSync = false;
+    protected bool $force = false;
+    protected bool $execute = true;
+    protected ?string $module = null;
+    protected array $exclude = [];
+    protected int $timeLimit = 0;
+    protected int $eventLimit = 0;
+    private int $beganTime = 0;
+    private int $eventsExecuted = 0;
 
     public function shouldContinue(): bool
     {
@@ -48,7 +48,7 @@ class SyncParameters
 
     public function countExecutedEvent(): int
     {
-        return ++ $this->eventsExecuted;
+        return ++$this->eventsExecuted;
     }
 
     public function getFullSync(): bool
@@ -116,14 +116,14 @@ class SyncParameters
         if ($exclude === null || $exclude === '') {
             $this->exclude = [];
         } else {
-            $this->exclude = is_array($exclude) ? $exclude : explode(',', (string) $exclude);
+            $this->exclude = is_array($exclude) ? $exclude : explode(',', (string)$exclude);
         }
         return $this;
     }
 
     public function isModuleExcluded(string $moduleName): bool
     {
-        return in_array($moduleName, (array) $this->exclude, true);
+        return in_array($moduleName, (array)$this->exclude, true);
     }
 
     public function excludeModule(string $moduleName): self

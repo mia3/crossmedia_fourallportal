@@ -1,5 +1,8 @@
 <?php
+
 namespace Crossmedia\Fourallportal\Domain\Model;
+
+use TYPO3\CMS\Extbase\DomainObject\AbstractEntity;
 
 /***
  *
@@ -15,255 +18,138 @@ namespace Crossmedia\Fourallportal\Domain\Model;
 /**
  * ComplexType
  */
-class ComplexType extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
+class ComplexType extends AbstractEntity
 {
-    /**
-     * @var string
-     */
-    protected $type;
+    protected string $type;
+    protected string $name;
+    protected string $fieldName;
+    protected string $label;
+    protected string $labelMax;
+    protected string $normalizedValue;
+    protected string $actualValue;
+    protected string $normalizedValueMax;
+    protected string $actualValueMax;
+    protected string $castType;
+    protected int $parentUid;
 
-    /**
-     * @var string
-     */
-    protected $name;
-
-    /**
-     * @var string
-     */
-    protected $fieldName;
-
-    /**
-     * @var string
-     */
-    protected $label;
-
-    /**
-     * @var string
-     */
-    protected $labelMax;
-
-    /**
-     * @var string
-     */
-    protected $normalizedValue;
-
-    /**
-     * @var string
-     */
-    protected $actualValue;
-
-    /**
-     * @var string
-     */
-    protected $normalizedValueMax;
-
-    /**
-     * @var string
-     */
-    protected $actualValueMax;
-
-    /**
-     * @var string
-     */
-    protected $castType;
-
-    /**
-     * @var int
-     */
-    protected $parentUid;
-
-    /**
-     * @return string
-     */
-    public function getType()
+    public function getType(): string
     {
         return $this->type;
     }
 
-    /**
-     * @param string $type
-     */
-    public function setType($type)
+    public function setType($type): void
     {
         $this->type = $type;
     }
 
-    /**
-     * @return string
-     */
-    public function getName()
+    public function getName(): string
     {
         return $this->name;
     }
 
-    /**
-     * @param string $name
-     */
-    public function setName($name)
+    public function setName($name): void
     {
         $this->name = $name;
     }
 
-    /**
-     * @return string
-     */
-    public function getLabel()
+    public function getLabel(): string
     {
         return $this->label;
     }
 
-    /**
-     * @param string $label
-     */
-    public function setLabel($label)
+    public function setLabel($label): void
     {
         $this->label = $label;
     }
 
-    /**
-     * @return string
-     */
     public function getFieldName(): string
     {
         return $this->fieldName;
     }
 
-    /**
-     * @param string $fieldName
-     */
-    public function setFieldName(string $fieldName)
+    public function setFieldName(string $fieldName): void
     {
         $this->fieldName = $fieldName;
     }
 
-    /**
-     * @return mixed
-     */
-    public function getNormalizedValue()
+    public function getNormalizedValue(): mixed
     {
         return $this->castValue($this->normalizedValue, $this->castType);
     }
 
-    /**
-     * @param mixed $normalizedValue
-     */
-    public function setNormalizedValue($normalizedValue)
+    public function setNormalizedValue(mixed $normalizedValue): void
     {
         $this->castType = gettype($normalizedValue);
         $this->normalizedValue = $normalizedValue;
     }
 
-    /**
-     * @return mixed
-     */
-    public function getActualValue()
+    public function getActualValue(): mixed
     {
         return $this->castValue($this->actualValue, $this->castType);
     }
 
-    /**
-     * @param mixed $actualValue
-     */
-    public function setActualValue($actualValue)
+    public function setActualValue(mixed $actualValue): void
     {
         $this->castType = gettype($actualValue);
         $this->actualValue = $actualValue;
     }
 
-    /**
-     * @return string
-     */
     public function getLabelMax(): string
     {
         return $this->labelMax;
     }
 
-    /**
-     * @param string $labelMax
-     */
     public function setLabelMax(string $labelMax): void
     {
         $this->labelMax = $labelMax;
     }
 
-    /**
-     * @return string
-     */
-    public function getNormalizedValueMax()
+    public function getNormalizedValueMax(): string
     {
         return $this->normalizedValueMax;
     }
 
-    /**
-     * @param string $normalizedValueMax
-     */
-    public function setNormalizedValueMax($normalizedValueMax)
+    public function setNormalizedValueMax(string $normalizedValueMax): void
     {
         $this->normalizedValueMax = $normalizedValueMax;
     }
 
-    /**
-     * @return string
-     */
-    public function getActualValueMax()
+    public function getActualValueMax(): string
     {
         return $this->actualValueMax;
     }
 
-    /**
-     * @param string $actualValueMax
-     */
-    public function setActualValueMax($actualValueMax)
+    public function setActualValueMax(string $actualValueMax): void
     {
         $this->actualValueMax = $actualValueMax;
     }
 
-    /**
-     * @return string
-     */
-    public function getCastType()
+    public function getCastType(): string
     {
         return $this->castType;
     }
 
-    /**
-     * @param string $castType
-     */
-    public function setCastType($castType)
+    public function setCastType(string $castType): void
     {
         $this->castType = $castType;
     }
 
-    /**
-     * @return int
-     */
-    public function getParentUid()
+    public function getParentUid(): int
     {
         return $this->parentUid;
     }
 
-    /**
-     * @param int $parentUid
-     */
-    public function setParentUid($parentUid)
+    public function setParentUid(int $parentUid): void
     {
         $this->parentUid = $parentUid;
     }
 
-    /**
-     * @return string
-     */
-    public function __toString()
+    public function __toString(): string
     {
-        return (string) $this->getActualValue();
+        return (string)$this->getActualValue();
     }
 
-    /**
-     * @param mixed $value
-     * @param string $type
-     * @return float|int
-     */
-    protected function castValue($value, $type)
+    protected function castValue(mixed $value, string $type): float|int|string
     {
         settype($value, $type);
         return is_numeric($value) ? $value : 0;

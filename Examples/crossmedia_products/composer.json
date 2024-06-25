@@ -1,0 +1,40 @@
+{
+  "name": "crossmedia/products",
+  "type": "typo3-cms-extension",
+  "description": "4ALLPORTAL example extension",
+  "license": "proprietary",
+  "minimum-stability": "dev",
+  "prefer-stable": true,
+  "require": {
+    "php": "^8.1",
+    "typo3/cms-core": "^12.4",
+    "typo3/cms-backend": "^12.4",
+    "typo3/cms-extbase": "^12.4",
+    "typo3/cms-fluid": "^12.4",
+    "typo3/cms-extensionmanager": "^12.4",
+    "typo3/cms-scheduler": "^12.4",
+    "typo3/cms-filemetadata": "^12.4",
+    "ext-pdo": "*",
+    "ext-curl": "*"
+  },
+  "autoload": {
+    "psr-4": {
+      "Crossmedia\\Products\\": "Classes/"
+    }
+  },
+  "extra": {
+    "typo3/cms": {
+      "extension-key": "fourallportal_products"
+    }
+  },
+  "config": {
+    "bin-dir": ".build/bin",
+    "vendor-dir": ".build/vendor",
+    "optimize-autoloader": true,
+    "sort-packages": true,
+    "allow-plugins": {
+      "typo3/class-alias-loader": true,
+      "typo3/cms-composer-installers": true
+    }
+  }
+}

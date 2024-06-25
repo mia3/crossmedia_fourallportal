@@ -1,5 +1,8 @@
 <?php
+
 namespace Crossmedia\Fourallportal\Domain\Model;
+
+use TYPO3\CMS\Extbase\DomainObject\AbstractEntity;
 
 /***
  *
@@ -11,77 +14,42 @@ namespace Crossmedia\Fourallportal\Domain\Model;
  *  (c) 2017 Marc Neuhaus <marc@mia3.com>, MIA3 GmbH & Co. KG
  *
  ***/
-use Crossmedia\Fourallportal\Domain\Repository\ModuleRepository;
-use Crossmedia\Fourallportal\Mapping\MappingInterface;
-use TYPO3\CMS\Core\Utility\GeneralUtility;
-use TYPO3\CMS\Extbase\Object\ObjectManager;
 
 /**
  * Module
  */
-class Dimension extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
+class Dimension extends AbstractEntity
 {
-    /**
-     * @var string
-     */
-    protected $name = '';
+    protected string $name = '';
+    protected string $value = '';
+    protected ?DimensionMapping $mapping = null;
 
-    /**
-     * @var string
-     */
-    protected $value = '';
-
-    /**
-     * server
-     *
-     * @var \Crossmedia\Fourallportal\Domain\Model\DimensionMapping
-     */
-    protected $mapping = null;
-
-    /**
-     * @return string
-     */
-    public function getName()
+    public function getName(): string
     {
         return $this->name;
     }
 
-    /**
-     * @param string $name
-     */
-    public function setName($name)
+    public function setName(string $name): void
     {
         $this->name = $name;
     }
 
-    /**
-     * @return string
-     */
-    public function getValue()
+    public function getValue(): string
     {
         return $this->value;
     }
 
-    /**
-     * @param string $value
-     */
-    public function setValue($value)
+    public function setValue(string $value): void
     {
         $this->value = $value;
     }
 
-    /**
-     * @return DimensionMapping
-     */
-    public function getMapping()
+    public function getMapping(): ?DimensionMapping
     {
         return $this->mapping;
     }
 
-    /**
-     * @param DimensionMapping $mapping
-     */
-    public function setMapping($mapping)
+    public function setMapping(DimensionMapping $mapping): void
     {
         $this->mapping = $mapping;
     }

@@ -1,12 +1,24 @@
 <?php
+
 namespace Crossmedia\Fourallportal\Controller;
 
 use Crossmedia\Fourallportal\Domain\Model\Module;
+use Crossmedia\Fourallportal\Domain\Model\Server;
+use Crossmedia\Fourallportal\Domain\Repository\EventRepository;
 use Crossmedia\Fourallportal\Domain\Repository\ModuleRepository;
+use Crossmedia\Fourallportal\Domain\Repository\ServerRepository;
 use Crossmedia\Fourallportal\Error\ApiException;
-use Crossmedia\Fourallportal\Service\ApiClient;
-use TYPO3\CMS\Core\Utility\GeneralUtility;
-use TYPO3\CMS\Extbase\Object\ObjectManager;
+use Crossmedia\Fourallportal\Service\LoggingService;
+use Crossmedia\Fourallportal\Utility\ControllerUtility;
+use PHPUnit\Exception;
+use Psr\Http\Message\ResponseInterface;
+use TYPO3\CMS\Backend\Attribute\AsController;
+use TYPO3\CMS\Backend\Template\ModuleTemplateFactory;
+use TYPO3\CMS\Core\Http\HtmlResponse;
+use TYPO3\CMS\Extbase\Mvc\Controller\ActionController;
+use TYPO3\CMS\Extbase\Persistence\Exception\IllegalObjectTypeException;
+use TYPO3\CMS\Extbase\Persistence\Exception\UnknownObjectException;
+use TYPO3\CMS\Extbase\Annotation\IgnoreValidation;
 
 /***
  *
@@ -22,181 +34,214 @@ use TYPO3\CMS\Extbase\Object\ObjectManager;
 /**
  * ServerController
  */
-class ServerController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionController
+#[AsController]
+final class ServerController extends ActionController
 {
-    /**
-     * serverRepository
-     *
-     * @var \Crossmedia\Fourallportal\Domain\Repository\ServerRepository
-     * @inject
-     */
-    protected $serverRepository = null;
 
-    /**
-     * @var \Crossmedia\Fourallportal\Domain\Repository\EventRepository
-     * @inject
-     */
-    protected $eventRepository = null;
+  /**
+   * @param ServerRepository|null $serverRepository
+   * @param EventRepository|null $eventRepository
+   * @param LoggingService|null $loggingService
+   * @param ModuleRepository|null $moduleRepository
+   * @param ModuleTemplateFactory $moduleTemplateFactory
+   */
+  public function __construct(
+    protected ?ServerRepository     $serverRepository,
+    protected ?EventRepository      $eventRepository,
+    protected ?LoggingService       $loggingService,
+    protected ?ModuleRepository     $moduleRepository,
+    protected ModuleTemplateFactory $moduleTemplateFactory)
+  {
+  }
 
-    /**
-     * @var \Crossmedia\Fourallportal\Service\LoggingService
-     * @inject
-     */
-    protected $loggingService = null;
 
-    /**
-     * action index
-     *
-     * @return void
-     */
-    public function indexAction()
-    {
-        $this->view->assign('servers', $this->serverRepository->findAll());
+  /**
+   * action index
+   * @return ResponseInterface
+   */
+  public function indexAction(): ResponseInterface
+  {
+    $view = $this->moduleTemplateFactory->create($this->request);
+    // create header menu
+    ControllerUtility::addMainMenu($this->request, $this->uriBuilder, $view, 'Server');
+    // assign values
+    $view->assign('servers', $this->serverRepository->findAll());
+    return $view->renderResponse('Server/Index');
+  }
+
+  /**
+   * @param Module|null $module
+   * @param string|null $uuid
+   * @return ResponseInterface
+   * @throws ApiException
+   */
+  public function moduleAction(Module $module = null, string $uuid = null): ResponseInterface
+  {
+    // create header menu
+    $view = $this->moduleTemplateFactory->create($this->request);
+    ControllerUtility::addMainMenu($this->request, $this->uriBuilder, $view, 'Server');
+    if ($module) {
+      $response = $module->getServer()->getClient()->getBeans($uuid, $module->getConnectorName());
+      $pretty = json_encode($response, JSON_PRETTY_PRINT);
+      $view->assign('prettyResponse', $pretty);
+      $view->assign('response', $response);
+      $view->assign('uuid', $uuid);
+      $view->assign('module', $module);
+      $view->assign('verifyRelations', true);
     }
+    $view->assign('modules', $this->moduleRepository->findAll());
+//    return new HtmlResponse($view->render());
+    return $view->renderResponse('Server/Module');
 
-    /**
-     * @param Module $module
-     * @param string $uuid
-     */
-    public function moduleAction(Module $module = null, $uuid = null)
-    {
-        if ($module) {
-            $response = $module->getServer()->getClient()->getBeans($uuid, $module->getConnectorName());
-            $pretty = json_encode($response, JSON_PRETTY_PRINT);
-            $this->view->assign('prettyResponse', $pretty);
-            $this->view->assign('response', $response);
-            $this->view->assign('uuid', $uuid);
-            $this->view->assign('module', $module);
-            $this->view->assign('verifyRelations', true);
-        }
-        $this->view->assign('modules', GeneralUtility::makeInstance(ObjectManager::class)->get(ModuleRepository::class)->findAll(true));
-    }
+  }
 
-    /**
-     * action check
-     *
-     * @param \Crossmedia\Fourallportal\Domain\Model\Server $server
-     * @return void
-     */
-    public function checkAction(\Crossmedia\Fourallportal\Domain\Model\Server $server)
-    {
-        $status = [];
-        $client = $server->getClient();
+  /**
+   * action check
+   * @param Server $server
+   * @return ResponseInterface
+   * @throws ApiException
+   * @IgnoreValidation("server")
+   * */
+  public function checkAction(Server $server): ResponseInterface
+  {
+    $status = [
+      'title' => 'login',
+      'class' => 'info',
+      'description' => 'starting progress',
+    ];
+    try {
+      $client = $server->getClient();
+      $sessionId = $client->login();
+      $status[] = [
+        'title' => 'login',
+        'class' => $sessionId ? 'success' : 'danger',
+        'description' => $sessionId ? 'Login Successful. Session ID: ' . $sessionId : 'Login failed',
+      ];
+      foreach ($server->getModules() as $module) {
+//        /** @var Module $module */
         try {
-            $sessionId = $client->login();
-            $status[] = [
-                'title' => 'login',
-                'class' => $sessionId ? 'success' : 'danger',
-                'description' => $sessionId ? 'Login Successful. Session ID: ' . $sessionId : 'Login failed',
-            ];
-            foreach ($server->getModules() as $module) {
-                /** @var Module $module */
-                try {
-                    $config = $client->getConnectorConfig($module->getConnectorName());
-                    $currentConfigurationHash = $module->getConfigHash();
-                    if ($config['config_hash'] !== $currentConfigurationHash) {
-                        $description = '
+          $connectorName = $module->getConnectorName();
+          $config = $client->getConnectorConfig($connectorName);
+          $currentConfigurationHash = $module->getConfigHash();
+
+          $mapper = $module->getMapper();
+          if ($config['config_hash'] !== $currentConfigurationHash) {
+            $description = '
                             <h2 class="text-danger">WARNING</h2>
                             <p>The config hash "' . $config['config_hash'] . '" does not match the persisted config hash
                             "' . $currentConfigurationHash . '" which indicates the PIM schema has changed. To update
                             compatibility you can use the CLI command <code>fourallportal:pinschema</code>.
                         ';
-                    } else {
-                        $description = '
+          } else {
+            $description = '
                             <strong>Module Name:</strong> ' . $config['moduleConfig']['module_name'] . '<br />
                             <strong>Config Hash:</strong> ' . $config['config_hash'] . '<br />
-                            <strong>Entity class:</strong> ' . $module->getMapper()->getEntityClassName() . '<br />
+                            <strong>Entity class:</strong> ' . ($mapper !== null) ? $module->getMapper()->getEntityClassName() : 'not found!' . '<br />
                             <strong>Test object UUID:</strong> ' . $module->getTestObjectUuid() . '<br />
                         ';
-                    }
+          }
 
-                    $moduleStatus = [
-                        'title' => 'connector: ' . $module->getConnectorName(),
-                        'description' => $description,
-                    ];
+          $moduleStatus = [
+            'title' => 'connector: ' . $connectorName,
+            'description' => $description,
+          ];
 
-                    $mappingClass = $module->getMappingClass();
-                    $mapping = new $mappingClass();
-                    $moduleStatus = $mapping->check($client, $module, $moduleStatus);
-                    $status[] = $moduleStatus;
-                } catch (ApiException $exception) {
-                    $status[] = [
-                        'title' => 'connector: ' . $module->getConnectorName(),
-                        'class' => 'danger',
-                        'description' => $exception->getMessage(),
-                    ];
-                }
-            }
+          $mappingClass = $module->getMappingClass();
+          $mapping = new $mappingClass();
+          $moduleStatus = $mapping->check($client, $module, $moduleStatus);
+          $status[] = $moduleStatus;
         } catch (ApiException $exception) {
-            $status[] = [
-                'title' => 'login',
-                'class' => 'danger',
-                'description' => 'Login failed (' . $exception->getMessage() . ')',
-            ];
+          $status[] = [
+            'title' => 'connector: ' . $module->getConnectorName(),
+            'class' => 'danger',
+            'description' => $exception->getMessage(),
+          ];
         }
-        $this->view->assign('connectionLog', $this->loggingService->getConnectionActivity(200));
-        $this->view->assign('errorLog', $this->loggingService->getErrorActivity(200));
-        $this->view->assign('status', $status);
-        $this->view->assign('server', $server);
+      }
+    } catch (\Exception $exception) {
+      $status[] = [
+        'title' => 'login',
+        'class' => 'danger',
+        'description' => 'Login failed (' . $exception->getMessage() . ')',
+      ];
+    }
+    $view = $this->moduleTemplateFactory->create($this->request);
+    // create header menu
+    ControllerUtility::addMainMenu($this->request, $this->uriBuilder, $view, 'Server');
+    // assign values
+    $view->assign('servers', $this->serverRepository->findAll());
+    $view->assign('connectionLog', $this->loggingService->getConnectionActivity(200));
+    $view->assign('errorLog', $this->loggingService->getErrorActivity(200));
+    $view->assign('status', $status);
+    $view->assign('server', $server);
+    return $view->renderResponse('Server/Check');
+  }
+
+  /**
+   * action disable
+   *
+   * @param Server $server
+   * @return ResponseInterface
+   * @throws IllegalObjectTypeException
+   * @throws UnknownObjectException
+   */
+  public function disableAction(Server $server): ResponseInterface
+  {
+    $server->setActive(false);
+    $this->serverRepository->update($server);
+    return $this->redirect('index');
+  }
+
+  /**
+   * action enable
+   *
+   * @param Server $server
+   * @return ResponseInterface
+   * @throws IllegalObjectTypeException
+   * @throws UnknownObjectException
+   */
+  public function enableAction(Server $server): ResponseInterface
+  {
+    foreach ($this->serverRepository->findAll() as $persistedServer) {
+      $persistedServer->setActive($server === $persistedServer);
+      $this->serverRepository->update($persistedServer);
     }
 
-    /**
-     * action disable
-     *
-     * @param \Crossmedia\Fourallportal\Domain\Model\Server $server
-     * @return void
-     */
-    public function disableAction(\Crossmedia\Fourallportal\Domain\Model\Server $server)
-    {
-        $server->setActive(false);
-        $this->serverRepository->update($server);
-        $this->redirect('index');
-    }
+    return $this->redirect('index');
+  }
 
-    /**
-     * action enable
-     *
-     * @param \Crossmedia\Fourallportal\Domain\Model\Server $server
-     * @return void
-     */
-    public function enableAction(\Crossmedia\Fourallportal\Domain\Model\Server $server)
-    {
-        foreach ($this->serverRepository->findAll() as $persistedServer) {
-            $persistedServer->setActive($server === $persistedServer);
-            $this->serverRepository->update($persistedServer);
-        }
+  /**
+   * action delete
+   *
+   * @param Server $server
+   * @return ResponseInterface
+   * @throws IllegalObjectTypeException
+   */
+  public function deleteAction(Server $server): ResponseInterface
+  {
+    $this->serverRepository->remove($server);
+    return $this->redirect('index');
+  }
 
-        $this->redirect('index');
+  /**
+   * action restartSynchronisation
+   *
+   * @param Server $server
+   * @return ResponseInterface
+   * @throws IllegalObjectTypeException
+   * @throws UnknownObjectException
+   */
+  public function restartSynchronisationAction(Server $server): ResponseInterface
+  {
+    foreach ($server->getModules() as $module) {
+      $module->setLastEventId(0);
+      $events = $this->eventRepository->findByModule($module);
+      foreach ($events as $event) {
+        $this->eventRepository->remove($event);
+      }
     }
+    $this->serverRepository->update($server);
+    return $this->redirect('index');
+  }
 
-    /**
-     * action delete
-     *
-     * @param \Crossmedia\Fourallportal\Domain\Model\Server $server
-     * @return void
-     */
-    public function deleteAction(\Crossmedia\Fourallportal\Domain\Model\Server $server)
-    {
-        $this->serverRepository->remove($server);
-        $this->redirect('index');
-    }
-
-    /**
-     * action restartSynchronisation
-     *
-     * @param \Crossmedia\Fourallportal\Domain\Model\Server $server
-     * @return void
-     */
-    public function restartSynchronisationAction(\Crossmedia\Fourallportal\Domain\Model\Server $server)
-    {
-        foreach ($server->getModules() as $module) {
-            $module->setLastEventId(0);
-            $events = $this->eventRepository->findByModule($module);
-            foreach ($events as $event) {
-                $this->eventRepository->remove($event);
-            }
-        }
-        $this->serverRepository->update($server);
-        $this->redirect('index');
-    }
 }

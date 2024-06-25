@@ -11,22 +11,27 @@
  ***************************************************************/
 
 $EM_CONF[$_EXTKEY] = [
-    'title' => '4AllPortal Connector',
-    'description' => '',
-    'category' => 'be',
-    'author' => 'Marc Neuhaus',
-    'author_email' => 'marc@mia3.com',
-    'state' => 'alpha',
-    'internal' => '',
-    'uploadfolder' => '0',
-    'createDirs' => '',
-    'clearCacheOnLoad' => 0,
-    'version' => '5.0.10',
-    'constraints' => [
-        'depends' => [
-            'typo3' => '8.6.0-8.7.99',
-        ],
-        'conflicts' => [],
-        'suggests' => [],
+  'title' => '4AllPortal Connector',
+  'description' => '',
+  'category' => 'be',
+  'version' => '6.0.0-dev',
+  'author' => 'Eyad Abdullah',
+  'author_email' => 'e.abdullah@4allportal.com',
+  'state' => 'alpha',
+  'internal' => '',
+  'uploadfolder' => '0',
+  'createDirs' => '',
+  'clearCacheOnLoad' => 0,
+  'constraints' => [
+    'depends' => [
+      'typo3' => '12.3.0-12.4.99',
     ],
+    'conflicts' => [],
+    'suggests' => [],
+  ],
+  'autoload' => [
+    'psr-4' => [
+      'Crossmedia\\Fourallportal\\' => 'Classes',
+    ],
+  ],
 ];

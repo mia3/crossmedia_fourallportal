@@ -1,36 +1,67 @@
 {
-    "name": "crossmedia/fourallportal",
-    "type": "typo3-cms-extension",
-    "description": "",
-    "authors": [
-        {
-            "name": "Marc Neuhaus",
-            "role": "Developer"
-        }
-    ],
-    "require": {
-        "typo3/cms-core": ">=7.6.0 <=8.7.99",
-        "typo3/cms-backend": ">=7.6.0 <=8.7.99",
-        "typo3/cms-extbase": ">=7.6.0 <=8.7.99",
-        "typo3/cms-fluid": ">=7.6.0 <=8.7.99",
-        "typo3/cms-filemetadata": "*"
+  "name": "crossmedia/fourallportal",
+  "type": "typo3-cms-extension",
+  "description": "The Official 4ALLPORTAL Package",
+  "authors": [
+    {
+      "name": "Marc Neuhaus",
+      "role": "Developer"
     },
-    "require-dev": {
-        "phpunit/phpunit": "^5.0"
-    },
-    "autoload": {
-        "psr-4": {
-            "Crossmedia\\Fourallportal\\": "Classes/"
-        }
-    },
-    "autoload-dev": {
-        "psr-4": {
-            "Crossmedia\\Fourallportal\\Tests\\": "Tests/"
-        }
-    },
-    "extra": {
-        "typo3/cms": {
-            "extension-key": "fourallportal"
-        }
+    {
+      "name": "Eyad Abdullah",
+      "role": "Developer",
+      "email": "e.abdullah@4allportal.com",
+      "homepage": "https://4allportal.com/"
     }
+  ],
+  "minimum-stability": "dev",
+  "prefer-stable": true,
+  "require": {
+    "php": "^8.1",
+    "typo3/cms-core": "^12.4",
+    "typo3/cms-backend": "^12.4",
+    "typo3/cms-extbase": "^12.4",
+    "typo3/cms-fluid": "^12.4",
+    "typo3/cms-extensionmanager": "^12.4",
+    "typo3/cms-scheduler": "^12.4",
+    "typo3/cms-filemetadata": "^12.4",
+    "ext-pdo": "*",
+    "ext-curl": "*"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^8.5"
+  },
+  "autoload": {
+    "psr-4": {
+      "Crossmedia\\Fourallportal\\": "Classes/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Crossmedia\\Fourallportal\\Tests\\": "Tests/"
+    }
+  },
+  "extra": {
+    "typo3/cms": {
+      "extension-key": "fourallportal"
+    }
+  },
+  "config": {
+    "bin-dir": ".build/bin",
+    "vendor-dir": ".build/vendor",
+    "optimize-autoloader": true,
+    "sort-packages": true,
+    "allow-plugins": {
+      "typo3/class-alias-loader": true,
+      "typo3/cms-composer-installers": true
+    }
+  },
+  "scripts": {
+    "install-extension-setup": [
+      "typo3 extension:setup"
+    ],
+    "install-updateschema": [
+      "typo3 database:updateschema"
+    ]
+  }
 }
