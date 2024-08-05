@@ -171,13 +171,11 @@ TEMPLATE;
         }
       }
     }
-    return [
-      array_merge(
-        $sqlString,
-        $schemaFromModules,
-        $staticSchemasFromExtensions
-      )
-    ];
+    return array_merge(
+      $sqlString,
+      $schemaFromModules,
+      $staticSchemasFromExtensions
+    );
   }
 
   /**
