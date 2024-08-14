@@ -318,7 +318,8 @@ abstract class AbstractMapping implements MappingInterface
             $objectId = $object->getRemoteId();
         }
 
-        if ($propertyValue === null && reset((new \ReflectionMethod(get_class($object), 'set' . ucfirst($propertyName)))->getParameters())->allowsNull()) {
+        $params = (new \ReflectionMethod(get_class($object), 'set' . ucfirst($propertyName)))->getParameters();
+        if ($propertyValue === null && reset($params)->allowsNull()) {
             ObjectAccess::setProperty($object, $propertyName, null);
             return false;
         }

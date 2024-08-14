@@ -260,8 +260,6 @@ class FalMapping extends AbstractMapping
         $targetFilename = ($finalFileName ?? $originalFileName) . '.' . ($finalFileExtension ?? $originalFileExtension);
         $targetFilename = $this->sanitizeFileName($targetFilename);
 
-        $tempPathAndFilename = GeneralUtility::tempnam('mamfal', $targetFilename);
-
         $targetFolder = trim($fieldValueReader->readResponseDataField($data['result'][0], 'parent_path', $dimensionMapping) . '/');
         $targetFolder = implode('/', array_map([$this, 'sanitizeFileName'], explode('/', trim($targetFolder, '/')))) . '/';
 
@@ -297,10 +295,12 @@ class FalMapping extends AbstractMapping
         if ($download) {
 //            echo 'Downloading: ' . $targetFolder . $targetFilename . PHP_EOL;
             try {
+                $tempPathAndFilename = GeneralUtility::tempnam('mamfal', $targetFilename);
                 $tempPathAndFilename = $client->saveDerivate($tempPathAndFilename, $event->getObjectId(), $event->getModule()->getUsageFlag());
                 $contents = file_get_contents($tempPathAndFilename);
                 unlink($tempPathAndFilename);
-                $targetFilename = $this->sanitizeFileName(pathinfo($tempPathAndFilename, PATHINFO_BASENAME));
+                $targetFilename = $this->sanitizeFileName(pathinfo($targetFilename, PATHINFO_BASENAME));
+
                 if (count($existingFileRows) > 0) {
                     foreach($existingFileRows as $existingFileRow) {
                         $existingFile = $storage->getFile($existingFileRow['identifier']);
