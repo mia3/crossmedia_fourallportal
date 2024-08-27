@@ -424,7 +424,10 @@ class Event extends \TYPO3\CMS\Extbase\DomainObject\AbstractEntity
     public function setProcessing(bool $processing): void
     {
         $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('tx_fourallportal_domain_model_event');
-        $query = $queryBuilder->update('tx_fourallportal_domain_model_event')->set('processing', $processing, \PDO::PARAM_INT)->where($queryBuilder->expr()->eq('uid', $this->uid));
+        $query = $queryBuilder
+            ->update('tx_fourallportal_domain_model_event')
+            ->set('processing', $processing ? 1 : 0)
+            ->where($queryBuilder->expr()->eq('uid', $this->uid));
         $query->execute();
         $this->processing = $processing;
     }

@@ -8,15 +8,8 @@ use Crossmedia\Fourallportal\Service\ApiClient;
 use Crossmedia\Fourallportal\Service\LoggingService;
 use Crossmedia\Fourallportal\TypeConverter\PimBasedTypeConverterInterface;
 use Crossmedia\Fourallportal\ValueReader\ResponseDataFieldValueReader;
-use Psr\Log\LoggerInterface;
 use TYPO3\CMS\Core\Database\ConnectionPool;
-use TYPO3\CMS\Core\Log\Exception;
-use TYPO3\CMS\Core\Log\Logger;
-use TYPO3\CMS\Core\Log\LogLevel;
-use TYPO3\CMS\Core\Log\LogManager;
-use TYPO3\CMS\Core\Log\Writer\FileWriter;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
-use TYPO3\CMS\Extbase\Domain\Model\FileReference;
 use TYPO3\CMS\Extbase\DomainObject\AbstractEntity;
 use TYPO3\CMS\Extbase\DomainObject\DomainObjectInterface;
 use TYPO3\CMS\Extbase\Object\ObjectManager;
@@ -318,8 +311,14 @@ abstract class AbstractMapping implements MappingInterface
             $objectId = $object->getRemoteId();
         }
 
-        if ($propertyValue === null && reset((new \ReflectionMethod(get_class($object), 'set' . ucfirst($propertyName)))->getParameters())->allowsNull()) {
-            ObjectAccess::setProperty($object, $propertyName, null);
+        try {
+            $params = (new \ReflectionMethod(get_class($object), 'set' . ucfirst($propertyName)))->getParameters();
+            if (!empty($params) && $propertyValue === null && $params[0]->allowsNull()) {
+                ObjectAccess::setProperty($object, $propertyName, null);
+                return false;
+            }
+        } catch (\ReflectionException $e) {
+            $this->loggingService->logObjectActivity($objectId, $e->getMessage(), GeneralUtility::SYSLOG_SEVERITY_ERROR);
             return false;
         }
         $configuration = new PropertyMappingConfiguration();
@@ -408,14 +407,20 @@ abstract class AbstractMapping implements MappingInterface
                     }
                 }
             }
-        } elseif ($propertyValue === null && !reset((new \ReflectionMethod(get_class($object), 'set' . ucfirst($propertyName)))->getParameters())->allowsNull()) {
-            $message = sprintf(
-                'Property "%s" on object "%s->%s" does not allow NULL as value, but NULL was resolved. Please verify PIM response data consistency!',
-                $propertyName,
-                get_class($object),
-                method_exists($object, 'getRemoteId') ? $object->getRemoteId() : $object->getUid()
-            );
-            $this->loggingService->logObjectActivity($objectId, $message, GeneralUtility::SYSLOG_SEVERITY_FATAL);
+        } elseif ($propertyValue === null) {
+            try {
+                $parameters = (new \ReflectionMethod(get_class($object), 'set' . ucfirst($propertyName)))->getParameters();
+            } catch (\ReflectionException $e) {
+            }
+            if (!empty($parameters) && !$parameters[0]->allowsNull()) {
+                $message = sprintf(
+                    'Property "%s" on object "%s->%s" does not allow NULL as value, but NULL was resolved. Please verify PIM response data consistency!',
+                    $propertyName,
+                    get_class($object),
+                    method_exists($object, 'getRemoteId') ? $object->getRemoteId() : $object->getUid()
+                );
+                $this->loggingService->logObjectActivity($objectId, $message, GeneralUtility::SYSLOG_SEVERITY_FATAL);
+            }
             return false;
         }
 
@@ -714,8 +719,8 @@ abstract class AbstractMapping implements MappingInterface
             ->setIgnoreEnableFields(true)
             ->setRespectStoragePage(false)
             ->setLanguageUid($systemLanguage);
-            //->setLanguageMode('strict')
-            //->setLanguageOverlayMode('hideNonTranslated');
+        //->setLanguageMode('strict')
+        //->setLanguageOverlayMode('hideNonTranslated');
 
         $createdObject = $query->matching($query->equals('remote_id', $event->getObjectId()))->execute()->getFirst();
         if (!$createdObject) {
