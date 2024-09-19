@@ -28,7 +28,7 @@ class FileReferenceTypeConverter extends AbstractUuidAwareObjectTypeConverter im
 
   protected FileRepository|null $fileRepository = null;
 
-  public function injectLoggingService(DataMapFactory $dataMapFactory): void
+  public function injectDataMapFactory(DataMapFactory $dataMapFactory): void
   {
     $this->dataMapFactory = $dataMapFactory;
   }
