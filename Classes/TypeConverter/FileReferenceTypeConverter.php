@@ -3,7 +3,6 @@
 namespace Crossmedia\Fourallportal\TypeConverter;
 
 use Crossmedia\Fourallportal\Mapping\DeferralException;
-use Crossmedia\Fourallportal\Service\LoggingService;
 use Doctrine\DBAL\Exception;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Database\Query\Restriction\DeletedRestriction;
@@ -11,6 +10,7 @@ use TYPO3\CMS\Core\Resource\FileRepository;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Domain\Model\FileReference;
 use TYPO3\CMS\Extbase\DomainObject\AbstractEntity;
+use TYPO3\CMS\Extbase\Persistence\Generic\Mapper\DataMapFactory;
 use TYPO3\CMS\Extbase\Persistence\RepositoryInterface;
 use TYPO3\CMS\Extbase\Property\Exception\InvalidSourceException;
 use TYPO3\CMS\Extbase\Property\Exception\TargetNotFoundException;
@@ -24,11 +24,11 @@ class FileReferenceTypeConverter extends AbstractUuidAwareObjectTypeConverter im
   protected $sourceTypes = [
     'string'
   ];
-  protected LoggingService|null $dataMapFactory = null;
+  protected DataMapFactory|null $dataMapFactory = null;
 
   protected FileRepository|null $fileRepository = null;
 
-  public function injectLoggingService(LoggingService $dataMapFactory): void
+  public function injectLoggingService(DataMapFactory $dataMapFactory): void
   {
     $this->dataMapFactory = $dataMapFactory;
   }
@@ -86,7 +86,7 @@ class FileReferenceTypeConverter extends AbstractUuidAwareObjectTypeConverter im
         $systemLanguageUid
       )
     )->setMaxResults(1);
-    $references = $query->execute()->fetchAll();
+    $references = $query->executeQuery()->fetchAllNumeric();
     if (isset($references[0]['uid'])) {
       return $this->fetchObjectFromPersistence((int)$references[0]['uid'], $targetType);
     }
@@ -99,8 +99,8 @@ class FileReferenceTypeConverter extends AbstractUuidAwareObjectTypeConverter im
     $original = $queryBuilder->select('f.uid')->from('sys_file', 'f')
       ->where($queryBuilder->expr()->eq('f.remote_id', $queryBuilder->quote($source)))
       ->setMaxResults(1)
-      ->execute()
-      ->fetchAll();
+      ->executeQuery()
+      ->fetchAllNumeric();
     if (!isset($original[0]['uid'])) {
       $parentObjectId = method_exists($this->parentObject, 'getRemoteId') ? $this->parentObject->getRemoteId() : $this->parentObject->getUid();
       throw new DeferralException(
@@ -115,7 +115,6 @@ class FileReferenceTypeConverter extends AbstractUuidAwareObjectTypeConverter im
     $referenceProperties = [
       //'pid' => $this->parentObject->getPid(),
       'tablenames' => $dataMap->getTableName(),
-      'table_local' => 'sys_file',
       'fieldname' => $fieldName,
       'uid_local' => $original[0]['uid'],
       'uid_foreign' => $this->parentObject->getUid(),
