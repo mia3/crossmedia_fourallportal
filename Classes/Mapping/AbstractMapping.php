@@ -17,6 +17,7 @@ use ReflectionMethod;
 use RuntimeException;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Domain\Repository\PageRepository;
+use TYPO3\CMS\Core\Resource\FileInterface;
 use TYPO3\CMS\Core\Resource\StorageRepository;
 use TYPO3\CMS\Core\TypoScript\FrontendTypoScript;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
@@ -291,7 +292,7 @@ abstract class AbstractMapping implements MappingInterface
 
   /**
    * @param array $data
-   * @param AbstractEntity $object
+   * @param AbstractEntity|FileInterface $object
    * @param Module $module
    * @param DimensionMapping|null $dimensionMapping
    * @return bool
@@ -299,7 +300,7 @@ abstract class AbstractMapping implements MappingInterface
    * @throws ReflectionException
    * @throws TypeConverterException
    */
-  protected function mapPropertiesFromDataToObject(array $data, AbstractEntity $object, Module $module, DimensionMapping $dimensionMapping = null): bool
+  protected function mapPropertiesFromDataToObject(array $data, AbstractEntity|FileInterface $object, Module $module, DimensionMapping $dimensionMapping = null): bool
   {
     if (!$data['result']) {
       return true;
@@ -341,14 +342,14 @@ abstract class AbstractMapping implements MappingInterface
   /**
    * @param string $propertyName
    * @param mixed $propertyValue
-   * @param AbstractEntity $object
+   * @param AbstractEntity|FileInterface $object
    * @return bool
    * @throws PropertyNotAccessibleException
    * @throws ReflectionException
    * @throws InvalidSourceException
    * @throws TypeConverterException
    */
-  protected function mapPropertyValueToObject(string $propertyName, mixed $propertyValue, AbstractEntity $object): bool
+  protected function mapPropertyValueToObject(string $propertyName, mixed $propertyValue, AbstractEntity|FileInterface $object): bool
   {
     if (!property_exists(get_class($object), $propertyName)) {
       return false;

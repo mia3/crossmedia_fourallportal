@@ -11,11 +11,11 @@ use Crossmedia\Fourallportal\Service\ApiClient;
 use Crossmedia\Fourallportal\ValueReader\ResponseDataFieldValueReader;
 use DateTime;
 use Doctrine\DBAL\Exception;
-use ReflectionClass;
 use ReflectionException;
 use RuntimeException;
 use TYPO3\CMS\Core\Charset\CharsetConverter;
 use TYPO3\CMS\Core\Database\ConnectionPool;
+use TYPO3\CMS\Core\Resource\Driver\DriverInterface;
 use TYPO3\CMS\Core\Resource\Driver\LocalDriver;
 use TYPO3\CMS\Core\Resource\Exception\ExistingTargetFileNameException;
 use TYPO3\CMS\Core\Resource\Exception\ExistingTargetFolderException;
@@ -28,20 +28,19 @@ use TYPO3\CMS\Core\Resource\File;
 use TYPO3\CMS\Core\Resource\FileInterface;
 use TYPO3\CMS\Core\Resource\FileRepository;
 use TYPO3\CMS\Core\Resource\Index\MetaDataRepository;
+use TYPO3\CMS\Core\Resource\StorageRepository;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Domain\Model\FileReference;
 use TYPO3\CMS\Extbase\DomainObject\AbstractEntity;
 use TYPO3\CMS\Extbase\Property\Exception\InvalidSourceException;
 use TYPO3\CMS\Extbase\Property\Exception\TypeConverterException;
 use TYPO3\CMS\Extbase\Reflection\Exception\PropertyNotAccessibleException;
+use TYPO3\CMS\Extbase\Reflection\ObjectAccess;
 
 class FalMapping extends AbstractMapping
 {
-  /**
-   * @var string
-   */
-  protected string $repositoryClassName = FileRepository::class;
 
+  protected string $repositoryClassName = FileRepository::class;
 
   public function getEntityClassName(): string
   {
@@ -72,32 +71,38 @@ class FalMapping extends AbstractMapping
 
     // We have to do things the hard way, unfortunately. Because someone didn't implement a real Repository but declared the class a Repository anyway. Sigh.
     $queryBuilder = (new ConnectionPool())->getConnectionForTable('sys_file')->createQueryBuilder();
-    $query = $queryBuilder->select('uid')->from('sys_file')->where($queryBuilder->expr()->eq('remote_id', $queryBuilder->quote($objectId)))->setMaxResults(1);
-    $record = $query->executeQuery()->fetchFirstColumn();
-    if ($record) {
-      $object = $repository->findByUid($record['uid']);
-    }
+    $query = $queryBuilder
+      ->select('uid')
+      ->from('sys_file')
+      ->where($queryBuilder->expr()->eq('remote_id', $queryBuilder->quote($objectId)));
 
     $deferAfterProcessing = false;
 
     switch ($event->getEventType()) {
       case 'delete':
-        if (!$object && !$record) {
+        /** @var array $records */
+        $records = $query->executeQuery()->fetchAllNumeric();
+        if (empty($records) || count($records) === 0) {
           // Object is already deleted, return false meaning no deferral after processing.
           return false;
         }
-
-        // Do reference checking because references to sys_file are extremely prone to throwing exceptions if
-        // a file is suddenly removed. The repository does not complain about such cases so we check it here.
-        // Failures (as in: references that block deletion) cause a DeferralException which cases the event to
-        // be continuously retried until it either fails because of TTL, or references are removed.
-        if ($record) {
+        // handle multiple files in the system
+        foreach ($records as $record) {
+          $object = $repository->findByUid($record['uid']);
+          if (!$object || !$record) {
+            // Object is already deleted, return false meaning no deferral after processing.
+            continue;
+          }
+          // Do reference checking because references to sys_file are extremely prone to throwing exceptions if
+          // a file is suddenly removed. The repository does not complain about such cases so we check it here.
+          // Failures (as in: references that block deletion) cause a DeferralException which cases the event to
+          // be continuously retried until it either fails because of TTL, or references are removed.
           $this->performSanityCheckBeforeDeletion($record);
-        }
 
-        if ($object && !$object->isMissing() && !$object->isDeleted()) {
-          $object->delete();
-          $repository->remove($object);
+          if (!$object->isMissing() && !$object->isDeleted()) {
+            $object->delete();
+            $repository->remove($object);
+          }
         }
 
         break;
@@ -216,7 +221,7 @@ class FalMapping extends AbstractMapping
 
   /**
    * @param array $data
-   * @param AbstractEntity $object
+   * @param AbstractEntity|FileInterface $object
    * @param Module $module
    * @param DimensionMapping|null $dimensionMapping
    * @return bool
@@ -225,7 +230,7 @@ class FalMapping extends AbstractMapping
    * @throws InvalidSourceException
    * @throws TypeConverterException
    */
-  protected function mapPropertiesFromDataToObject(array $data, AbstractEntity $object, Module $module, DimensionMapping $dimensionMapping = null): bool
+  protected function mapPropertiesFromDataToObject(array $data, AbstractEntity|FileInterface $object, Module $module, DimensionMapping $dimensionMapping = null): bool
   {
     $deferAfterProcessing = parent::mapPropertiesFromDataToObject($data, $object, $module, $dimensionMapping);
     $metadata = [];
@@ -287,13 +292,13 @@ class FalMapping extends AbstractMapping
     $targetFilename = ($finalFileName ?? $originalFileName) . '.' . ($finalFileExtension ?? $originalFileExtension);
     $targetFilename = $this->sanitizeFileName($targetFilename);
 
-    $tempPathAndFilename = GeneralUtility::tempnam('mamfal', $targetFilename);
-
-    $targetFolder = trim($fieldValueReader->readResponseDataField($data['result'][0], 'parent_path', $dimensionMapping) . 'FalMapping.php/');
-    $targetFolder = implode('/', array_map([$this, 'sanitizeFileName'], explode('/', trim($targetFolder, '/')))) . 'FalMapping.php/';
+    $targetFolder = trim($fieldValueReader->readResponseDataField($data['result'][0], 'parent_path', $dimensionMapping) . '/');
+    $targetFolder = implode('/', array_map([$this, 'sanitizeFileName'], explode('/', trim($targetFolder, '/')))) . '/';
 
     $client = $this->getClientByServer($event->getModule()->getServer());
-    $storage = $this->storageRepository->findByUid($event->getModule()->getFalStorage());
+    /** @var StorageRepository $storageRepo */
+    $storageRepo = GeneralUtility::makeInstance(StorageRepository::class);
+    $storage = $storageRepo->findByUid($event->getModule()->getFalStorage());
     try {
       $folder = $storage->getFolder($targetFolder);
     } catch (FolderDoesNotExistException $error) {
@@ -303,68 +308,90 @@ class FalMapping extends AbstractMapping
 
     $download = !empty($targetFolder . $targetFilename);
     $file = null;
-
-    $queryBuilder = (new ConnectionPool())->getConnectionForTable('sys_file')->createQueryBuilder();
-    $query = $queryBuilder->select('*')
-      ->from('sys_file')
-      ->where('remote_id = :objectId')
-      ->setParameter('objectId', $objectId);
-    $existingFileRows = $query->executeQuery();
+    $repository = GeneralUtility::makeInstance(FileRepository::class);
     if ($folder->hasFile($targetFilename)) {
       /** @var FileInterface $file */
-      $file = reset($this->getObjectRepository()->searchByName($folder, $targetFilename)) ?: null;
+      $file = $storage->getFileInFolder($targetFilename, $folder);
       $remoteModificationTime = (
       new DateTime($fieldValueReader->readResponseDataField($data['result'][0], 'mod_time_img', $dimensionMapping)
         ?? $fieldValueReader->readResponseDataField($data['result'][0], 'mod_time', $dimensionMapping)
-      )
-      )->format('U');
+      ))->format('U');
       $download = $file && $file->getModificationTime() < $remoteModificationTime;
     }
 
+    $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)
+      ->getConnectionForTable('sys_file')->createQueryBuilder();
     if ($download) {
 //            echo 'Downloading: ' . $targetFolder . $targetFilename . PHP_EOL;
       try {
+        $tempPathAndFilename = GeneralUtility::tempnam('mamfal', $targetFilename);
         $tempPathAndFilename = $client->saveDerivate($tempPathAndFilename, $event->getObjectId(), $event->getModule()->getUsageFlag());
         $contents = file_get_contents($tempPathAndFilename);
         unlink($tempPathAndFilename);
-        $targetFilename = $this->sanitizeFileName(pathinfo($tempPathAndFilename, PATHINFO_BASENAME));
-        if ($existingFileRows) {
-          foreach ($existingFileRows as $existingFileRow) {
-            $existingFile = $storage->getFile($existingFileRow['identifier']);
-            $refStorage = new ReflectionClass($storage);
-            $driverProperty = $refStorage->getProperty('driver');
-            // set driver property to public
-            /** @noinspection PhpExpressionResultUnusedInspection */
-            $driverProperty->setAccessible(true);
-            $driver = $driverProperty->getValue($storage);
+        $targetFilename = $this->sanitizeFileName(pathinfo($targetFilename, PATHINFO_BASENAME));
 
-            if (!$existingFile || $existingFileRow['name'] !== $targetFilename || !$driver->fileExists($existingFile->getIdentifier())) {
-              // File is determined to not exist, but exists in database. Remove the record, create file anew.
-              // If this is not done, various permission nonsense is raised by FAL without indication of the
-              // actual error. Any problem ranging from a missing file over file/folder permissions to user
-              // restrictions may be in effect, all of which result in the same error. We target the "file is
-              // missing" case specifically here since that's the case we are likely to encounter when renaming.
-              $queryBuilder->delete('sys_file')->where($queryBuilder->expr()->eq('uid', $existingFileRow['uid']))->execute();
-            } elseif ($existingFileRow['name'] === $targetFilename) {
-              // Note: this case reached only if file physically exists and has the same name, due to check above.
-              $file = $existingFile;
-            }
-          }
-        } else {
+        $query = $queryBuilder->select('*')
+          ->from('sys_file')
+          ->where('remote_id = :objectId')
+          ->setParameter('objectId', $objectId);
+
+        $existingFileRows = $query->executeQuery()->fetchAllNumeric();
+        if (count($existingFileRows) <= 0) {
+          echo ' - no existing file found in DB, creating new file...' . PHP_EOL;
           $file = $folder->createFile($targetFilename);
+        } elseif (count($existingFileRows) > 1) {
+          echo ' - found multiple files with the same \'remote_id\', \'' . count($existingFileRows) . '\' files found' . PHP_EOL;
+        }
+
+        foreach ($existingFileRows as $existingFileRow) {
+          $existingFile = $storage->getFile($existingFileRow['identifier']);
+          /** @var DriverInterface $driver */
+          $driver = ObjectAccess::getProperty($storage, 'driver');
+
+          // make sure to delete the file, if file:
+          // - does not exists physically,
+          // - is already found
+          // - is renamed
+          if ($file ||
+            $existingFileRow['name'] !== $targetFilename ||
+            !$existingFile ||
+            !$driver->fileExists($existingFile->getIdentifier())) {
+            echo ' - file either already found or does not exists physically, cleaning extra file found, uid: ' . $existingFileRow['uid'] . PHP_EOL;
+            // some times the file is not clean deleted, here we make sure its
+            $object = $repository->findByUid($existingFileRow['uid']);
+            if (!$object->isMissing() && !$object->isDeleted()) {
+              $object->delete();
+              $repository->remove($object);
+            }
+            // File is determined to not exist, but exists in database. Remove the record, create file anew.
+            // If this is not done, various permission nonsense is raised by FAL without indication of the
+            // actual error. Any problem ranging from a missing file over file/folder permissions to user
+            // restrictions may be in effect, all of which result in the same error. We target the "file is
+            // missing" case specifically here since that's the case we are likely to encounter when renaming.
+            $queryBuilder->delete('sys_file')
+              ->where($queryBuilder->expr()->eq('uid', $existingFileRow['uid']))
+              ->executeStatement();
+            continue;
+          }
+
+          echo ' - file already exists' . PHP_EOL;
+          $file = $existingFile;
         }
       } catch (ExistingTargetFileNameException $error) {
-        $file = reset($this->getObjectRepository()->searchByName($folder, $targetFilename));
+        $file = $storage->getFileInFolder($targetFilename, $folder);
       } catch (ApiException $error) {
         throw new RuntimeException($error->getMessage(), $error->getCode());
       }
 
       if (!$file) {
+        echo ' - file does not exists, creating new file...' . PHP_EOL;
         $file = $folder->createFile($targetFilename);
       }
 
       $file->setContents($contents);
-      $file->updateProperties(['modification_date' => $remoteModificationTime]);
+      $file->updateProperties([
+        'modification_date' => $remoteModificationTime
+      ]);
     } else {
       //echo 'Skipping: ' . $targetFolder . $targetFilename . PHP_EOL;
     }
@@ -375,10 +402,9 @@ class FalMapping extends AbstractMapping
 
     $query = $queryBuilder->update('sys_file', 'f')
       ->set('f.remote_id', $objectId)
-      ->where($queryBuilder->expr()->eq('f.uid', $file->getUid()))
-      ->setMaxResults(1);
+      ->where($queryBuilder->expr()->eq('f.uid', $file->getUid()));
 
-    if (!is_int($query->execute())) {
+    if (!is_int($query->executeStatement())) {
       throw new RuntimeException('Failed to update remote_id column of sys_file table for file with UID ' . $file->getUid());
     }
 
