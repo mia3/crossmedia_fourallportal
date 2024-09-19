@@ -839,7 +839,6 @@ TEMPLATE;
                     [
                         'fieldname' => 'product_images',
                         'tablenames' => 'tx_syzygyproducts_domain_model_productdetail',
-                        'table_local' => 'sys_file',
                     ],
                 'foreign_label' => 'uid_local',
                 'foreign_selector' => 'uid_local',
@@ -890,8 +889,7 @@ TEMPLATE;
           //'maxitems' => $fieldType  === 'ONE_TO_ONE' ? 1 : 99999,
           'foreign_match_fields' => [
             'fieldname' => $fieldConfiguration['field'],
-            'tablenames' => $currentTableName,
-            'table_local' => 'sys_file',
+            'tablenames' => $currentTableName
           ]
         ]
       );
