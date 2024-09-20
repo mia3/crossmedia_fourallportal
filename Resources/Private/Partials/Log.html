@@ -1,9 +1,33 @@
+
+<f:asset.css identifier="4aplogstyle">
+    .table-log-4ap>tbody>tr>td,
+    .table-log-4ap>tbody>tr>th,
+    .table-log-4ap>tfoot>tr>td,
+    .table-log-4ap>tfoot>tr>th,
+    .table-log-4ap>thead>tr>td,
+    .table-log-4ap>thead>tr>th {
+        padding: 6px;
+        line-height: 1.5;
+        border-top: 1px solid #ccc;
+    }
+    .table-log-4ap>thead>tr>th{
+        background-color: #EDEDED;
+    }
+    .table-log-4ap {
+        border-collapse: collapse;
+        border-spacing: 0px;
+        background: 0 0;
+        font-size: inherit;
+        line-height: inherit;
+    }
+</f:asset.css>
+
 <f:if condition="{log}">
     <f:else>
         <p>No entries logged</p>
     </f:else>
     <f:then>
-        <table class="table table-bordered table-striped table-vertical-top">
+        <table class="table table-bordered table-striped table-vertical-top table-log-4ap">
             <thead>
                 <tr>
                     <td class="col-xs-2"><strong>Date</strong></td>

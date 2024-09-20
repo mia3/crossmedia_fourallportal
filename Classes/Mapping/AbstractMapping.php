@@ -509,10 +509,10 @@ abstract class AbstractMapping implements MappingInterface
   protected function determineDataTypeForProperty($propertyName, $object): bool|string
   {
     if (property_exists(get_class($object), $propertyName)) {
-      $property = new ReflectionService($object, $propertyName);
+      $property = GeneralUtility::makeInstance(ReflectionService::class);
       $classSchema = $property->getClassSchema($object);
       $varTags = $classSchema->getProperty('var');
-      if (!empty($varTags)) {
+      if ($property->getPrimaryType()->isCollection()) {
         return strpos($varTags[0], ' ') !== false ? substr($varTags[0], 0, strpos($varTags[0], ' ')) : $varTags[0];
       }
     }
