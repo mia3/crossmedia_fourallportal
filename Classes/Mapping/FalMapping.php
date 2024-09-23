@@ -8,12 +8,13 @@ use Crossmedia\Fourallportal\Domain\Model\Module;
 use Crossmedia\Fourallportal\Domain\Model\Server;
 use Crossmedia\Fourallportal\Error\ApiException;
 use Crossmedia\Fourallportal\Service\ApiClient;
+use Crossmedia\Fourallportal\Service\LoggingService;
 use Crossmedia\Fourallportal\ValueReader\ResponseDataFieldValueReader;
 use DateTime;
 use Doctrine\DBAL\Exception;
-use ReflectionException;
 use RuntimeException;
 use TYPO3\CMS\Core\Charset\CharsetConverter;
+use TYPO3\CMS\Core\Core\Environment;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Resource\Driver\DriverInterface;
 use TYPO3\CMS\Core\Resource\Driver\LocalDriver;
@@ -32,8 +33,7 @@ use TYPO3\CMS\Core\Resource\StorageRepository;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Domain\Model\FileReference;
 use TYPO3\CMS\Extbase\DomainObject\AbstractEntity;
-use TYPO3\CMS\Extbase\Property\Exception\InvalidSourceException;
-use TYPO3\CMS\Extbase\Property\Exception\TypeConverterException;
+use TYPO3\CMS\Extbase\Persistence\PersistenceManagerInterface;
 use TYPO3\CMS\Extbase\Reflection\Exception\PropertyNotAccessibleException;
 use TYPO3\CMS\Extbase\Reflection\ObjectAccess;
 
@@ -57,10 +57,7 @@ class FalMapping extends AbstractMapping
    * @throws InsufficientFolderReadPermissionsException
    * @throws InsufficientFolderWritePermissionsException
    * @throws InvalidFileNameException
-   * @throws InvalidSourceException
    * @throws PropertyNotAccessibleException
-   * @throws ReflectionException
-   * @throws TypeConverterException
    */
   public function import(array $data, Event $event): bool
   {
@@ -77,6 +74,7 @@ class FalMapping extends AbstractMapping
       ->where($queryBuilder->expr()->eq('remote_id', $queryBuilder->quote($objectId)));
 
     $deferAfterProcessing = false;
+    $logging = $this->loggingService = GeneralUtility::makeInstance(LoggingService::class);
 
     switch ($event->getEventType()) {
       case 'delete':
@@ -88,6 +86,7 @@ class FalMapping extends AbstractMapping
         }
         // handle multiple files in the system
         foreach ($records as $record) {
+          /** @var File $object */
           $object = $repository->findByUid($record['uid']);
           if (!$object || !$record) {
             // Object is already deleted, return false meaning no deferral after processing.
@@ -108,14 +107,24 @@ class FalMapping extends AbstractMapping
         break;
       case 'update':
       case 'create':
+        $message = sprintf("start creating object with id %s", $objectId);
+        $logging->logEventActivity($event, $message);
+
+        /** @var File $object */
         $object = $this->downloadFileAndGetFileObject($objectId, $data, $event);
+        $message = sprintf("object with id %s downloaded successfully", $objectId);
+        $logging->logEventActivity($event, $message);
+
         $deferAfterProcessing = $this->mapPropertiesFromDataToObject($data, $object, $event->getModule());
+
+        $message = sprintf("object with id %s create successfully", $objectId);
+        $logging->logEventActivity($event, $message);
         break;
       default:
         throw new RuntimeException('Unknown event type: ' . $event->getEventType());
     }
 
-    $this->persistenceManager->persistAll();
+    GeneralUtility::makeInstance(PersistenceManagerInterface::class)->persistAll();
 
     if ($object) {
       $this->processRelationships($object, $data, $event);
@@ -221,16 +230,14 @@ class FalMapping extends AbstractMapping
 
   /**
    * @param array $data
-   * @param AbstractEntity|FileInterface $object
+   * @param AbstractEntity|File $object
    * @param Module $module
    * @param DimensionMapping|null $dimensionMapping
    * @return bool
+   * @throws ApiException
    * @throws PropertyNotAccessibleException
-   * @throws ReflectionException
-   * @throws InvalidSourceException
-   * @throws TypeConverterException
    */
-  protected function mapPropertiesFromDataToObject(array $data, AbstractEntity|FileInterface $object, Module $module, DimensionMapping $dimensionMapping = null): bool
+  protected function mapPropertiesFromDataToObject(array $data, AbstractEntity|File $object, Module $module, DimensionMapping $dimensionMapping = null): bool
   {
     $deferAfterProcessing = parent::mapPropertiesFromDataToObject($data, $object, $module, $dimensionMapping);
     $metadata = [];
@@ -512,7 +519,7 @@ class FalMapping extends AbstractMapping
                         </p>
                     ', $ids[0]);
         } else {
-          $publicTempFile = 'typo3/typo3temp/assets/images/' . basename($temporaryFile);
+          $publicTempFile = Environment::getPublicPath() . '/typo3/typo3temp/assets/images/' . basename($temporaryFile);
           rename($temporaryFile, $publicTempFile);
           $temporaryFileRelativePath = substr($publicTempFile, strlen('typo3/') - 1);
           $receivedBytes = filesize($publicTempFile);

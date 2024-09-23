@@ -205,7 +205,7 @@ class ApiClient
     curl_close($ch);
     fclose($fp);
 
-    if ($expectedFileSize > 0 && $expectedFileSize != filesize($temporaryFilename)) {
+    if (!empty($expectedFileSize) && $expectedFileSize > 0 && $expectedFileSize != filesize($temporaryFilename)) {
       unlink($temporaryFilename);
       $message = 'The downloaded file does not match the expected filesize';
       $this->loggingService->logFileTransferActivity($uri, $temporaryFilename . ': ' . $message, 4 /*GeneralUtility::SYSLOG_SEVERITY_ERROR*/);
