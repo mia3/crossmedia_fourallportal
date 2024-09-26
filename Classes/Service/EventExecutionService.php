@@ -537,6 +537,11 @@ class EventExecutionService implements SingletonInterface
     );
 
     $event->setProcessing(true);
+    try {
+      $this->persistenceManager->update($event);
+    } catch (UnknownObjectException $e) {
+      // ignore
+    }
 
     if (method_exists($this->response, 'send')) {
       $this->response->send();
@@ -603,7 +608,7 @@ class EventExecutionService implements SingletonInterface
         $event->setStatus('failed');
       }
       $this->loggingService->logEventActivity($event, 'Event was deferred', 2 /* GeneralUtility::SYSLOG_SEVERITY_WARNING */);
-    } catch (Exception $exception) {
+    } catch (\Exception | \ReflectionException $exception) {
       $event->setStatus('failed');
       $event->setRetries(0);
       $event->setMessage($exception->getMessage() . ' (code: ' . $exception->getCode() . ')' . $exception->getFile() . ':' . $exception->getLine());
@@ -611,6 +616,8 @@ class EventExecutionService implements SingletonInterface
         $event->getModule()->setLastEventId(max($event->getEventId(), $event->getModule()->getLastEventId()));
       }
       $this->loggingService->logEventActivity($event, 'System error: ' . $exception->getMessage(), 2 /* GeneralUtility::SYSLOG_SEVERITY_WARNING */);
+    } finally {
+      $event->setProcessing(false);
     }
 //    $responseMetadata = $client->getLastResponse();
 //    $event->setHeaders($responseMetadata['headers']);
@@ -620,6 +627,7 @@ class EventExecutionService implements SingletonInterface
 //    $event->setProcessing(false);
 //    $this->eventRepository->update($event);
     try {
+      $this->persistenceManager->update($event);
       $this->persistenceManager->persistAll();
     } catch (Exception $exception) {
       $this->loggingService->logEventActivity($event, 'System error: ' . $exception->getMessage(), 2 /* GeneralUtility::SYSLOG_SEVERITY_WARNING */);

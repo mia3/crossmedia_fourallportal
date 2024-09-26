@@ -34,7 +34,7 @@ class ComplexTypeConverter extends AbstractUuidAwareObjectTypeConverter implemen
    * @param string $propertyName
    * @return void
    */
-  public function setParentObjectAndProperty($object, $propertyName): mixed
+  public function setParentObjectAndProperty($object, $propertyName): void
   {
     $this->parentObject = $object;
     $this->propertyName = $propertyName;

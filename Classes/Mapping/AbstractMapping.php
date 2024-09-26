@@ -14,9 +14,12 @@ use Exception;
 use ReflectionClass;
 use ReflectionException;
 use ReflectionMethod;
+use ReflectionProperty;
 use RuntimeException;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Domain\Repository\PageRepository;
+use TYPO3\CMS\Core\Resource\File;
+use TYPO3\CMS\Core\Resource\FileInterface;
 use TYPO3\CMS\Core\Resource\StorageRepository;
 use TYPO3\CMS\Core\TypoScript\FrontendTypoScript;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
@@ -59,11 +62,6 @@ abstract class AbstractMapping implements MappingInterface
   public function injectPersistenceManager(PersistenceManager $persistenceManager)
   {
     $this->persistenceManager = $persistenceManager;
-  }
-
-  public function injectAccessiblePropertyMapper(AccessiblePropertyMapper $accessiblePropertyMapper)
-  {
-    $this->accessiblePropertyMapper = $accessiblePropertyMapper;
   }
 
   public function injectStorageRepository(StorageRepository $storageRepository)
@@ -291,19 +289,18 @@ abstract class AbstractMapping implements MappingInterface
 
   /**
    * @param array $data
-   * @param AbstractEntity $object
+   * @param AbstractEntity|File $object
    * @param Module $module
    * @param DimensionMapping|null $dimensionMapping
    * @return bool
-   * @throws InvalidSourceException
-   * @throws ReflectionException
-   * @throws TypeConverterException
+   * @throws ApiException
    */
-  protected function mapPropertiesFromDataToObject(array $data, AbstractEntity $object, Module $module, DimensionMapping $dimensionMapping = null): bool
+  protected function mapPropertiesFromDataToObject(array $data, AbstractEntity|File $object, Module $module, DimensionMapping $dimensionMapping = null): bool
   {
     if (!$data['result']) {
       return true;
     }
+
     $map = MappingRegister::resolvePropertyMapForMapper(static::class);
     $properties = $data['result'][0]['properties'];
     $responseValueReader = new ResponseDataFieldValueReader();
@@ -327,10 +324,7 @@ abstract class AbstractMapping implements MappingInterface
           $propertyMappingProblemsOccurred = $this->mapPropertyValueToObject($targetPropertyName, $propertyValue, $object);
           $mappingProblemsOccurred = $mappingProblemsOccurred ?: $propertyMappingProblemsOccurred;
         }
-      } catch (PropertyNotAccessibleException $error) {
-        $message = 'Error mapping ' . $module->getModuleName() . ':' . $objectId . ':' . $importedName . ' - ' . $error->getMessage();
-        $this->loggingService->logObjectActivity($data['result'][0]['id'], $message, 3 /*GeneralUtility::SYSLOG_SEVERITY_WARNING*/);
-      } catch (DeferralException $error) {
+      } catch (PropertyNotAccessibleException|DeferralException|ReflectionException|InvalidSourceException|TypeConverterException $error) {
         $message = 'Error mapping ' . $module->getModuleName() . ':' . $objectId . ':' . $importedName . ' - ' . $error->getMessage();
         $this->loggingService->logObjectActivity($data['result'][0]['id'], $message, 3 /*GeneralUtility::SYSLOG_SEVERITY_WARNING*/);
       }
@@ -341,14 +335,14 @@ abstract class AbstractMapping implements MappingInterface
   /**
    * @param string $propertyName
    * @param mixed $propertyValue
-   * @param AbstractEntity $object
+   * @param AbstractEntity|FileInterface $object
    * @return bool
    * @throws PropertyNotAccessibleException
    * @throws ReflectionException
    * @throws InvalidSourceException
    * @throws TypeConverterException
    */
-  protected function mapPropertyValueToObject(string $propertyName, mixed $propertyValue, AbstractEntity $object): bool
+  protected function mapPropertyValueToObject(string $propertyName, mixed $propertyValue, AbstractEntity|FileInterface $object): bool
   {
     if (!property_exists(get_class($object), $propertyName)) {
       return false;
@@ -372,10 +366,13 @@ abstract class AbstractMapping implements MappingInterface
       $objectId = $object->getRemoteId();
     }
 
-    $array = (new ReflectionMethod(get_class($object), 'set' . ucfirst($propertyName)))->getParameters();
-    if ($propertyValue === null && reset($array)->allowsNull()) {
-      ObjectAccess::setProperty($object, $propertyName, null);
-      return false;
+    $setterName = 'set' . ucfirst($propertyName);
+    if (method_exists($objectId, $setterName)) {
+      $array = (new ReflectionMethod(get_class($object),))->getParameters();
+      if ($propertyValue === null && reset($array)->allowsNull()) {
+        ObjectAccess::setProperty($object, $propertyName, null);
+        return false;
+      }
     }
     $configuration = new PropertyMappingConfiguration();
     $mappingProblemsOccurred = false;
@@ -387,7 +384,11 @@ abstract class AbstractMapping implements MappingInterface
 
     $propertyMapper = $this->getAccessiblePropertyMapper();
     $targetType = $this->determineDataTypeForProperty($propertyName, $object);
-    $array1 = (new ReflectionMethod(get_class($object), 'set' . ucfirst($propertyName)))->getParameters();
+    if ($targetType === null) {
+      $classSchema = get_class($object);
+      $this->loggingService->logObjectActivity($objectId, "Type of property {$propertyName} on {$classSchema} could not be determined", 3);
+      return false;
+    }
     if (strpos($targetType, '<')) {
       $childType = substr($targetType, strpos($targetType, '<') + 1, -1);
       $childType = trim($childType, '\\');
@@ -470,15 +471,22 @@ abstract class AbstractMapping implements MappingInterface
           }
         }
       }
-    } elseif ($propertyValue === null && !reset($array1)->allowsNull()) {
-      $message = sprintf(
-        'Property "%s" on object "%s->%s" does not allow NULL as value, but NULL was resolved. Please verify PIM response data consistency!',
-        $propertyName,
-        get_class($object),
-        method_exists($object, 'getRemoteId') ? $object->getRemoteId() : $object->getUid()
-      );
-      $this->loggingService->logObjectActivity($objectId, $message, 4 /*GeneralUtility::SYSLOG_SEVERITY_FATAL*/);
-      return false;
+    } elseif ($propertyValue === null) {
+      try {
+        $parameters = (new \ReflectionMethod(get_class($object), 'set' . ucfirst($propertyName)))->getParameters();
+      } catch (\ReflectionException $e) {
+        // ignore
+      }
+      if (!empty($parameters) && !$parameters[0]->allowsNull()) {
+        $message = sprintf(
+          'Property "%s" on object "%s->%s" does not allow NULL as value, but NULL was resolved. Please verify PIM response data consistency!',
+          $propertyName,
+          get_class($object),
+          method_exists($object, 'getRemoteId') ? $object->getRemoteId() : $object->getUid()
+        );
+        $this->loggingService->logObjectActivity($objectId, $message, 4 /*GeneralUtility::SYSLOG_SEVERITY_FATAL*/);
+        return false;
+      }
     }
 
     $setOnObject = $object;
@@ -505,33 +513,38 @@ abstract class AbstractMapping implements MappingInterface
    * @throws NoSuchPropertyException
    * @throws UnknownClassException
    */
-  protected function determineDataTypeForProperty($propertyName, $object): bool|string
+  protected function determineDataTypeForProperty(string $propertyName, object $object): string|null
   {
-    if (property_exists(get_class($object), $propertyName)) {
-      $property = new ReflectionService($object, $propertyName);
-      $classSchema = $property->getClassSchema($object);
-      $varTags = $classSchema->getProperty('var');
+
+    if (property_exists($object, $propertyName)) {
+      $property = new ReflectionProperty($object, $propertyName);
+      $type = $property->getType();
+
+      if ($type !== null) {
+        return $type->getName();
+      }
+
+      $varTags = $property->getAttributes('var');
       if (!empty($varTags)) {
-        return strpos($varTags[0], ' ') !== false ? substr($varTags[0], 0, strpos($varTags[0], ' ')) : $varTags[0];
+        return explode(' ', $varTags[0]->getArguments()[0])[0];
       }
     }
 
-    if (method_exists(get_class($object), 'set' . ucfirst($propertyName))) {
-      /** @see .build/vendor/typo3/cms-core/Documentation/Changelog/9.0/Breaking-57594-OptimizeReflectionServiceCacheHandling.rst */
-      $method = $classSchema->getMethod('set' . ucfirst($propertyName));
+    $setterMethod = 'set' . ucfirst($propertyName);
+    if (method_exists($object, $setterMethod)) {
+      $method = new ReflectionMethod($object, $setterMethod);
       $parameters = $method->getParameters();
-      if ($parameters[0]->getType() !== null) {
-        return (string)$parameters[0]->getType();
+
+      if (!empty($parameters) && $parameters[0]->hasType()) {
+        return $parameters[0]->getType()->getName();
       }
 
-      $varTags = $method->getParameter('param');
-      if (!empty($varTags)) {
-        $array = explode(' ', $varTags[0]);
-        return reset($array);
+      $paramTags = $method->getAttributes('param');
+      if (!empty($paramTags)) {
+        return explode(' ', $paramTags[0]->getArguments()[0])[0];
       }
     }
-
-    throw new RuntimeException('Type of property ' . $propertyName . ' on ' . get_class($object) . ' could not be determined');
+    return null;
   }
 
   /**
@@ -557,7 +570,7 @@ abstract class AbstractMapping implements MappingInterface
    */
   protected function getAccessiblePropertyMapper(): AccessiblePropertyMapper
   {
-    return $this->accessiblePropertyMapper;
+    return GeneralUtility::makeInstance(AccessiblePropertyMapper::class);
   }
 
   /**

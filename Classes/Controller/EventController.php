@@ -131,10 +131,9 @@ final class EventController extends ActionController
     // create header menu
     ControllerUtility::addMainMenu($this->request, $this->uriBuilder, $view, 'Event');
     $events = $this->eventRepository->findByObjectId($event->getObjectId());
-
-    $view->assign('event', $event);
+    $view->assign('event', $events->getFirst());
     $view->assign('event_json', 'event json value equals, traa: ' . json_encode($event));
-    $view->assign('events', $events);
+    $view->assign('events', $events->toArray());
     $view->assign('eventLog', $this->loggingService->getEventActivity($event, 20));
     $view->assign('objectLog', $this->loggingService->getObjectActivity($event->getObjectId(), 100));
     foreach ($events as $historicalEvent) {

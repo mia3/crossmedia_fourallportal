@@ -146,8 +146,11 @@ class ApiClient
   public function saveDerivate(string $filename, string $objectId, string $usage = null): bool|string
   {
 
-    $uri = $this->server->getApiUrl() . '/modules/file/objects/' . $objectId . '/media/' . $usage;
+    $uri = sprintf("%smodules/file/objects/%s/media/%s", $this->server->getApiUrl(), $objectId, $usage);
     $sessionCookie = 'CESESSID=' . $this->sessionId;
+
+    $headers   = array();
+    $headers[] = 'Cookie: ' . $sessionCookie;
 
     $temporaryFilename = tempnam(sys_get_temp_dir(), 'fal_mam-' . $objectId);
 
@@ -163,7 +166,7 @@ class ApiClient
     $temporaryHeaderbufferName = tempnam(sys_get_temp_dir(), 'header-buff' . $objectId);
     $headerBuff = fopen($temporaryHeaderbufferName, 'w+');
 
-    curl_setopt($ch, CURLOPT_HTTPHEADER, array($sessionCookie));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
     curl_setopt($ch, CURLOPT_TIMEOUT, (int)$this->portalConfig['clientConnectTimeout']);
     curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, (int)$this->portalConfig['clientTransferTimeout']);
     curl_setopt($ch, CURLOPT_FILE, $fp);
@@ -202,7 +205,7 @@ class ApiClient
     curl_close($ch);
     fclose($fp);
 
-    if ($expectedFileSize > 0 && $expectedFileSize != filesize($temporaryFilename)) {
+    if (!empty($expectedFileSize) && $expectedFileSize > 0 && $expectedFileSize != filesize($temporaryFilename)) {
       unlink($temporaryFilename);
       $message = 'The downloaded file does not match the expected filesize';
       $this->loggingService->logFileTransferActivity($uri, $temporaryFilename . ': ' . $message, 4 /*GeneralUtility::SYSLOG_SEVERITY_ERROR*/);

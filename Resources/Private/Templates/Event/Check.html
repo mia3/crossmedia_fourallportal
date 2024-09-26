@@ -4,15 +4,29 @@
       data-namespace-typo3-fluid="true" lang="en">
 
 <f:layout name="Module"/>
+
 <f:section name="Content">
-  <f:section name="module-headline">
-    <h3>Event history, object
-      <f:link.action action="index" arguments="{search: event.objectId, status: 'all'}">
-        {event.objectId}
-      </f:link.action>
-    </h3>
-  </f:section>
+
+  <f:asset.css identifier="pre-4ap">
+    .pre-4ap {
+      display: block;
+      padding: 8.5px;
+      font-size: 11px;
+      line-height: 1.5;
+      word-break: break-all;
+      word-wrap: break-word;
+      background-color: #f5f5f5;
+      border: 1px solid #ccc;
+      border-radius: 2px;
+    }
+  </f:asset.css>
+
   <f:flashMessages/>
+  <h3>Event history, object
+    <f:link.action action="index" arguments="{search: event.objectId, status: 'all'}">
+      {event.objectId}
+    </f:link.action>
+  </h3>
 
   <f:if condition="{deletedScheduled}">
     <f:then>
@@ -48,13 +62,13 @@
   <f:render partial="Log" arguments="{log: objectLog}"/>
 
   <h4>Request payload</h4>
-  <f:format.raw>{event.payload}</f:format.raw>
+  <pre class="pre-4ap">{event.payload -> f:format.raw()}</pre>
 
   <h4>Response headers</h4>
-  <f:format.raw>{event.headers}</f:format.raw>
+  <pre class="pre-4ap">{event.headers -> f:format.raw()}</pre>
 
   <h4>Response body</h4>
-  <f:format.raw>{event.response}</f:format.raw>
+  <pre class="pre-4ap">{event.response -> f:format.raw()}</pre>
 
 </f:section>
 
